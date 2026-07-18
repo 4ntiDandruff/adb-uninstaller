@@ -513,6 +513,55 @@ class App:
         # Silent AI auto-test on startup (if config exists)
         if self.ai_url.get().strip():
             self.root.after(2000, self._silent_ai_test)
+    def _load_knowledge_base(self):
+        """Load persistent knowledge base from markdown file (highest priority source)."""
+        import os
+        kb_file = os.path.join(self.config_dir, "knowledge_base.md")
+        
+        if not os.path.exists(kb_file):
+            # Create initial file with header
+            with open(kb_file, 'w') as f:
+                f.write("# ADB Uninstaller Knowledge Base\n")
+                f.write("# Auto-generated package → app name mappings\n")
+                f.write("# Format: - package.name → App Name\n\n")
+            return {}
+        
+        knowledge = {}
+        try:
+            with open(kb_file, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    # Parse: - package.name → App Name
+                    if line.startswith('-') and '→' in line:
+                        parts = line[1:].split('→', 1)
+                        if len(parts) == 2:
+                            pkg = parts[0].strip()
+                            name = parts[1].strip()
+                            if pkg and name:
+                                knowledge[pkg] = name
+        except Exception as e:
+            self.log(f"Warning: Could not load knowledge base: {e}", "warning")
+            return {}
+        
+        return knowledge
+    
+    def _append_to_knowledge_base(self, pkg, app_name):
+        """Append successful AI resolution to persistent knowledge base."""
+        import os
+        kb_file = os.path.join(self.config_dir, "knowledge_base.md")
+        
+        try:
+            # Append to file (thread-safe append mode)
+            with open(kb_file, 'a', encoding='utf-8') as f:
+                f.write(f"- {pkg} → {app_name}\n")
+            
+            # Update in-memory dict
+            self.knowledge_base[pkg] = app_name
+            
+        except Exception as e:
+            # Silent fail - not critical
+            pass
+    
     def _build_ui(self):
         # ── Header ──
         hdr_main = ttk.Frame(self.root, padding=8)
@@ -1514,6 +1563,7 @@ Rules:
                             if not is_refusal:
                                 # Valid response - cache it
                                 self.ai_cache[pkg] = app_name
+                                self._append_to_knowledge_base(pkg, app_name)
                                 batch_success += 1
                                 
                                 # Update packages list
