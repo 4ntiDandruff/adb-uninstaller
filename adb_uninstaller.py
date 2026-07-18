@@ -518,9 +518,11 @@ class App:
         self.btn_toggle_ai = ttk.Button(ctrl_frame, text="⚙️ AI Config", command=self._toggle_ai_panel)
         self.btn_toggle_ai.pack(side=tk.LEFT, padx=2)
         
-        # AI Status Indicator Dot (Handy-style)
-        self.ai_status_dot = ttk.Label(ctrl_frame, text="⚪", font=("", 12))
+        # AI Status Indicator Dot (Handy-style) - Use tk.Label for color control
+        self.ai_status_dot = tk.Label(ctrl_frame, text="●", font=("", 14, "bold"), 
+                                       fg="#9e9e9e", bg="#f5f5f7", cursor="hand2")
         self.ai_status_dot.pack(side=tk.LEFT, padx=(0, 4))
+        self.ai_status_dot.bind("<Button-1>", lambda e: self._show_ai_status_tooltip())
 
         # ── Progress ──
         self.progress_var = tk.DoubleVar()
@@ -1238,15 +1240,20 @@ class App:
         """Update AI status indicator dot: untested, incomplete, testing, connected, error"""
         self.ai_status = status
         status_map = {
-            'untested': ('⚪', 'AI belum diuji'),
-            'incomplete': ('🟡', 'Konfigurasi belum lengkap'),
-            'testing': ('🟠', 'Sedang menguji koneksi...'),
-            'connected': ('🟢', 'AI terhubung & siap'),
-            'error': ('🔴', 'Koneksi AI gagal')
+            'untested': ('#9e9e9e', 'AI belum diuji'),      # Gray
+            'incomplete': ('#ffc107', 'Konfigurasi belum lengkap'),  # Amber/Yellow
+            'testing': ('#ff9800', 'Sedang menguji koneksi...'),     # Orange
+            'connected': ('#4caf50', 'AI terhubung & siap'),         # Green
+            'error': ('#f44336', 'Koneksi AI gagal')                 # Red
         }
-        dot, tooltip = status_map.get(status, ('⚪', 'Unknown'))
-        self.ai_status_dot.config(text=dot)
-        # TODO: Add tooltip support if needed
+        color, tooltip = status_map.get(status, ('#9e9e9e', 'Unknown'))
+        self.ai_status_dot.config(fg=color)
+        self.ai_status_tooltip = tooltip
+    
+    def _show_ai_status_tooltip(self):
+        """Show AI status message when dot is clicked."""
+        if hasattr(self, 'ai_status_tooltip'):
+            messagebox.showinfo("Status AI", self.ai_status_tooltip)
     
     def _load_config(self):
         import json
