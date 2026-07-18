@@ -1,6 +1,6 @@
 # ADB Uninstaller — Android Debloater
 
-**Versi:** 1.13  
+**Versi:** 1.14  
 **Developer:** Megapass Intra Solusindo (Sidoarjo, Indonesia)  
 **Platform:** Linux/Kubuntu  
 **License:** Internal Use  
@@ -257,6 +257,9 @@ Aplikasi ini memiliki database offline 130+ aplikasi populer Indonesia untuk res
 ---
 
 ## 📝 Changelog
+
+### v1.14 (2026-07-19)
+- ✨ **Feature:** Silent AI auto-test on startup — indikator AI langsung hijau otomatis tanpa popup (delay 2 detik setelah app load, hanya test kalau config sudah ada).
 
 ### v1.13 (2026-07-19)
 - ✨ **Feature:** Auto-scan device on startup — device langsung terdeteksi otomatis tanpa perlu klik Scan Device (delay 1.5 detik untuk UI init).
