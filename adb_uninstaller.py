@@ -1030,34 +1030,34 @@ def main():
     if "clam" in style.theme_names():
         style.theme_use("clam")
         
-    # Main defaults
-    style.configure(".", background=bg_main, foreground=fg_main, bordercolor=border)
+    # Main defaults with a clean font structure
+    style.configure(".", background=bg_main, foreground=fg_main, bordercolor=border, font=("Inter", 10))
     style.configure("TFrame", background=bg_main)
-    style.configure("TLabel", background=bg_main, foreground=fg_main)
+    style.configure("TLabel", background=bg_main, foreground=fg_main, font=("Inter", 10))
     
-    # Buttons - Rounded feel via generous padding
+    # Modernized rounded buttons with hover/active states
     style.configure("TButton", background=bg_card, foreground=fg_main, 
-                    bordercolor=border, focuscolor=accent, padding=(16, 8),
-                    relief="flat")
+                    bordercolor=border, focuscolor=accent_blue, padding=(12, 6),
+                    font=("Inter", 9, "bold"), relief="flat")
     style.map("TButton", 
-              background=[("active", accent), ("disabled", "#f0f0f2")], 
-              foreground=[("active", "#ffffff"), ("disabled", "#c7c7cc")],
-              bordercolor=[("active", accent), ("!active", border)])
+              background=[("active", accent_blue), ("disabled", "#f2f2f7")], 
+              foreground=[("active", "#ffffff"), ("disabled", "#aeaeb2")],
+              bordercolor=[("active", accent_blue), ("!active", border)])
               
-    # Notebook Tabs - Clean modern tabs
-    style.configure("TNotebook", background=bg_main, bordercolor=border, tabmargins=[0, 8, 0, 0])
-    style.configure("TNotebook.Tab", background=bg_card, foreground=fg_muted, 
-                    bordercolor=border, padding=(16, 8), relief="flat")
+    # Modern Apple-style segment tabs
+    style.configure("TNotebook", background=bg_main, bordercolor="#e5e5ea", tabmargins=[2, 4, 2, 0])
+    style.configure("TNotebook.Tab", background="#e5e5ea", foreground=fg_muted, 
+                    bordercolor="#e5e5ea", padding=(14, 6), font=("Inter", 9, "bold"), relief="flat")
     style.map("TNotebook.Tab", 
-              background=[("selected", bg_main), ("active", "#fafafa")], 
-              foreground=[("selected", accent), ("active", fg_main)],
-              bordercolor=[("selected", bg_main), ("!selected", border)])
+              background=[("selected", bg_card), ("active", "#e0e0e5")], 
+              foreground=[("selected", accent_blue), ("active", fg_main)],
+              bordercolor=[("selected", "#e5e5ea"), ("!selected", "#e5e5ea")])
               
-    # Treeview - Clean white table
+    # Treeview - Professional clean rows
     style.configure("Treeview", background=bg_tree, foreground=fg_main, 
-                    fieldbackground=bg_tree, rowheight=32, font=("", 10))
+                    fieldbackground=bg_tree, rowheight=28, font=("Inter", 9))
     style.configure("Treeview.Heading", background=bg_card, foreground=fg_main, 
-                    bordercolor=border, padding=8, font=("", 9, "bold"), relief="flat")
+                    bordercolor="#e5e5ea", padding=6, font=("Inter", 9, "bold"), relief="flat")
     style.map("Treeview", 
               background=[("selected", accent_blue)], 
               foreground=[("selected", "#ffffff")])
