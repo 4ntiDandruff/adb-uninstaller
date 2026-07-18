@@ -259,7 +259,7 @@ class ADBController:
                 if line.startswith("package:"):
                     disabled.add(line.replace("package:", ""))
 
-        # System packages set
+        # Accurate System packages list directly from PM
         out_sys, _ = self.run("shell pm list packages -s")
         system_pkgs = set()
         if out_sys:
@@ -267,6 +267,15 @@ class ADBController:
                 line = line.strip()
                 if line.startswith("package:"):
                     system_pkgs.add(line.replace("package:", ""))
+
+        # User-installed packages list directly from PM (-3 flag represents third-party)
+        out_user, _ = self.run("shell pm list packages -3")
+        user_installed_pkgs = set()
+        if out_user:
+            for line in out_user.split("\n"):
+                line = line.strip()
+                if line.startswith("package:"):
+                    user_installed_pkgs.add(line.replace("package:", ""))
 
         lines = out_all.split("\n")
         total = len(lines)
@@ -283,11 +292,17 @@ class ADBController:
             path = rest[:eq_idx]
             pkg = rest[eq_idx + 1:]
 
-            is_system = pkg in system_pkgs or any(
-                x in path for x in ["/system/", "/vendor/", "/product/"]
-            )
-            if "/data/app/" in path:
+            # Precision logic: 
+            # 1. If it's registered in system packages (-s), it's ALWAYS a system app (even if updated in /data/app/)
+            # 2. If it's not in system packages, and it's in third-party (-3), it's a User App
+            # 3. Fallback: Path analysis if pm queries failed to map correctly
+            if pkg in system_pkgs:
+                is_system = True
+            elif pkg in user_installed_pkgs:
                 is_system = False
+            else:
+                is_system = any(x in path for x in ["/system/", "/vendor/", "/product/", "/apex/"]) and not "/data/app/" in path
+
             category = "system" if is_system else "user"
             status = "disabled" if pkg in disabled else "enabled"
 
