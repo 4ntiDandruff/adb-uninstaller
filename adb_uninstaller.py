@@ -477,7 +477,6 @@ class App:
 
         # ── Split Layout using PanedWindow ──
         self.paned = ttk.PanedWindow(self.root, orient=tk.HORIZONTAL)
-        self.paned.pack(fill=tk.BOTH, expand=True, padx=8, pady=4)
 
         # Left Container (for Notebook)
         self.left_container = ttk.Frame(self.paned, width=720)
@@ -601,7 +600,7 @@ class App:
 
         # ── Action Buttons ──
         af = ttk.Frame(self.root, padding=(8, 12))
-        af.pack(fill=tk.X)
+        af.pack(fill=tk.X, side=tk.BOTTOM, pady=4)
         self.lbl_selected = ttk.Label(af, text="Selected: 0 apps")
         self.lbl_selected.pack(side=tk.LEFT)
 
@@ -628,6 +627,9 @@ class App:
         self.lbl_status = ttk.Label(self.root, text="Ready — connect device and press Scan",
                                     relief=tk.SUNKEN, anchor=tk.W, padding=4)
         self.lbl_status.pack(fill=tk.X, side=tk.BOTTOM)
+
+        # Pack the middle paned window LAST so it occupies only the remaining space (prevents layout cropping)
+        self.paned.pack(fill=tk.BOTH, expand=True, padx=8, pady=4)
 
     # ── Sort ──
     def _sort_column(self, tab_key, col):
@@ -1071,9 +1073,14 @@ def main():
                     fieldbackground=bg_tree, rowheight=28, font=("Inter", 9))
     style.configure("Treeview.Heading", background=bg_card, foreground=fg_main, 
                     bordercolor="#e5e5ea", padding=6, font=("Inter", 9, "bold"), relief="flat")
+    
+    # Fix Treeview tag background bug in modern Tkinter (Ubuntu/Kubuntu)
+    def fixed_map(option):
+        return [elm for elm in style.map("Treeview", option)
+                if elm[0] not in ("!disabled", "!selected")]
     style.map("Treeview", 
-              background=[("selected", accent_blue)], 
-              foreground=[("selected", "#ffffff")])
+              foreground=fixed_map("foreground"),
+              background=fixed_map("background"))
               
     # Labelframe - Clean bordered cards
     style.configure("TLabelframe", background=bg_card, bordercolor=border, relief="solid", borderwidth=1)
