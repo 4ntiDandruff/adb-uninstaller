@@ -587,6 +587,9 @@ class App:
             # Alternating row backgrounds for better visual separation
             tree.tag_configure("oddrow", background="#fafafa")   # Very light gray for odd rows
             tree.tag_configure("evenrow", background="#ffffff")  # Pure white for even rows
+            
+            # Visual check states (a clean light accent blue background for selected items to make them highly visible)
+            tree.tag_configure("checked", background="#e1f5fe", foreground="#0288d1")
 
             scrollbar = ttk.Scrollbar(container, orient=tk.VERTICAL, command=tree.yview)
             tree.configure(yscrollcommand=scrollbar.set)
@@ -654,7 +657,9 @@ class App:
         else:
             vals[0] = "☑"
             self.check_vars[pkg] = True
-        tree.item(item, values=vals)
+        
+        # Redraw rows using _apply_filter to instantly reflect selection highlight
+        self._apply_filter()
         self._update_selected_count()
 
     def _get_current_tab_key(self):
@@ -666,9 +671,8 @@ class App:
         tree = self.trees[tab]
         for item in tree.get_children():
             vals = list(tree.item(item, "values"))
-            vals[0] = "☑"
             self.check_vars[vals[2]] = True
-            tree.item(item, values=vals)
+        self._apply_filter()
         self._update_selected_count()
 
     def _deselect_all(self):
@@ -676,9 +680,8 @@ class App:
         tree = self.trees[tab]
         for item in tree.get_children():
             vals = list(tree.item(item, "values"))
-            vals[0] = "☐"
             self.check_vars[vals[2]] = False
-            tree.item(item, values=vals)
+        self._apply_filter()
         self._update_selected_count()
 
     def _update_selected_count(self):
@@ -832,11 +835,17 @@ class App:
                     display_name = p['app_name']  # PID hidden for clean display
                 
                 # We insert 5 elements to match ("sel", "no", "package", "app_name", "status")
-                # Apply alternating row backgrounds + status tag
+                # Apply alternating row backgrounds + status tag + checked state styling
                 row_tag = "oddrow" if idx % 2 == 0 else "evenrow"
+                
+                # Check status overrides normal/zebra background for selected rows
+                row_tags = [tag, row_tag]
+                if self.check_vars.get(p["pkg"]):
+                    row_tags.append("checked")
+                    
                 tree.insert("", tk.END,
                             values=(checked, idx + 1, p["pkg"], display_name, status_icon),
-                            tags=(tag, row_tag))
+                            tags=tuple(row_tags))
 
     # ── Actions ──
     def _get_selected(self):
