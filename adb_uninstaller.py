@@ -706,7 +706,7 @@ class App:
             tree.tag_configure("evenrow", background="#ffffff")  # Pure white for even rows
             
             # Visual check states (a clean light accent blue background for selected items to make them highly visible)
-            tree.tag_configure("checked", background="#e1f5fe", foreground="#0288d1")
+            tree.tag_configure("checked", background="#fff9c4", foreground="#f57f17", font=("Inter", 10, "bold"))
 
             scrollbar = ttk.Scrollbar(container, orient=tk.VERTICAL, command=tree.yview)
             tree.configure(yscrollcommand=scrollbar.set)
@@ -954,7 +954,7 @@ class App:
                 filtered.sort(key=lambda x: x["pkg"])
 
             for idx, p in enumerate(filtered):
-                checked = "☑" if self.check_vars.get(p["pkg"]) else "☐"
+                checked = "✓" if self.check_vars.get(p["pkg"]) else "☐"
                 status_icon = "✅" if p["status"] == "enabled" else "🚫"
 
                 is_crit = p["pkg"] in CRITICAL_PACKAGES
