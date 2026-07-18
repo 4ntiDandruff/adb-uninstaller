@@ -1261,7 +1261,8 @@ class App:
         payload = {
             "model": model,
             "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.2
+            "temperature": 0.2,
+            "stream": False
         }
         req = urllib.request.Request(
             endpoint,
