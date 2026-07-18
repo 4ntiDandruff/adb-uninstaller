@@ -527,7 +527,7 @@ class App:
 
         # Setup colors in Log text (Light theme)
         self.log_text.tag_config("info", foreground="#007aff")  # Bright blue
-        self.log_text.tag_config("success", foreground="#34c759")  # Bright green
+        self.log_text.tag_config("success", foreground="#007aff")  # Bright green
         self.log_text.tag_config("error", foreground="#ff3b30")  # Soft red
 
         # Log control buttons
@@ -579,9 +579,10 @@ class App:
             tree.column("status", width=70, anchor=tk.CENTER, stretch=False)
 
             # Light theme row colors with subtle alternating pattern
-            tree.tag_configure("enabled", background="#e8f5e9", foreground="#2e7d32")   # Light green
-            tree.tag_configure("disabled", background="#fff3e0", foreground="#f57c00")  # Light orange
-            tree.tag_configure("critical", background="#ffebee", foreground="#c62828")
+            # Professional desaturated palette
+            tree.tag_configure("enabled", background="#ffffff", foreground="#1d1d1f")   # Clean White
+            tree.tag_configure("disabled", background="#f2f2f7", foreground="#8e8e93")  # Soft Cool Gray
+            tree.tag_configure("critical", background="#ffebec", foreground="#d32f2f")  # Soft desaturated red
             
             # Alternating row backgrounds for better visual separation
             tree.tag_configure("oddrow", background="#fafafa")   # Very light gray for odd rows
@@ -606,13 +607,13 @@ class App:
         legend_frame.pack(side=tk.LEFT, padx=20)
         ttk.Label(legend_frame, text="Legenda Warna:", font=("", 9, "bold")).pack(side=tk.LEFT)
         
-        lbl_green = tk.Label(legend_frame, text=" Aktif ", bg="#e8f5e9", fg="#2e7d32", font=("", 8, "bold"))
+        lbl_green = tk.Label(legend_frame, text=" Aktif ", bg="#ffffff", fg="#1d1d1f", bd=1, relief="solid", font=("Inter", 8, "bold"))
         lbl_green.pack(side=tk.LEFT, padx=3)
         
-        lbl_orange = tk.Label(legend_frame, text=" Disabled ", bg="#fff3e0", fg="#f57c00", font=("", 8, "bold"))
+        lbl_orange = tk.Label(legend_frame, text=" Disabled ", bg="#f2f2f7", fg="#8e8e93", bd=1, relief="solid", font=("Inter", 8, "bold"))
         lbl_orange.pack(side=tk.LEFT, padx=3)
         
-        lbl_red = tk.Label(legend_frame, text=" Kritis (Bahaya) ", bg="#ffebee", fg="#c62828", font=("", 8, "bold"))
+        lbl_red = tk.Label(legend_frame, text=" Kritis (Bahaya) ", bg="#ffebec", fg="#d32f2f", bd=1, relief="solid", font=("Inter", 8, "bold"))
         lbl_red.pack(side=tk.LEFT, padx=3)
 
         ttk.Button(af, text="⏹️ Force Stop", command=lambda: self._do_action("force_stop")).pack(side=tk.RIGHT, padx=4)
@@ -704,7 +705,7 @@ class App:
             return
         self.device_id = dev_id
         self.device_name = dev_name
-        self.root.after(0, lambda: self.lbl_device.config(text=f"🟢 {dev_name} ({dev_id})", foreground="#34c759"))
+        self.root.after(0, lambda: self.lbl_device.config(text=f"🟢 {dev_name} ({dev_id})", foreground="#007aff"))
         self.root.after(0, lambda: self.log(f"Device terhubung: {dev_name} ({dev_id})", "success"))
         
         # Get specs
