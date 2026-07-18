@@ -15,6 +15,66 @@ import os
 
 
 # ─── Critical packages: double-confirm before any action ───
+# AI Prompt Templates
+PROMPT_TEMPLATES = {
+    "default": {
+        "name": "Default (Batch JSON)",
+        "template": """Identify these {count} Android apps from package names.
+Reply with ONLY valid JSON (no markdown blocks, no explanation):
+{{"package.name": "App Name", ...}}
+
+Packages to identify:
+{packages}
+
+Examples:
+- com.facebook.katana: Facebook
+- com.google.android.gm: Gmail
+- com.spotify.music: Spotify
+- com.whatsapp: WhatsApp
+- com.google.android.apps.photos: Google Photos
+
+Rules:
+- Max 3 words per app name
+- No explanations or refusals
+- Output valid JSON only"""
+    },
+    "casual": {
+        "name": "Casual Indonesian",
+        "template": """Identifikasi {count} aplikasi Android ini dari package name-nya.
+Bales cuma JSON valid aja ya (tanpa markdown, tanpa penjelasan):
+{{"package.name": "Nama App", ...}}
+
+Package yang mau diidentifikasi:
+{packages}
+
+Contoh:
+- com.facebook.katana: Facebook
+- com.whatsapp: WhatsApp
+
+Aturan:
+- Maksimal 3 kata per nama app
+- Gak usah jelasin, langsung JSON aja"""
+    },
+    "technical": {
+        "name": "Technical (Detailed)",
+        "template": """Package identification task for {count} Android applications.
+Output format: Valid JSON object mapping package names to human-readable application names.
+
+Input packages:
+{packages}
+
+Output requirements:
+1. Valid JSON syntax
+2. Concise names (≤3 words)
+3. No markdown formatting
+4. No refusal responses"""
+    },
+    "custom": {
+        "name": "Custom Template",
+        "template": ""
+    }
+}
+
 CRITICAL_PACKAGES = {
     "com.android.settings",
     "com.android.systemui",
@@ -488,6 +548,7 @@ class App:
         
         self.ai_cache = {}
         self._load_config()
+        self.prompt_template = tk.StringVar(value="default")
         self._load_cache()
         
         # State variable for AI configuration visibility
@@ -1352,6 +1413,7 @@ class App:
                     self.ai_url.set(cfg.get("url", ""))
                     self.ai_key.set(cfg.get("key", ""))
                     self.ai_model.set(cfg.get("model", "claude-3-haiku"))
+                    self.prompt_template.set(cfg.get("prompt_template", "default"))
                     
                     # Update status based on config completeness
                     if self.ai_url.get().strip():
@@ -1512,24 +1574,19 @@ class App:
                 break
             
             # Build batch prompt with JSON output format
-            prompt = f"""Identify these {len(batch)} Android apps from package names.
-Reply with ONLY valid JSON (no markdown blocks, no explanation):
-{{"package.name": "App Name", ...}}
-
-Packages to identify:
-{chr(10).join(f"- {pkg}" for pkg in batch)}
-
-Examples:
-- com.facebook.katana: Facebook
-- com.google.android.gm: Gmail
-- com.spotify.music: Spotify
-- com.whatsapp: WhatsApp
-- com.google.android.apps.photos: Google Photos
-
-Rules:
-- Max 3 words per app name
-- No explanations or refusals
-- Output valid JSON only"""
+            # Build prompt from selected template
+            template_key = self.prompt_template.get().split(":")[0] if ":" in self.prompt_template.get() else self.prompt_template.get()
+            if template_key not in PROMPT_TEMPLATES:
+                template_key = "default"
+            
+            template = PROMPT_TEMPLATES[template_key]["template"]
+            packages_list = chr(10).join(f"- {pkg}" for pkg in batch)
+            
+            prompt = template.format(
+                count=len(batch),
+                packages=packages_list,
+                pkg=batch[0] if batch else ""
+            )
 
             self.root.after(0, lambda bn=batch_num, tb=total_batches: self.log(
                 f"Processing batch {bn}/{tb}...", "info"
