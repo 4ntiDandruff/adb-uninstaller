@@ -498,6 +498,10 @@ class App:
         
         # Auto-scan device on startup (500ms delay for UI init)
         self.root.after(1500, self._on_scan)
+        
+        # Silent AI auto-test on startup (if config exists)
+        if self.ai_url.get().strip():
+            self.root.after(2000, self._silent_ai_test)
     def _build_ui(self):
         # ── Header ──
         hdr_main = ttk.Frame(self.root, padding=8)
@@ -1213,6 +1217,27 @@ class App:
         self._save_config()
         self.log("Setelan AI berhasil disimpan & diterapkan!", "success")
         messagebox.showinfo("Success", "Setelan AI berhasil disimpan!")
+
+    def _silent_ai_test(self):
+        """Silent AI connection test on startup - no popup dialogs."""
+        url = self.ai_url.get().strip()
+        if not url:
+            self._update_ai_status('incomplete')
+            return
+            
+        self._update_ai_status('testing')
+        self.log("Menguji koneksi AI di background...", "info")
+        
+        def run_test():
+            ans = self._call_ai("Reply only with the word PONG.")
+            if ans and "PONG" in ans.upper():
+                self.root.after(0, lambda: self._update_ai_status('connected'))
+                self.root.after(0, lambda: self.log("🟢 AI auto-connected! Claude Haiku siap.", "success"))
+            else:
+                self.root.after(0, lambda: self._update_ai_status('error'))
+                self.root.after(0, lambda: self.log("🔴 AI auto-test gagal. Klik ⚡ untuk test manual.", "error"))
+                
+        threading.Thread(target=run_test, daemon=True).start()
 
     def _on_test_ai(self):
         url = self.ai_url.get().strip()
