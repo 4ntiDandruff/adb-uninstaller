@@ -1438,10 +1438,30 @@ class App:
             if not self.ai_url.get().strip():
                 break
                 
-            prompt = f"Tebak nama aplikasi Android untuk package name: {pkg}. Balas HANYA dengan nama aplikasinya saja secara singkat (maksimal 4 kata), tanpa penjelasan tambahan."
+            prompt = f"""Identify this Android app from its package name: {pkg}
+
+Examples:
+- com.facebook.katana → Facebook
+- com.google.android.gm → Gmail  
+- com.spotify.music → Spotify
+- com.whatsapp → WhatsApp
+- com.google.android.apps.photos → Google Photos
+
+Reply with ONLY the app name (max 3 words). No explanation, no "I cannot", no sentences."""
             ans = self._call_ai(prompt)
             if ans:
-                ans = ans.replace('"', '').replace("'", "").rstrip(".")
+                ans = ans.replace('"', '').replace("'", '').strip().rstrip(".")
+                
+                # Validation: reject verbose/refusal responses
+                reject_words = ['tidak', 'cannot', 'unable', 'sorry', 'saya tidak', 'i cant', 'i don\'t']
+                is_refusal = len(ans) > 30 or len(ans.split()) > 5 or any(reject in ans.lower() for reject in reject_words)
+                
+                if is_refusal:
+                    # AI refused or gave verbose response - skip caching
+                    self.root.after(0, lambda k=pkg: self.log(f"AI gagal identifikasi {k}, tetap pakai nama dumpsys", "warning"))
+                    continue
+                
+                # Valid short response - cache it
                 self.ai_cache[pkg] = ans
                 self._save_cache()
                 
