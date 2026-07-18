@@ -1,0 +1,18 @@
+# ADB Uninstaller Dependencies
+# All dependencies are Python standard library - no external packages required
+
+# Standard Library (included with Python 3.11+)
+# - tkinter (GUI framework)
+# - subprocess (ADB command execution)
+# - threading (background operations)
+# - json (config and data parsing)
+# - os (file operations)
+# - shlex (shell command safety)
+# - re (regex for parsing)
+
+# Note: Tkinter may need separate installation on some Linux distributions:
+# Ubuntu/Debian: sudo apt install python3-tk
+# Fedora: sudo dnf install python3-tkinter
+# Arch: sudo pacman -S tk
+
+# No pip packages required - this is a zero-dependency application!

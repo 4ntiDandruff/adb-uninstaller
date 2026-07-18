@@ -400,7 +400,7 @@ class ADBController:
     def _load_uad_database(self):
         import os
         import json
-        db_path = "/home/hizam/proyek/adb-uninstaller/uad_debloat.json"
+        db_path = os.path.join(os.path.dirname(__file__), "data", "uad_debloat.json")
         if os.path.exists(db_path):
             try:
                 with open(db_path, "r") as f:

@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.class
+*.so
+.Python
+*.pyc
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Credentials & Config (CRITICAL - DO NOT COMMIT)
+ai_config.json
+custom_cache.json
+knowledge_base.md
+
+# User config directory (contains API keys)
+# Note: Actual config is at ~/.config/adb-uninstaller/
+# This line prevents accidental local copies
+**/ai_config.json
+**/custom_cache.json
+**/knowledge_base.md
+
+# OS
+.DS_Store
+Thumbs.db
+*.log
+
+# Test files
+test_*.py
+*_test.py
