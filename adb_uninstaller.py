@@ -465,7 +465,7 @@ class App:
 
         # Safety Toggle
         self.chk_safety = ttk.Checkbutton(
-            sf, text="Sembunyikan aplikasi sistem developer",
+            sf, text="Sembunyikan Aplikasi Sistem Inti",
             variable=self.hide_critical, command=self._apply_filter
         )
         self.chk_safety.pack(side=tk.LEFT, padx=(0, 10))
@@ -1092,7 +1092,10 @@ def main():
                     troughcolor=bg_input, bordercolor=border)
     
     # Checkbutton
-    style.configure("TCheckbutton", background=bg_main, foreground=fg_main)
+    style.configure("TCheckbutton", background=bg_main, foreground=fg_main, font=("Inter", 9, "bold"), focuscolor="")
+    style.map("TCheckbutton",
+              foreground=[("active", accent_blue)],
+              background=[("active", bg_main)])
     
     # Scrollbar - VISIBLE dark gray on light background
     style.configure("Vertical.TScrollbar", background="#c0c0c5", troughcolor=bg_main,
