@@ -321,9 +321,38 @@ class ADBController:
 
         return packages
 
+    def _load_uad_database(self):
+        import os
+        import json
+        db_path = "/home/hizam/proyek/adb-uninstaller/uad_debloat.json"
+        if os.path.exists(db_path):
+            try:
+                with open(db_path, "r") as f:
+                    data = json.load(f)
+                    for item in data:
+                        pkg_id = item.get("id")
+                        if pkg_id:
+                            # Format name dynamically or fallback
+                            self.uad_db[pkg_id] = item.get("description", "").split("\n")[0].strip() or pkg_id
+            except Exception as e:
+                self.log(f"Gagal memuat database UAD: {str(e)}", "error")
+
     def _get_app_name(self, pkg):
+        # 1. Check popular offline database
         if pkg in POPULAR_APP_NAMES:
             return POPULAR_APP_NAMES[pkg]
+            
+        # 2. Check 2,400+ UAD database
+        if pkg in self.uad_db and self.uad_db[pkg]:
+            # Clean descriptions to extract names
+            desc = self.uad_db[pkg]
+            if desc and not desc.startswith("http"):
+                # Clean up punctuation and common description preambles
+                clean_name = desc.split(".")[0].split("(")[0].strip()
+                if len(clean_name) > 3 and len(clean_name) < 40:
+                    return clean_name
+                    
+        # 3. Fallback: Dumpsys label lookup
         out, code = self.run(
             f"shell dumpsys package {pkg} 2>/dev/null | grep -i 'applicationInfo' -A 20 | head -25",
             timeout=5,
@@ -334,6 +363,8 @@ class ADBController:
                     m = re.search(r"nonLocalizedLabel=(\S+)", line)
                     if m and m.group(1) != "null":
                         return m.group(1)
+        
+        # 4. Fallback: package name capitalization
         parts = pkg.split(".")
         return parts[-1].replace("_", " ").title() if parts else pkg
 
@@ -427,6 +458,11 @@ class App:
         self.sort_rev = {}    # per-tab: {tab_key: bool}
         self.running_pids = {}  # {pkg: pid}
         self.hide_critical = tk.BooleanVar(value=True)  # Default: True (hide)
+        
+        # Load UAD database (2,400+ entries)
+        self.uad_db = {}
+        self._load_uad_database()
+        
         self._build_ui()
         # Set initial layout sash position (70% left, 30% right) after UI loads
         self.root.update()
@@ -446,7 +482,7 @@ class App:
         title_frame = ttk.Frame(hdr_main, padding=(4, 6))
         title_frame.pack(side=tk.LEFT)
         ttk.Label(title_frame, text="ADB Uninstaller By Megapass Sidoarjo", font=("", 14, "bold")).pack(anchor=tk.W)
-        ttk.Label(title_frame, text="Versi 1.11", font=("", 9, "italic"), foreground="#86868b").pack(anchor=tk.W)
+        ttk.Label(title_frame, text="Versi 1.12", font=("", 9, "italic"), foreground="#86868b").pack(anchor=tk.W)
 
         # Device & Control Buttons
         ctrl_frame = ttk.Frame(hdr_main)
