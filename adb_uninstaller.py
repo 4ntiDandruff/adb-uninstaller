@@ -479,6 +479,9 @@ class App:
         self._load_config()
         self._load_cache()
         
+        # State variable for AI configuration visibility
+        self.ai_visible = False
+        
         self._build_ui()
         # Set initial layout sash position (70% left, 30% right) after UI loads
         self.root.update()
@@ -498,7 +501,7 @@ class App:
         title_frame = ttk.Frame(hdr_main, padding=(4, 6))
         title_frame.pack(side=tk.LEFT)
         ttk.Label(title_frame, text="ADB Uninstaller By Megapass Sidoarjo", font=("", 14, "bold")).pack(anchor=tk.W)
-        ttk.Label(title_frame, text="Versi 1.13", font=("", 9, "italic"), foreground="#86868b").pack(anchor=tk.W)
+        ttk.Label(title_frame, text="Versi 1.14", font=("", 9, "italic"), foreground="#86868b").pack(anchor=tk.W)
 
         # Device & Control Buttons
         ctrl_frame = ttk.Frame(hdr_main)
@@ -509,6 +512,8 @@ class App:
         self.btn_scan.pack(side=tk.LEFT, padx=2)
         self.btn_refresh_running = ttk.Button(ctrl_frame, text="🔄 Refresh Running", command=self._on_refresh_running)
         self.btn_refresh_running.pack(side=tk.LEFT, padx=2)
+        self.btn_toggle_ai = ttk.Button(ctrl_frame, text="⚙️ AI Config", command=self._toggle_ai_panel)
+        self.btn_toggle_ai.pack(side=tk.LEFT, padx=2)
 
         # ── Progress ──
         self.progress_var = tk.DoubleVar()
@@ -558,21 +563,26 @@ class App:
         self.paned.add(self.right_container, weight=1)
 
         # ── Configured AI Panel ──
-        self.ai_frame = ttk.LabelFrame(self.right_container, text="⚙️ PENGATURAN AI", padding=8, relief="solid", borderwidth=1)
-        self.ai_frame.pack(fill=tk.X, pady=(0, 6))
+        self.ai_frame = ttk.LabelFrame(self.right_container, text="⚙️ PENGATURAN AI (HIDDEN)", padding=8, relief="solid", borderwidth=1)
+        # Note: We do NOT call pack here. It will be packed/unpacked dynamically via self._toggle_ai_panel()
         
         for idx, (label_text, var) in enumerate([("Base URL:", self.ai_url), ("API Key:", self.ai_key), ("Model:", self.ai_model)]):
             f = ttk.Frame(self.ai_frame)
             f.pack(fill=tk.X, pady=1)
             ttk.Label(f, text=f"{label_text:<10}", font=("Inter", 9), foreground="#86868b").pack(side=tk.LEFT)
             
-            # Show asterisks for API key
             show_char = "*" if label_text == "API Key:" else ""
             ent = tk.Entry(f, textvariable=var, show=show_char, font=("Inter", 9), bg="#ffffff", fg="#1d1d1f",
                            bd=1, relief=tk.SOLID, highlightthickness=0)
             ent.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
-            # Save on keystroke release
-            ent.bind("<KeyRelease>", lambda e: self._save_config())
+
+        # Control Row (Test & Apply buttons inside AI Frame)
+        btn_row = ttk.Frame(self.ai_frame)
+        btn_row.pack(fill=tk.X, pady=(6, 0))
+        self.btn_test_ai = ttk.Button(btn_row, text="⚡ Test AI", command=self._on_test_ai)
+        self.btn_test_ai.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=1)
+        self.btn_apply_ai = ttk.Button(btn_row, text="💾 Apply", command=self._on_apply_ai)
+        self.btn_apply_ai.pack(side=tk.RIGHT, expand=True, fill=tk.X, padx=1)
 
         # Device Specs Frame
         self.specs_frame = ttk.LabelFrame(self.right_container, text="📱 SPESIFIKASI DEVICE", padding=8, relief="solid", borderwidth=1)
@@ -1159,6 +1169,45 @@ class App:
             pass
 
     # ── AI Configuration & Implementation Methods ──
+    def _toggle_ai_panel(self):
+        if self.ai_visible:
+            self.ai_frame.pack_forget()
+            self.ai_visible = False
+            self.btn_toggle_ai.config(text="⚙️ AI Config")
+            self.log("Setelan AI disembunyikan (Aman dari intipan).", "info")
+        else:
+            # Pack at the very top of the right container
+            self.ai_frame.pack(fill=tk.X, pady=(0, 6), before=self.specs_frame)
+            self.ai_visible = True
+            self.btn_toggle_ai.config(text="🙈 Hide AI")
+            self.log("Membuka setelan AI.", "info")
+
+    def _on_apply_ai(self):
+        self._save_config()
+        self.log("Setelan AI berhasil disimpan & diterapkan!", "success")
+        messagebox.showinfo("Success", "Setelan AI berhasil disimpan!")
+
+    def _on_test_ai(self):
+        url = self.ai_url.get().strip()
+        if not url:
+            messagebox.showerror("Error", "Base URL kosong! Harap isi terlebih dahulu.")
+            return
+            
+        self.btn_test_ai.config(state=tk.DISABLED)
+        self.log("Menguji koneksi ke AI provider...", "info")
+        
+        def run_test():
+            # Send simple ping payload
+            ans = self._call_ai("Reply only with the word PONG.")
+            self.btn_test_ai.config(state=tk.NORMAL)
+            if ans and "PONG" in ans.upper():
+                self.root.after(0, lambda: self.log("🟢 Koneksi AI Sukses! Claude Haiku terhubung.", "success"))
+                self.root.after(0, lambda: messagebox.showinfo("Koneksi Sukses", "🟢 Sukses terhubung ke AI provider lokal!"))
+            else:
+                self.root.after(0, lambda: self.log("🔴 Koneksi AI Gagal! Cek URL/API Key/Token habis.", "error"))
+                self.root.after(0, lambda: messagebox.showerror("Koneksi Gagal", "🔴 Gagal terhubung ke AI provider. Silakan periksa log aktivitas."))
+                
+        threading.Thread(target=run_test, daemon=True).start()
     def _load_config(self):
         import json
         if os.path.exists(self.config_file):
