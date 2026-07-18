@@ -11,6 +11,7 @@ import subprocess
 import threading
 import re
 import shlex
+import os
 
 
 # ─── Critical packages: double-confirm before any action ───
