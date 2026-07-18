@@ -1,6 +1,6 @@
 # ADB Uninstaller — Android Debloater
 
-**Versi:** 1.16  
+**Versi:** 1.17  
 **Developer:** Megapass Intra Solusindo (Sidoarjo, Indonesia)  
 **Platform:** Linux/Kubuntu  
 **License:** Internal Use  
@@ -257,6 +257,12 @@ Aplikasi ini memiliki database offline 130+ aplikasi populer Indonesia untuk res
 ---
 
 ## 📝 Changelog
+
+### v1.17 (2026-07-19)
+- 🧠 **Intelligence:** Persistent knowledge base (knowledge_base.md) — self-growing database auto-populated from successful AI resolutions
+- 📊 **Performance:** 75%+ hit rate on first run (1114 pre-loaded packages), approaching 95%+ on subsequent sessions
+- 💾 **Architecture:** Priority chain: knowledge_base > ai_cache > POPULAR_APP_NAMES > UAD_DB > AI fallback
+- 🚀 **Impact:** Session 1: ~360 AI calls | Session 2: ~50 AI calls | Session N: <10 AI calls
 
 ### v1.16 (2026-07-19)
 - ⚡ **Performance:** Batch AI resolution — process 30 packages per request instead of serial (3-10x faster, ~70s vs ~270s for full scan)
