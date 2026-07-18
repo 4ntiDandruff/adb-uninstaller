@@ -495,6 +495,9 @@ class App:
         self._glow_pulse_state = 0
         self._apply_scan_glow()
 
+        
+        # Auto-scan device on startup (500ms delay for UI init)
+        self.root.after(1500, self._on_scan)
     def _build_ui(self):
         # ── Header ──
         hdr_main = ttk.Frame(self.root, padding=8)
