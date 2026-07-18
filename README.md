@@ -1,6 +1,6 @@
 # ADB Uninstaller — Android Debloater
 
-**Versi:** 1.14  
+**Versi:** 1.15  
 **Developer:** Megapass Intra Solusindo (Sidoarjo, Indonesia)  
 **Platform:** Linux/Kubuntu  
 **License:** Internal Use  
@@ -257,6 +257,9 @@ Aplikasi ini memiliki database offline 130+ aplikasi populer Indonesia untuk res
 ---
 
 ## 📝 Changelog
+
+### v1.15 (2026-07-19)
+- 🐛 **Bugfix:** AI package name resolution sekarang benar-benar bekerja! Improved detection logic menangkap nama partial dari dumpsys (e.g. "Language Tailwind"), strengthened prompt dengan examples, dan validation reject response verbose. Contoh: "Language Tailwind" → "Google Gemini" ✅
 
 ### v1.14 (2026-07-19)
 - ✨ **Feature:** Silent AI auto-test on startup — indikator AI langsung hijau otomatis tanpa popup (delay 2 detik setelah app load, hanya test kalau config sudah ada).
