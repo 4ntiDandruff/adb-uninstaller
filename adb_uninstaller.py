@@ -615,7 +615,7 @@ class App:
         lbl_orange = tk.Label(legend_frame, text=" Disabled ", bg="#f2f2f7", fg="#8e8e93", bd=1, relief="solid", font=("Inter", 8, "bold"))
         lbl_orange.pack(side=tk.LEFT, padx=3)
         
-        lbl_red = tk.Label(legend_frame, text=" Kritis (Bahaya) ", bg="#ffebec", fg="#d32f2f", bd=1, relief="solid", font=("Inter", 8, "bold"))
+        lbl_red = tk.Label(legend_frame, text=" Sistem Inti ", bg="#ffebec", fg="#d32f2f", bd=1, relief="solid", font=("Inter", 8, "bold"))
         lbl_red.pack(side=tk.LEFT, padx=3)
 
         ttk.Button(af, text="⏹️ Force Stop", command=lambda: self._do_action("force_stop")).pack(side=tk.RIGHT, padx=4)
