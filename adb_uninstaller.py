@@ -838,10 +838,13 @@ class App:
                 # Apply alternating row backgrounds + status tag + checked state styling
                 row_tag = "oddrow" if idx % 2 == 0 else "evenrow"
                 
-                # Check status overrides normal/zebra background for selected rows
-                row_tags = [tag, row_tag]
+                # Check status overrides normal/zebra background for selected rows.
+                # In Tkinter Treeview, the FIRST tag in the tuple that defines a style wins.
+                # Therefore, we must prepend 'checked' to the beginning of the list.
+                row_tags = []
                 if self.check_vars.get(p["pkg"]):
                     row_tags.append("checked")
+                row_tags.extend([tag, row_tag])
                     
                 tree.insert("", tk.END,
                             values=(checked, idx + 1, p["pkg"], display_name, status_icon),
