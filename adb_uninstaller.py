@@ -324,6 +324,17 @@ class ADBController:
             if progress_cb and i % 5 == 0:
                 progress_cb(i, total_pkg, f"Resolving names... {i}/{total_pkg}")
 
+        # Priority sorting: User apps → Disabled → System
+        def sort_priority(p):
+            if p["category"] == "user" and p["status"] == "enabled":
+                return 0  # Highest priority
+            elif p["status"] == "disabled":
+                return 1  # Medium priority
+            else:  # system + enabled
+                return 2  # Lowest priority
+        
+        packages.sort(key=sort_priority)
+        
         return packages
 
     def _load_uad_database(self):
@@ -1417,67 +1428,121 @@ class App:
         return False
 
     def _async_resolve_all_packages(self):
-        # Scan packages in current self.packages that fall back to capitalized package names
-        # e.g., if p["app_name"] is equal to capitalized package name and not in POPULAR_APP_NAMES
-        # We query them in the background sequentially to avoid slamming the API.
+        """Batch AI resolution - 30 packages per request for 10x speed improvement."""
         from time import sleep
+        import json
+        
+        # Collect unknown packages
         unknowns = []
         for p in self.packages:
             pkg = p["pkg"]
-            # Detect fallback names (not found in popular and not in UAD)
             if self._is_unknown_name(pkg, p["app_name"]):
                 unknowns.append(pkg)
                 
         if not unknowns:
             return
-            
-        self.root.after(0, lambda: self.log(f"Menemukan {len(unknowns)} aplikasi tidak dikenal. Meminta identifikasi nama dari AI...", "info"))
         
-        for idx, pkg in enumerate(unknowns):
+        # Batch configuration
+        batch_size = 30
+        total_batches = (len(unknowns) + batch_size - 1) // batch_size
+        
+        self.root.after(0, lambda: self.log(
+            f"Menemukan {len(unknowns)} aplikasi tidak dikenal. "
+            f"Batch AI resolution ({total_batches} request)...", 
+            "info"
+        ))
+        
+        resolved_count = 0
+        
+        for batch_idx in range(0, len(unknowns), batch_size):
+            batch = unknowns[batch_idx:batch_idx+batch_size]
+            batch_num = (batch_idx // batch_size) + 1
+            
             # Check configuration still exists
             if not self.ai_url.get().strip():
                 break
-                
-            prompt = f"""Identify this Android app from its package name: {pkg}
+            
+            # Build batch prompt with JSON output format
+            prompt = f"""Identify these {len(batch)} Android apps from package names.
+Reply with ONLY valid JSON (no markdown blocks, no explanation):
+{{"package.name": "App Name", ...}}
+
+Packages to identify:
+{chr(10).join(f"- {pkg}" for pkg in batch)}
 
 Examples:
-- com.facebook.katana → Facebook
-- com.google.android.gm → Gmail  
-- com.spotify.music → Spotify
-- com.whatsapp → WhatsApp
-- com.google.android.apps.photos → Google Photos
+- com.facebook.katana: Facebook
+- com.google.android.gm: Gmail
+- com.spotify.music: Spotify
+- com.whatsapp: WhatsApp
+- com.google.android.apps.photos: Google Photos
 
-Reply with ONLY the app name (max 3 words). No explanation, no "I cannot", no sentences."""
+Rules:
+- Max 3 words per app name
+- No explanations or refusals
+- Output valid JSON only"""
+
+            self.root.after(0, lambda bn=batch_num, tb=total_batches: self.log(
+                f"Processing batch {bn}/{tb}...", "info"
+            ))
+            
             ans = self._call_ai(prompt)
+            
             if ans:
-                ans = ans.replace('"', '').replace("'", '').strip().rstrip(".")
-                
-                # Validation: reject verbose/refusal responses
-                reject_words = ['tidak', 'cannot', 'unable', 'sorry', 'saya tidak', 'i cant', 'i don\'t']
-                is_refusal = len(ans) > 30 or len(ans.split()) > 5 or any(reject in ans.lower() for reject in reject_words)
-                
-                if is_refusal:
-                    # AI refused or gave verbose response - skip caching
-                    self.root.after(0, lambda k=pkg: self.log(f"AI gagal identifikasi {k}, tetap pakai nama dumpsys", "warning"))
-                    continue
-                
-                # Valid short response - cache it
-                self.ai_cache[pkg] = ans
-                self._save_cache()
-                
-                # Update local models
-                for p in self.packages:
-                    if p["pkg"] == pkg:
-                        p["app_name"] = ans
-                        break
-                
-                # Refresh filter in GUI thread safely to update the names on screen
-                self.root.after(0, self._apply_filter)
-                self.root.after(0, lambda k=pkg, a=ans: self.log(f"AI mendeteksi {k} -> {a}", "success"))
-                
-            # Rate limiting delay (1 second) to be nice to local providers
-            sleep(1.0)
-
+                try:
+                    # Clean response (remove markdown code blocks if present)
+                    clean = ans.strip()
+                    if clean.startswith('```'):
+                        # Remove ```json and ``` markers
+                        lines_resp = clean.split('\n')
+                        clean = '\n'.join(l for l in lines_resp if not l.strip().startswith('```'))
+                    
+                    # Parse JSON
+                    results = json.loads(clean)
+                    
+                    # Validate and cache successful resolutions
+                    batch_success = 0
+                    for pkg, app_name in results.items():
+                        if pkg in batch:  # Validation: ensure pkg was in our request
+                            # Apply same validation as serial version
+                            app_name = app_name.strip().rstrip('.')
+                            reject_words = ['tidak', 'cannot', 'unable', 'sorry', 'saya tidak', 'i cant', "i don't"]
+                            is_refusal = (len(app_name) > 30 or 
+                                        len(app_name.split()) > 5 or 
+                                        any(reject in app_name.lower() for reject in reject_words))
+                            
+                            if not is_refusal:
+                                # Valid response - cache it
+                                self.ai_cache[pkg] = app_name
+                                batch_success += 1
+                                
+                                # Update packages list
+                                for p in self.packages:
+                                    if p["pkg"] == pkg:
+                                        p["app_name"] = app_name
+                                        break
+                    
+                    if batch_success > 0:
+                        self._save_cache()
+                        self.root.after(0, self._apply_filter)
+                        resolved_count += batch_success
+                        self.root.after(0, lambda c=resolved_count, t=len(unknowns): self.log(
+                            f"✓ Batch complete: {c}/{t} apps resolved", "success"
+                        ))
+                    
+                except json.JSONDecodeError as e:
+                    # JSON parse failed - log and continue to next batch
+                    self.root.after(0, lambda bn=batch_num: self.log(
+                        f"⚠️ Batch {bn} parse error, skipping...", "warning"
+                    ))
+            
+            # Delay between batches to be nice to API
+            sleep(2.0)
+        
+        # Final summary
+        self.root.after(0, lambda c=resolved_count, t=len(unknowns): self.log(
+            f"AI resolution complete: {c}/{t} apps identified", "success" if c > 0 else "info"
+        ))
 
 def main():
     root = tk.Tk()
