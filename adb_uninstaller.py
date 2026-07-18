@@ -906,13 +906,20 @@ class App:
             else:
                 ok, out = False, "Unknown action"
 
+            # Get human readable name from local packages dictionary
+            app_name = pkg
+            for p in self.packages:
+                if p["pkg"] == pkg:
+                    app_name = p["app_name"] if p["app_name"] else pkg
+                    break
+
             if ok:
                 results["success"].append(pkg)
-                self.root.after(0, lambda p=pkg: self.log(f"Success: {action} {p}", "success"))
+                self.root.after(0, lambda an=app_name, p=pkg: self.log(f"Sukses: {action.title()} {an} ({p})", "success"))
             else:
                 results["fail"] += 1
                 results["errors"].append(f"{pkg}: {out}")
-                self.root.after(0, lambda p=pkg, o=out: self.log(f"Gagal: {action} {p} - {o.strip()}", "error"))
+                self.root.after(0, lambda an=app_name, p=pkg, o=out: self.log(f"Gagal: {action.title()} {an} ({p}) - {o.strip()}", "error"))
 
         self.root.after(0, lambda: self._action_done(action, results))
 
