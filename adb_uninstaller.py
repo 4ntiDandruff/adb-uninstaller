@@ -773,7 +773,7 @@ class App:
             return
         vals = list(tree.item(item, "values"))
         pkg = vals[2]
-        if vals[0] == "☑":
+        if vals[0] == "✓":
             vals[0] = "☐"
             self.check_vars[pkg] = False
         else:
