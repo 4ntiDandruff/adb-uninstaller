@@ -482,6 +482,9 @@ class App:
         # State variable for AI configuration visibility
         self.ai_visible = False
         
+        # AI Status: 'untested', 'incomplete', 'connected', 'error'
+        self.ai_status = 'untested'
+        
         self._build_ui()
         # Set initial layout sash position (70% left, 30% right) after UI loads
         self.root.update()
@@ -501,7 +504,7 @@ class App:
         title_frame = ttk.Frame(hdr_main, padding=(4, 6))
         title_frame.pack(side=tk.LEFT)
         ttk.Label(title_frame, text="ADB Uninstaller By Megapass Sidoarjo", font=("", 14, "bold")).pack(anchor=tk.W)
-        ttk.Label(title_frame, text="Versi 1.14", font=("", 9, "italic"), foreground="#86868b").pack(anchor=tk.W)
+        ttk.Label(title_frame, text="Versi 1.15", font=("", 9, "italic"), foreground="#86868b").pack(anchor=tk.W)
 
         # Device & Control Buttons
         ctrl_frame = ttk.Frame(hdr_main)
@@ -514,6 +517,10 @@ class App:
         self.btn_refresh_running.pack(side=tk.LEFT, padx=2)
         self.btn_toggle_ai = ttk.Button(ctrl_frame, text="⚙️ AI Config", command=self._toggle_ai_panel)
         self.btn_toggle_ai.pack(side=tk.LEFT, padx=2)
+        
+        # AI Status Indicator Dot (Handy-style)
+        self.ai_status_dot = ttk.Label(ctrl_frame, text="⚪", font=("", 12))
+        self.ai_status_dot.pack(side=tk.LEFT, padx=(0, 4))
 
         # ── Progress ──
         self.progress_var = tk.DoubleVar()
@@ -566,23 +573,38 @@ class App:
         self.ai_frame = ttk.LabelFrame(self.right_container, text="⚙️ PENGATURAN AI (HIDDEN)", padding=8, relief="solid", borderwidth=1)
         # Note: We do NOT call pack here. It will be packed/unpacked dynamically via self._toggle_ai_panel()
         
-        for idx, (label_text, var) in enumerate([("Base URL:", self.ai_url), ("API Key:", self.ai_key), ("Model:", self.ai_model)]):
-            f = ttk.Frame(self.ai_frame)
-            f.pack(fill=tk.X, pady=1)
-            ttk.Label(f, text=f"{label_text:<10}", font=("Inter", 9), foreground="#86868b").pack(side=tk.LEFT)
-            
-            show_char = "*" if label_text == "API Key:" else ""
-            ent = tk.Entry(f, textvariable=var, show=show_char, font=("Inter", 9), bg="#ffffff", fg="#1d1d1f",
+        # Base URL row
+        f_url = ttk.Frame(self.ai_frame)
+        f_url.pack(fill=tk.X, pady=1)
+        ttk.Label(f_url, text="Base URL:", font=("Inter", 9), foreground="#86868b", width=10, anchor=tk.W).pack(side=tk.LEFT)
+        ent_url = tk.Entry(f_url, textvariable=self.ai_url, font=("Inter", 9), bg="#ffffff", fg="#1d1d1f",
                            bd=1, relief=tk.SOLID, highlightthickness=0)
-            ent.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+        ent_url.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+        
+        # API Key row
+        f_key = ttk.Frame(self.ai_frame)
+        f_key.pack(fill=tk.X, pady=1)
+        ttk.Label(f_key, text="API Key:", font=("Inter", 9), foreground="#86868b", width=10, anchor=tk.W).pack(side=tk.LEFT)
+        ent_key = tk.Entry(f_key, textvariable=self.ai_key, show="*", font=("Inter", 9), bg="#ffffff", fg="#1d1d1f",
+                           bd=1, relief=tk.SOLID, highlightthickness=0)
+        ent_key.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+        
+        # Model row WITH inline Test button (Handy-style)
+        f_model = ttk.Frame(self.ai_frame)
+        f_model.pack(fill=tk.X, pady=1)
+        ttk.Label(f_model, text="Model:", font=("Inter", 9), foreground="#86868b", width=10, anchor=tk.W).pack(side=tk.LEFT)
+        ent_model = tk.Entry(f_model, textvariable=self.ai_model, font=("Inter", 9), bg="#ffffff", fg="#1d1d1f",
+                             bd=1, relief=tk.SOLID, highlightthickness=0)
+        ent_model.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+        # Inline Test button (⚡ icon)
+        self.btn_test_ai_inline = ttk.Button(f_model, text="⚡", width=3, command=self._on_test_ai)
+        self.btn_test_ai_inline.pack(side=tk.LEFT, padx=(0, 2))
 
-        # Control Row (Test & Apply buttons inside AI Frame)
+        # Apply button only (bottom)
         btn_row = ttk.Frame(self.ai_frame)
         btn_row.pack(fill=tk.X, pady=(6, 0))
-        self.btn_test_ai = ttk.Button(btn_row, text="⚡ Test AI", command=self._on_test_ai)
-        self.btn_test_ai.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=1)
-        self.btn_apply_ai = ttk.Button(btn_row, text="💾 Apply", command=self._on_apply_ai)
-        self.btn_apply_ai.pack(side=tk.RIGHT, expand=True, fill=tk.X, padx=1)
+        self.btn_apply_ai = ttk.Button(btn_row, text="💾 Apply & Save", command=self._on_apply_ai)
+        self.btn_apply_ai.pack(fill=tk.X)
 
         # Device Specs Frame
         self.specs_frame = ttk.LabelFrame(self.right_container, text="📱 SPESIFIKASI DEVICE", padding=8, relief="solid", borderwidth=1)
@@ -1190,24 +1212,42 @@ class App:
     def _on_test_ai(self):
         url = self.ai_url.get().strip()
         if not url:
+            self._update_ai_status('incomplete')
             messagebox.showerror("Error", "Base URL kosong! Harap isi terlebih dahulu.")
             return
             
-        self.btn_test_ai.config(state=tk.DISABLED)
+        self.btn_test_ai_inline.config(state=tk.DISABLED)
+        self._update_ai_status('testing')
         self.log("Menguji koneksi ke AI provider...", "info")
         
         def run_test():
             # Send simple ping payload
             ans = self._call_ai("Reply only with the word PONG.")
-            self.btn_test_ai.config(state=tk.NORMAL)
+            self.btn_test_ai_inline.config(state=tk.NORMAL)
             if ans and "PONG" in ans.upper():
+                self.root.after(0, lambda: self._update_ai_status('connected'))
                 self.root.after(0, lambda: self.log("🟢 Koneksi AI Sukses! Claude Haiku terhubung.", "success"))
                 self.root.after(0, lambda: messagebox.showinfo("Koneksi Sukses", "🟢 Sukses terhubung ke AI provider lokal!"))
             else:
+                self.root.after(0, lambda: self._update_ai_status('error'))
                 self.root.after(0, lambda: self.log("🔴 Koneksi AI Gagal! Cek URL/API Key/Token habis.", "error"))
                 self.root.after(0, lambda: messagebox.showerror("Koneksi Gagal", "🔴 Gagal terhubung ke AI provider. Silakan periksa log aktivitas."))
                 
         threading.Thread(target=run_test, daemon=True).start()
+    def _update_ai_status(self, status):
+        """Update AI status indicator dot: untested, incomplete, testing, connected, error"""
+        self.ai_status = status
+        status_map = {
+            'untested': ('⚪', 'AI belum diuji'),
+            'incomplete': ('🟡', 'Konfigurasi belum lengkap'),
+            'testing': ('🟠', 'Sedang menguji koneksi...'),
+            'connected': ('🟢', 'AI terhubung & siap'),
+            'error': ('🔴', 'Koneksi AI gagal')
+        }
+        dot, tooltip = status_map.get(status, ('⚪', 'Unknown'))
+        self.ai_status_dot.config(text=dot)
+        # TODO: Add tooltip support if needed
+    
     def _load_config(self):
         import json
         if os.path.exists(self.config_file):
@@ -1217,6 +1257,12 @@ class App:
                     self.ai_url.set(cfg.get("url", ""))
                     self.ai_key.set(cfg.get("key", ""))
                     self.ai_model.set(cfg.get("model", "claude-3-haiku"))
+                    
+                    # Update status based on config completeness
+                    if self.ai_url.get().strip():
+                        self.root.after(100, lambda: self._update_ai_status('untested'))
+                    else:
+                        self.root.after(100, lambda: self._update_ai_status('incomplete'))
             except:
                 pass
 
