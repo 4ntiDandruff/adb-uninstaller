@@ -1,6 +1,6 @@
 # ADB Uninstaller — Android Debloater
 
-**Versi:** 1.10  
+**Versi:** 1.11  
 **Developer:** Megapass Intra Solusindo (Sidoarjo, Indonesia)  
 **Platform:** Linux/Kubuntu  
 **License:** Internal Use  
@@ -28,7 +28,7 @@ ADB Uninstaller adalah aplikasi GUI berbasis Python untuk mengelola aplikasi And
 - Filter: System Apps, User Apps, Disabled Apps, Running Apps
 
 ### 🛡️ Safety Features
-- **Critical Package Protection:** Double-confirm sebelum uninstall/disable aplikasi sistem kritis
+- **Sistem Inti (Critical Package) Protection:** Warning visual & double-confirm sebelum uninstall/disable aplikasi sistem penting
 - **Developer Apps Filter:** Checkbox untuk sembunyikan aplikasi developer/debugging
 - **Multi-select:** Batch uninstall/disable/enable
 
@@ -37,9 +37,9 @@ ADB Uninstaller adalah aplikasi GUI berbasis Python untuk mengelola aplikasi And
 - API Level & Architecture
 - Real-time activity log
 
-### 🎨 Modern UI
-- Light theme yang nyaman di mata
-- Zebra striping untuk mudah baca urutan
+### 🎨 Modern UI (Apple-style segment tabs & Clean colors)
+- Light theme yang nyaman di mata dengan aksen biru minimalis (tidak ada warna hijau norak)
+- Alternating Zebra striping dengan highlight baris terpilih (checked row effect) berwarna biru muda bersih
 - Glow effect tombol Scan Device (visual cue pertama kali buka)
 - Responsive column layout
 
@@ -103,7 +103,7 @@ python3 adb_uninstaller.py
 
 **Uninstall Aplikasi:**
 1. Pilih tab (System Apps / User Apps)
-2. Centang aplikasi yang mau dihapus
+2. Centang aplikasi yang mau dihapus (baris akan di-highlight biru muda otomatis)
 3. Klik tombol **🗑️ Uninstall**
 4. Konfirmasi
 
@@ -152,7 +152,7 @@ adb shell am force-stop <package.name>
 
 ## 🛡️ Keamanan & Best Practices
 
-### ⚠️ Package Kritis (JANGAN DIHAPUS!)
+### ⚠️ Package Sistem Inti (JANGAN DIHAPUS!)
 
 Aplikasi ini akan warning double jika Anda mencoba uninstall/disable package berikut:
 
@@ -220,7 +220,7 @@ python3 adb_uninstaller.py
 
 ```
 adb-uninstaller/
-├── adb_uninstaller.py          # Main application (1093 baris)
+├── adb_uninstaller.py          # Main application (1102 baris)
 ├── ADB-Uninstaller.desktop     # Desktop launcher
 └── README.md                   # Dokumentasi ini
 ```
@@ -258,18 +258,15 @@ Aplikasi ini memiliki database offline 130+ aplikasi populer Indonesia untuk res
 
 ## 📝 Changelog
 
+### v1.11 (2026-07-18)
+- ✅ **New Visuals:** Mengganti warna hijau norak menjadi abu-abu & aksen biru elegan.
+- ✅ **New UX:** Menambahkan visual check/selection highlight (biru muda) untuk row yang terpilih/dicentang.
+- ✅ **Layout Fix:** Memperbaiki layout packing tombol aksi (uninstall/disable/enable) yang sempat terpotong.
+- ✅ **Clean Code:** Optimasi map tag handling Tkinter agar stabil di Ubuntu/Kubuntu modern.
+- ✅ **Rename Red Tag:** Mengubah teks legenda "Kritis (Bahaya)" menjadi "Sistem Inti".
+
 ### v1.10 (2026-07-18)
-- ✅ Initial release
-- ✅ Multi-tab interface (System/User/Disabled/Running)
-- ✅ Multi-select batch operations
-- ✅ Search & filter real-time
-- ✅ Device specs display
-- ✅ Activity log panel
-- ✅ Modern light theme
-- ✅ Glow effect tombol Scan Device
-- ✅ Zebra striping tabel
-- ✅ Database 130+ aplikasi populer Indonesia
-- ✅ Production-ready (full bug fixes)
+- Initial release dengan multi-tab & device specs display.
 
 ---
 

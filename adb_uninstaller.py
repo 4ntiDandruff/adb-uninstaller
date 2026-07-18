@@ -431,7 +431,7 @@ class App:
         title_frame = ttk.Frame(hdr_main, padding=(4, 6))
         title_frame.pack(side=tk.LEFT)
         ttk.Label(title_frame, text="ADB Uninstaller By Megapass Sidoarjo", font=("", 14, "bold")).pack(anchor=tk.W)
-        ttk.Label(title_frame, text="Versi 1.10", font=("", 9, "italic"), foreground="#86868b").pack(anchor=tk.W)
+        ttk.Label(title_frame, text="Versi 1.11", font=("", 9, "italic"), foreground="#86868b").pack(anchor=tk.W)
 
         # Device & Control Buttons
         ctrl_frame = ttk.Frame(hdr_main)
