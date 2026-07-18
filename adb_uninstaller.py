@@ -216,6 +216,10 @@ POPULAR_APP_NAMES = {
 class ADBController:
     """All ADB interactions."""
 
+    def __init__(self):
+        self.uad_db = {}
+        self._load_uad_database()
+
     def run(self, command, timeout=30):
         try:
             # Note: command is internally constructed, not user input
@@ -335,7 +339,7 @@ class ADBController:
                             # Format name dynamically or fallback
                             self.uad_db[pkg_id] = item.get("description", "").split("\n")[0].strip() or pkg_id
             except Exception as e:
-                self.log(f"Gagal memuat database UAD: {str(e)}", "error")
+                print(f"Gagal memuat database UAD: {str(e)}")
 
     def _get_app_name(self, pkg):
         # 1. Check popular offline database
@@ -458,10 +462,6 @@ class App:
         self.sort_rev = {}    # per-tab: {tab_key: bool}
         self.running_pids = {}  # {pkg: pid}
         self.hide_critical = tk.BooleanVar(value=True)  # Default: True (hide)
-        
-        # Load UAD database (2,400+ entries)
-        self.uad_db = {}
-        self._load_uad_database()
         
         self._build_ui()
         # Set initial layout sash position (70% left, 30% right) after UI loads
