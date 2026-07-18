@@ -706,7 +706,7 @@ class App:
             tree.tag_configure("evenrow", background="#ffffff")  # Pure white for even rows
             
             # Visual check states (a clean light accent blue background for selected items to make them highly visible)
-            tree.tag_configure("checked", background="#fff9c4", foreground="#f57f17", font=("Inter", 10, "bold"))
+            tree.tag_configure("checked", background="#e3f2fd", foreground="#1d1d1f", font=("Inter", 10, "bold"))  # Clean light blue for checked rows
 
             scrollbar = ttk.Scrollbar(container, orient=tk.VERTICAL, command=tree.yview)
             tree.configure(yscrollcommand=scrollbar.set)
