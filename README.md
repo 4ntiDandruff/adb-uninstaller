@@ -1,6 +1,6 @@
 # ADB Uninstaller — Android Debloater
 
-**Versi:** 1.17  
+**Versi:** 1.18  
 **Developer:** Megapass Intra Solusindo (Sidoarjo, Indonesia)  
 **Platform:** Linux/Kubuntu  
 **License:** Internal Use  
@@ -257,6 +257,12 @@ Aplikasi ini memiliki database offline 130+ aplikasi populer Indonesia untuk res
 ---
 
 ## 📝 Changelog
+
+### v1.18 (2026-07-19)
+- 🎨 **Power User Feature:** Customizable AI prompt templates - choose from Default/Casual/Technical presets or create custom templates
+- 🔧 **UI:** Prompt template selector in settings + full editor dialog with variable support ({count}, {packages})
+- 📝 **Templates:** 3 built-in presets (Default batch JSON, Casual Indonesian, Technical detailed) + custom user template
+- 💾 **Persistence:** Prompt template preference saved to config, loads automatically on startup
 
 ### v1.17 (2026-07-19)
 - 🧠 **Intelligence:** Persistent knowledge base (knowledge_base.md) — self-growing database auto-populated from successful AI resolutions
