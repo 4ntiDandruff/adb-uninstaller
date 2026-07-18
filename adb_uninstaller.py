@@ -611,6 +611,8 @@ class App:
             scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
             tree.bind("<Button-1>", lambda e, t=tree, k=tab_key: self._on_tree_click(e, t, k))
+            # Bind Right-click (Button-3 on Linux/Kubuntu)
+            tree.bind("<Button-3>", lambda e, t=tree: self._show_context_menu(e, t))
             self.trees[tab_key] = tree
 
         # ── Action Buttons ──
@@ -1013,6 +1015,32 @@ class App:
         self.root.clipboard_clear()
         self.root.clipboard_append(self.log_text.get("1.0", tk.END).strip())
         messagebox.showinfo("Success", "Log copied to clipboard!")
+
+    def _show_context_menu(self, event, tree):
+        # Select row under right click
+        item = tree.identify_row(event.y)
+        if not item:
+            return
+        
+        # Highlight/Focus on the right-clicked item visually in selection
+        tree.selection_set(item)
+        tree.focus(item)
+        
+        vals = tree.item(item, "values")
+        if not vals or len(vals) < 3:
+            return
+        
+        pkg_name = vals[2]
+        
+        # Create context menu
+        menu = tk.Menu(self.root, tearoff=0)
+        menu.add_command(label=f"Copy Package Name: {pkg_name}", command=lambda: self._copy_text(pkg_name))
+        menu.post(event.x_root, event.y_root)
+
+    def _copy_text(self, text):
+        self.root.clipboard_clear()
+        self.root.clipboard_append(text)
+        self.log(f"Menyalin package ke clipboard: {text}", "info")
 
 
     def _apply_scan_glow(self):
