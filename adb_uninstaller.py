@@ -1379,6 +1379,43 @@ class App:
             # Format and display in logs
             self.root.after(0, lambda: self.log(f"--- SPESIFIKASI AI ({brand} {model}) ---\n{ans}\n------------------", "success"))
 
+    def _is_unknown_name(self, pkg, app_name):
+        """
+        Detect if an app name needs AI resolution.
+        Returns True if name is unclear/generic/incomplete.
+        """
+        # Already in cache or popular DB - skip
+        if pkg in self.ai_cache or pkg in POPULAR_APP_NAMES:
+            return False
+        
+        fallback = pkg.split(".")[-1].replace("_", " ").title()
+        
+        # 1. Exact fallback match (pure capitalization)
+        if app_name == fallback:
+            return True
+        
+        # 2. Very short names (likely incomplete)
+        if len(app_name) < 4:
+            return True
+        
+        # 3. Generic single words
+        generic_words = {"app", "tool", "service", "manager", "system", "util", "helper", "background"}
+        if app_name.lower() in generic_words:
+            return True
+        
+        # 4. Name contains only package segments (dumpsys returned partial)
+        # e.g. "Language Tailwind" from "com.google.labs.language.tailwind"
+        pkg_segments = set(seg.lower() for seg in pkg.split("."))
+        name_words = set(word.lower() for word in app_name.split())
+        if name_words and name_words.issubset(pkg_segments):
+            return True
+        
+        # 5. Too long/technical (likely raw label from dumpsys)
+        if len(app_name) > 50:
+            return True
+        
+        return False
+
     def _async_resolve_all_packages(self):
         # Scan packages in current self.packages that fall back to capitalized package names
         # e.g., if p["app_name"] is equal to capitalized package name and not in POPULAR_APP_NAMES
@@ -1388,7 +1425,7 @@ class App:
         for p in self.packages:
             pkg = p["pkg"]
             # Detect fallback names (not found in popular and not in UAD)
-            if pkg not in self.ai_cache and p["app_name"] == pkg.split(".")[-1].replace("_", " ").title():
+            if self._is_unknown_name(pkg, p["app_name"]):
                 unknowns.append(pkg)
                 
         if not unknowns:
