@@ -463,6 +463,21 @@ class App:
         self.running_pids = {}  # {pkg: pid}
         self.hide_critical = tk.BooleanVar(value=True)  # Default: True (hide)
         
+        # ── Configuration Paths & AI settings variables ──
+        import os
+        self.config_dir = os.path.expanduser("~/.config/adb-uninstaller")
+        os.makedirs(self.config_dir, exist_ok=True)
+        self.config_file = os.path.join(self.config_dir, "ai_config.json")
+        self.cache_file = os.path.join(self.config_dir, "custom_cache.json")
+        
+        self.ai_url = tk.StringVar(value="")
+        self.ai_key = tk.StringVar(value="")
+        self.ai_model = tk.StringVar(value="claude-3-haiku")
+        
+        self.ai_cache = {}
+        self._load_config()
+        self._load_cache()
+        
         self._build_ui()
         # Set initial layout sash position (70% left, 30% right) after UI loads
         self.root.update()
@@ -482,7 +497,7 @@ class App:
         title_frame = ttk.Frame(hdr_main, padding=(4, 6))
         title_frame.pack(side=tk.LEFT)
         ttk.Label(title_frame, text="ADB Uninstaller By Megapass Sidoarjo", font=("", 14, "bold")).pack(anchor=tk.W)
-        ttk.Label(title_frame, text="Versi 1.12", font=("", 9, "italic"), foreground="#86868b").pack(anchor=tk.W)
+        ttk.Label(title_frame, text="Versi 1.13", font=("", 9, "italic"), foreground="#86868b").pack(anchor=tk.W)
 
         # Device & Control Buttons
         ctrl_frame = ttk.Frame(hdr_main)
@@ -540,6 +555,23 @@ class App:
         # Right Container (for Log & Specs)
         self.right_container = ttk.Frame(self.paned, padding=(4, 0), width=330)
         self.paned.add(self.right_container, weight=1)
+
+        # ── Configured AI Panel ──
+        self.ai_frame = ttk.LabelFrame(self.right_container, text="⚙️ PENGATURAN AI", padding=8, relief="solid", borderwidth=1)
+        self.ai_frame.pack(fill=tk.X, pady=(0, 6))
+        
+        for idx, (label_text, var) in enumerate([("Base URL:", self.ai_url), ("API Key:", self.ai_key), ("Model:", self.ai_model)]):
+            f = ttk.Frame(self.ai_frame)
+            f.pack(fill=tk.X, pady=1)
+            ttk.Label(f, text=f"{label_text:<10}", font=("Inter", 9), foreground="#86868b").pack(side=tk.LEFT)
+            
+            # Show asterisks for API key
+            show_char = "*" if label_text == "API Key:" else ""
+            ent = tk.Entry(f, textvariable=var, show=show_char, font=("Inter", 9), bg="#ffffff", fg="#1d1d1f",
+                           bd=1, relief=tk.SOLID, highlightthickness=0)
+            ent.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+            # Save on keystroke release
+            ent.bind("<KeyRelease>", lambda e: self._save_config())
 
         # Device Specs Frame
         self.specs_frame = ttk.LabelFrame(self.right_container, text="📱 SPESIFIKASI DEVICE", padding=8, relief="solid", borderwidth=1)
@@ -769,6 +801,10 @@ class App:
         # Get specs
         specs = self.adb.get_device_specs()
         self.root.after(0, lambda s=specs: self._update_specs_ui(s))
+        
+        # Trigger background AI specs query if url is set
+        if self.ai_url.get().strip():
+            threading.Thread(target=self._query_ai_specs_thread, args=(specs,), daemon=True).start()
 
         def progress_cb(current, total, msg):
             pct = (current / max(total, 1)) * 100
@@ -823,9 +859,18 @@ class App:
             return
         self.log(f"Scan sukses. Ditemukan {len(packages)} packages.", "success")
 
+        # Update packages with local cached AI names first
+        for p in packages:
+            if p["pkg"] in self.ai_cache:
+                p["app_name"] = self.ai_cache[p["pkg"]]
+                
         self.packages = packages
         self.check_vars = {p["pkg"]: False for p in packages}
         self._apply_filter()
+        
+        # Trigger background async name resolution for unknown / system-name packages
+        if self.ai_url.get().strip():
+            threading.Thread(target=self._async_resolve_all_packages, daemon=True).start()
         self._update_tab_counts()
         self.lbl_progress.config(text="")
         total = len(packages)
@@ -1111,6 +1156,138 @@ class App:
             self.btn_scan.config(text="🔍 Scan Device", relief="flat", borderwidth=1)
         except:
             pass
+
+    # ── AI Configuration & Implementation Methods ──
+    def _load_config(self):
+        import json
+        if os.path.exists(self.config_file):
+            try:
+                with open(self.config_file, "r") as f:
+                    cfg = json.load(f)
+                    self.ai_url.set(cfg.get("url", ""))
+                    self.ai_key.set(cfg.get("key", ""))
+                    self.ai_model.set(cfg.get("model", "claude-3-haiku"))
+            except:
+                pass
+
+    def _save_config(self):
+        import json
+        cfg = {"url": self.ai_url.get(), "key": self.ai_key.get(), "model": self.ai_model.get()}
+        try:
+            with open(self.config_file, "w") as f:
+                json.dump(cfg, f, indent=4)
+        except:
+            pass
+
+    def _load_cache(self):
+        import json
+        if os.path.exists(self.cache_file):
+            try:
+                with open(self.cache_file, "r") as f:
+                    self.ai_cache = json.load(f)
+            except:
+                pass
+
+    def _save_cache(self):
+        import json
+        try:
+            with open(self.cache_file, "w") as f:
+                json.dump(self.ai_cache, f, indent=4)
+        except:
+            pass
+
+    def _call_ai(self, prompt):
+        import json
+        import urllib.request
+        import urllib.error
+        url = self.ai_url.get().strip()
+        key = self.ai_key.get().strip()
+        model = self.ai_model.get().strip()
+        if not url:
+            return None
+        
+        # Build path to chat/completions endpoint standard
+        endpoint = url if url.endswith("/chat/completions") else url.rstrip("/") + "/chat/completions"
+        payload = {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.2
+        }
+        req = urllib.request.Request(
+            endpoint,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {key}" if key else "",
+                "Content-Type": "application/json"
+            },
+            method="POST"
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=10) as response:
+                res = json.loads(response.read().decode("utf-8"))
+                return res["choices"][0]["message"]["content"].strip()
+        except Exception as e:
+            self.root.after(0, lambda: self.log(f"AI API Error: {str(e)}", "error"))
+            return None
+
+    def _query_ai_specs_thread(self, specs):
+        brand = specs.get("brand", "Unknown")
+        model = specs.get("model", "Unknown")
+        if brand == "UNKNOWN" or model == "UNKNOWN":
+            return
+            
+        self.root.after(0, lambda: self.log(f"Meminta spesifikasi HP {brand} {model} dari AI...", "info"))
+        prompt = (
+            f"Berikan spesifikasi lengkap HP {brand} {model}. "
+            "Format dalam Bahasa Indonesia ringkas berupa poin-poin tanpa markdown tebal: "
+            "Chipset, RAM/Storage bawaan, Layar, Baterai, Kamera, dan Tahun Rilis."
+        )
+        ans = self._call_ai(prompt)
+        if ans:
+            # Format and display in logs
+            self.root.after(0, lambda: self.log(f"--- SPESIFIKASI AI ({brand} {model}) ---\n{ans}\n------------------", "success"))
+
+    def _async_resolve_all_packages(self):
+        # Scan packages in current self.packages that fall back to capitalized package names
+        # e.g., if p["app_name"] is equal to capitalized package name and not in POPULAR_APP_NAMES
+        # We query them in the background sequentially to avoid slamming the API.
+        from time import sleep
+        unknowns = []
+        for p in self.packages:
+            pkg = p["pkg"]
+            # Detect fallback names (not found in popular and not in UAD)
+            if pkg not in self.ai_cache and p["app_name"] == pkg.split(".")[-1].replace("_", " ").title():
+                unknowns.append(pkg)
+                
+        if not unknowns:
+            return
+            
+        self.root.after(0, lambda: self.log(f"Menemukan {len(unknowns)} aplikasi tidak dikenal. Meminta identifikasi nama dari AI...", "info"))
+        
+        for idx, pkg in enumerate(unknowns):
+            # Check configuration still exists
+            if not self.ai_url.get().strip():
+                break
+                
+            prompt = f"Tebak nama aplikasi Android untuk package name: {pkg}. Balas HANYA dengan nama aplikasinya saja secara singkat (maksimal 4 kata), tanpa penjelasan tambahan."
+            ans = self._call_ai(prompt)
+            if ans:
+                ans = ans.replace('"', '').replace("'", "").rstrip(".")
+                self.ai_cache[pkg] = ans
+                self._save_cache()
+                
+                # Update local models
+                for p in self.packages:
+                    if p["pkg"] == pkg:
+                        p["app_name"] = ans
+                        break
+                
+                # Refresh filter in GUI thread safely to update the names on screen
+                self.root.after(0, self._apply_filter)
+                self.root.after(0, lambda k=pkg, a=ans: self.log(f"AI mendeteksi {k} -> {a}", "success"))
+                
+            # Rate limiting delay (1 second) to be nice to local providers
+            sleep(1.0)
 
 
 def main():
