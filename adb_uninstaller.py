@@ -1068,10 +1068,25 @@ class App:
         self.log_text.tag_config("error", foreground="#ff3b30")  # Soft red
 
         # Log control buttons
+        # Log control toolbar (enhanced)
         lcf = ttk.Frame(self.right_container)
         lcf.pack(fill=tk.X, pady=4)
-        ttk.Button(lcf, text="📋 Copy Log", command=self._copy_log).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=1)
-        ttk.Button(lcf, text="🗑️ Clear Log", command=self._clear_log).pack(side=tk.RIGHT, expand=True, fill=tk.X, padx=1)
+        
+        # Auto-scroll toggle
+        self.auto_scroll = tk.BooleanVar(value=True)
+        ttk.Checkbutton(lcf, text="🔽 Auto-scroll", variable=self.auto_scroll).pack(side=tk.LEFT, padx=2)
+        
+        # Log entry counter
+        self.log_counter = tk.IntVar(value=0)
+        self.lbl_log_count = ttk.Label(lcf, text="0 entries", font=FONTS['small'], 
+                                        foreground=COLORS['text_secondary'])
+        self.lbl_log_count.pack(side=tk.LEFT, padx=10)
+        
+        # Control buttons (right side)
+        ttk.Button(lcf, text="💾 Export", command=self._export_log).pack(side=tk.RIGHT, padx=1)
+        ttk.Button(lcf, text="🗑️ Clear", command=self._clear_log).pack(side=tk.RIGHT, padx=1)
+        ttk.Button(lcf, text="📋 Copy", command=self._copy_log).pack(side=tk.RIGHT, padx=1)
+
 
         # Frames for tabs
         self.tab_system = ttk.Frame(self.notebook)
@@ -1486,6 +1501,7 @@ class App:
 
             for idx, p in enumerate(filtered):
                 checked = "✓" if self.check_vars.get(p["pkg"]) else "☐"
+                is_crit = p["pkg"] in CRITICAL_PACKAGES
                 # Enhanced status badges
                 if p["status"] == "disabled":
                     status_badge = "🟠 DISABLED"
@@ -1498,7 +1514,6 @@ class App:
                 else:
                     status_badge = "🟢 ACTIVE"
 
-                is_crit = p["pkg"] in CRITICAL_PACKAGES
                 if is_crit:
                     tag = "critical"
                 elif p["status"] == "disabled":
@@ -1654,10 +1669,31 @@ class App:
 
     # ── Logging System ──
     def log(self, text, tag="info"):
+        """Log a message with timestamp to the log panel."""
         from datetime import datetime
-        time_str = datetime.now().strftime("%H:%M:%S")
-        msg = f"[{time_str}] {text}\n"
-        self.root.after(0, lambda m=msg, t=tag: self._log_threadsafe(m, t))
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        msg = f"[{timestamp}] {text}\n"
+        
+        self.log_text.config(state=tk.NORMAL)
+        start_idx = self.log_text.index(tk.INSERT)
+        self.log_text.insert(tk.END, msg)
+        end_idx = self.log_text.index(tk.INSERT)
+        if tag == "success":
+            self.log_text.tag_add("success", start_idx, end_idx)
+        elif tag == "error":
+            self.log_text.tag_add("error", start_idx, end_idx)
+        else:
+            self.log_text.tag_add("info", start_idx, end_idx)
+        self.log_text.config(state=tk.DISABLED)
+        
+        # Auto-scroll if enabled
+        if self.auto_scroll.get():
+            self.log_text.see(tk.END)
+        
+        # Update counter
+        count = self.log_counter.get() + 1
+        self.log_counter.set(count)
+        self.lbl_log_count.config(text=f"{count} entries")
 
     def _log_threadsafe(self, msg, tag):
         self.log_text.config(state=tk.NORMAL)
@@ -1672,6 +1708,54 @@ class App:
             self.log_text.tag_add("info", start_idx, end_idx)
         self.log_text.config(state=tk.DISABLED)
         self.log_text.see(tk.END)
+
+
+    def _copy_log(self):
+        """Copy log content to clipboard."""
+        log_content = self.log_text.get("1.0", tk.END).strip()
+        if log_content:
+            self.root.clipboard_clear()
+            self.root.clipboard_append(log_content)
+            self.log("Log copied to clipboard", "info")
+        else:
+            messagebox.showinfo("Empty Log", "No log entries to copy.")
+    
+    def _clear_log(self):
+        """Clear all log entries."""
+        if messagebox.askyesno("Clear Log", "Clear all log entries?"):
+            self.log_text.config(state=tk.NORMAL)
+            self.log_text.delete("1.0", tk.END)
+            self.log_text.config(state=tk.DISABLED)
+            self.log_counter.set(0)
+            self.lbl_log_count.config(text="0 entries")
+    
+    def _export_log(self):
+        """Export log to a text file."""
+        from datetime import datetime
+        from tkinter import filedialog
+        
+        log_content = self.log_text.get("1.0", tk.END).strip()
+        if not log_content:
+            messagebox.showinfo("Empty Log", "No log entries to export.")
+            return
+        
+        # Default filename with timestamp
+        default_name = f"adb_uninstaller_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        filepath = filedialog.asksaveasfilename(
+            defaultextension=".txt",
+            filetypes=[("Text files", "*.txt"), ("All files", "*.*")],
+            initialfile=default_name
+        )
+        
+        if filepath:
+            try:
+                with open(filepath, 'w') as f:
+                    f.write(log_content)
+                self.log(f"Log exported to {filepath}", "success")
+                messagebox.showinfo("Export Success", f"Log saved to:\n{filepath}")
+            except Exception as e:
+                self.log(f"Export failed: {e}", "error")
+                messagebox.showerror("Export Failed", f"Could not save log:\n{e}")
 
     def _clear_log(self):
         self.log_text.config(state=tk.NORMAL)
