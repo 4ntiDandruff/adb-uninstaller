@@ -884,6 +884,68 @@ class App:
         self.paned.add(self.left_container, weight=3)  # App list gets 3/4
         self.paned.add(self.right_container, weight=1)  # Log gets 1/4
 
+        # ── Right Panel: Large Log Activity ──
+        # Layout strategy: Log takes ALL available vertical space
+        
+        # Log Activity Frame (90%+ of right panel)
+        self.log_frame = ttk.LabelFrame(self.right_container, text="📝 LOG AKTIVITAS", padding=8, relief="solid", borderwidth=1)
+        self.log_frame.pack(fill=tk.BOTH, expand=True)
+
+        self.log_text = tk.Text(self.log_frame, wrap=tk.WORD, font=("Consolas", 9), state=tk.DISABLED,
+                                bg=COLORS['bg_primary'], fg=COLORS['text_primary'], insertbackground=COLORS['primary'], 
+                                selectbackground=COLORS['primary'],
+                                bd=0, relief=tk.FLAT)
+        self.log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        log_scroll = ttk.Scrollbar(self.log_frame, orient=tk.VERTICAL, command=self.log_text.yview)
+        self.log_text.configure(yscrollcommand=log_scroll.set)
+        log_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+
+        # Setup colors in Log text (Light theme)
+        self.log_text.tag_config("info", foreground=COLORS['primary'])  # Bright blue
+        self.log_text.tag_config("success", foreground=COLORS['success'])  # Bright green
+        self.log_text.tag_config("error", foreground="#ff3b30")  # Soft red
+
+        # Log control toolbar (enhanced)
+        lcf = ttk.Frame(self.right_container)
+        lcf.pack(fill=tk.X, pady=4)
+        
+        # Left side controls
+        log_controls_left = ttk.Frame(lcf)
+        log_controls_left.pack(side=tk.LEFT)
+        
+        # Auto-scroll toggle
+        self.auto_scroll_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(log_controls_left, text="🔽 Auto-scroll", variable=self.auto_scroll_var).pack(side=tk.LEFT, padx=2)
+        
+        # Verbose/Debug mode toggle
+        self.verbose_mode = tk.BooleanVar(value=True)  # Default ON for max detail
+        ttk.Checkbutton(log_controls_left, text="🔍 Verbose", variable=self.verbose_mode).pack(side=tk.LEFT, padx=2)
+        
+        # Log entry counter
+        self.log_entry_count = 0
+        self.lbl_log_count = ttk.Label(log_controls_left, text="0 entries", font=FONTS['small'], 
+                                        foreground=COLORS['text_secondary'])
+        self.lbl_log_count.pack(side=tk.LEFT, padx=10)
+        
+        # Log filter dropdown
+        ttk.Label(log_controls_left, text="Filter:", font=FONTS['small']).pack(side=tk.LEFT, padx=(10, 2))
+        self.log_filter = tk.StringVar(value="All")
+        filter_combo = ttk.Combobox(log_controls_left, textvariable=self.log_filter, 
+                                    values=["All", "Info", "Success", "Error"], 
+                                    state="readonly", width=10)
+        filter_combo.pack(side=tk.LEFT, padx=2)
+        filter_combo.bind("<<ComboboxSelected>>", lambda e: self._filter_log())
+        
+        # Right side controls
+        log_controls_right = ttk.Frame(lcf)
+        log_controls_right.pack(side=tk.RIGHT)
+        
+        ttk.Button(log_controls_right, text="📋 Copy", command=self._copy_log, width=8).pack(side=tk.LEFT, padx=2)
+        ttk.Button(log_controls_right, text="🗑️ Clear", command=self._clear_log, width=8).pack(side=tk.LEFT, padx=2)
+        ttk.Button(log_controls_right, text="📤 Export", command=self._export_log, width=8).pack(side=tk.LEFT, padx=2)
+
+
         # Progress detail label (below bar)
         self.lbl_progress = ttk.Label(progress_frame, text="", anchor=tk.W, font=FONTS['small'])
         self.lbl_progress.pack(fill=tk.X)
@@ -1582,12 +1644,12 @@ class App:
         self.log_text.config(state=tk.DISABLED)
         
         # Auto-scroll if enabled
-        if self.auto_scroll.get():
+        if self.auto_scroll_var.get():
             self.log_text.see(tk.END)
         
         # Update counter
-        count = self.log_counter.get() + 1
-        self.log_counter.set(count)
+        count = self.log_entry_count + 1
+        self.log_entry_count = count
         self.lbl_log_count.config(text=f"{count} entries")
 
     def _log_threadsafe(self, msg, tag):
@@ -1621,7 +1683,7 @@ class App:
             self.log_text.config(state=tk.NORMAL)
             self.log_text.delete("1.0", tk.END)
             self.log_text.config(state=tk.DISABLED)
-            self.log_counter.set(0)
+            self.log_entry_count = 0
             self.lbl_log_count.config(text="0 entries")
     
     def _export_log(self):
@@ -1742,18 +1804,13 @@ class App:
 
     # ── AI Configuration & Implementation Methods ──
     def _toggle_ai_panel(self):
-        if self.ai_visible:
-            self.ai_frame.pack_forget()
-            self.ai_visible = False
-            self.btn_toggle_ai.config(text="⚙️ AI Config")
-            self.log("Setelan AI disembunyikan (Aman dari intipan).", "info")
-        else:
-            # Pack at the very top of the right container
-            self.ai_frame.pack(fill=tk.X, pady=(0, 6), before=self.specs_frame)
-            self.ai_visible = True
-            self.btn_toggle_ai.config(text="🙈 Hide AI")
-            self.log("Membuka setelan AI.", "info")
-
+        """Toggle AI config - show message since panel was removed for clean UI."""
+        import tkinter.messagebox as msgbox
+        msgbox.showinfo("AI Config", 
+                       "AI Config panel dihapus untuk UI lebih clean.\n\n"
+                       "Fitur AI masih berjalan di background.\n"
+                       "Status AI: " + ("✅ Active" if hasattr(self, 'ai_provider') else "❌ Inactive"))
+    
     def _on_apply_ai(self):
         self._save_config()
         self.log("Setelan AI berhasil disimpan & diterapkan!", "success")
