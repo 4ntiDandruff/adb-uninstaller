@@ -1455,7 +1455,17 @@ class App:
 
             for idx, p in enumerate(filtered):
                 checked = "✓" if self.check_vars.get(p["pkg"]) else "☐"
-                status_icon = "✅" if p["status"] == "enabled" else "🚫"
+                # Enhanced status badges
+                if p["status"] == "disabled":
+                    status_badge = "🟠 DISABLED"
+                elif is_crit:
+                    status_badge = "🔵 SYSTEM"
+                elif tab_key == "system":
+                    status_badge = "🔵 ACTIVE"
+                elif tab_key == "user":
+                    status_badge = "🟣 USER"
+                else:
+                    status_badge = "🟢 ACTIVE"
 
                 is_crit = p["pkg"] in CRITICAL_PACKAGES
                 if is_crit:
@@ -1482,7 +1492,7 @@ class App:
                 row_tags.extend([tag, row_tag])
                     
                 tree.insert("", tk.END,
-                            values=(checked, idx + 1, p["pkg"], display_name, status_icon),
+                            values=(checked, idx + 1, p["pkg"], display_name, status_badge),
                             tags=tuple(row_tags))
 
     # ── Actions ──
