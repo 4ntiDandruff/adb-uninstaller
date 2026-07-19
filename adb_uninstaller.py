@@ -778,8 +778,8 @@ class App:
 
         btn_frame_top = ttk.Frame(sf)
         btn_frame_top.pack(side=tk.RIGHT)
-        ttk.Button(btn_frame_top, text="Select All", command=self._select_all).pack(side=tk.LEFT, padx=2)
-        ttk.Button(btn_frame_top, text="Deselect All", command=self._deselect_all).pack(side=tk.LEFT, padx=2)
+        ttk.Button(btn_frame_top, text="☑️ Select All", command=self._select_all).pack(side=tk.LEFT, padx=2)
+        ttk.Button(btn_frame_top, text="☐ Deselect All", command=self._deselect_all).pack(side=tk.LEFT, padx=2)
 
         # ── Top Navigation Tabs (SamFw-style) ──
         self.main_notebook = ttk.Notebook(self.root)
@@ -951,8 +951,8 @@ class App:
         # Log control buttons
         lcf = ttk.Frame(self.right_container)
         lcf.pack(fill=tk.X, pady=4)
-        ttk.Button(lcf, text="Copy Log", command=self._copy_log).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=1)
-        ttk.Button(lcf, text="Clear Log", command=self._clear_log).pack(side=tk.RIGHT, expand=True, fill=tk.X, padx=1)
+        ttk.Button(lcf, text="📋 Copy Log", command=self._copy_log).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=1)
+        ttk.Button(lcf, text="🗑️ Clear Log", command=self._clear_log).pack(side=tk.RIGHT, expand=True, fill=tk.X, padx=1)
 
         # Frames for tabs
         self.tab_system = ttk.Frame(self.notebook)
