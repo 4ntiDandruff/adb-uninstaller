@@ -850,9 +850,8 @@ class App:
         self.btn_toggle_ai = ttk.Button(ai_frame, text="⚙️ AI Config", 
                                        command=self._toggle_ai_panel)
         self.btn_toggle_ai.pack(side=tk.LEFT)
-        self.ai_status_dot = tk.Label(ai_frame, text="●", font=("", 12, "bold"), 
-                                     fg="#9e9e9e", cursor="hand2")
-        self.ai_status_dot.pack(side=tk.LEFT, padx=(2, 0))
+        self.ai_status_dot = tk.Label(ai_frame, text="●", font=("", 10, "bold"), fg="#9e9e9e", cursor="hand2", borderwidth=0, relief=tk.FLAT, padx=0, pady=0)
+        self.ai_status_dot.pack(side=tk.LEFT, padx=(4, 0), pady=0)
         self.ai_status_dot.bind("<Button-1>", lambda e: self._show_ai_status_tooltip())
 
         # ── Progress ──
@@ -1249,7 +1248,7 @@ class App:
         # Calculate time estimate (simple implementation)
         if pct > 0 and pct < 100:
             # This is a placeholder - real implementation would track start time
-            self.lbl_time_est.config(text="Processing...")
+            self.lbl_time_est.config(text="")
         elif pct >= 100:
             self.lbl_time_est.config(text="✅ Complete")
             self.lbl_operation.config(text="")
