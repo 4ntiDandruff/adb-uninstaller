@@ -329,6 +329,7 @@ class ADBController:
     """All ADB interactions."""
 
     def __init__(self):
+        self.app = None  # Will be set by App instance for logging
         self.uad_db = {}
         self._load_uad_database()
 
@@ -603,6 +604,7 @@ class App:
         self.root.minsize(900, 500)
 
         self.adb = ADBController()
+        self.adb.app = self  # Enable verbose logging
         self.packages = []
         self.check_vars = {}
         self.device_id = None
@@ -1070,6 +1072,10 @@ class App:
         stats_grid.columnconfigure(0, weight=1)
         stats_grid.columnconfigure(1, weight=1)
 
+        # Layout strategy: Log takes ALL available vertical space
+        # Device Specs and Stats are compact (fill X only)
+        # Log expands to fill remaining space (BOTH + expand=True)
+        
         # Log Activity Frame
         self.log_frame = ttk.LabelFrame(self.right_container, text="📝 LOG AKTIVITAS", padding=8, relief="solid", borderwidth=1)
         self.log_frame.pack(fill=tk.BOTH, expand=True)
@@ -1096,6 +1102,10 @@ class App:
         # Auto-scroll toggle
         self.auto_scroll = tk.BooleanVar(value=True)
         ttk.Checkbutton(lcf, text="🔽 Auto-scroll", variable=self.auto_scroll).pack(side=tk.LEFT, padx=2)
+        
+        # Verbose/Debug mode toggle
+        self.verbose_mode = tk.BooleanVar(value=True)  # Default ON for max detail
+        ttk.Checkbutton(lcf, text="🔍 Verbose", variable=self.verbose_mode).pack(side=tk.LEFT, padx=2)
         
         # Log entry counter
         self.log_counter = tk.IntVar(value=0)
@@ -1327,6 +1337,13 @@ class App:
             pct = (current / max(total, 1)) * 100
             self.root.after(0, lambda p=pct, m=msg: self._update_progress(p, m))
 
+
+        if self.verbose_mode.get():
+            self.log("📦 Memulai scan packages...", "info")
+            self.log("  → Mengambil daftar aplikasi system...", "info")
+            self.log("  → Mengambil daftar aplikasi user...", "info")
+            self.log("  → Mengecek status aplikasi...", "info")
+        
         packages = self.adb.scan_packages(progress_cb=progress_cb)
         self.root.after(0, lambda: self._scan_done(packages, None))
 
@@ -1606,6 +1623,13 @@ class App:
             messagebox.showinfo("No Selection", "Select at least one app first.")
             return
 
+
+        if self.verbose_mode.get():
+            action_name = {"uninstall": "Uninstall", "disable": "Disable", 
+                          "enable": "Enable", "force_stop": "Force Stop"}.get(action, action)
+            self.log(f"⚡ Memulai operasi: {action_name}", "info")
+            self.log(f"  → Target: {len(selected)} aplikasi", "info")
+        
         action_labels = {"uninstall": "Uninstall", "disable": "Disable", "enable": "Enable"}
         label = action_labels[action]
 
