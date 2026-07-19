@@ -873,6 +873,17 @@ class App:
         self.progress = ttk.Progressbar(progress_frame, variable=self.progress_var, maximum=100)
         self.progress.pack(fill=tk.X)
         
+
+        # ── Main Layout: Dual Pane (left=app list, right=log) ──
+        self.paned = ttk.PanedWindow(self.root, orient=tk.HORIZONTAL)
+        self.paned.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+        
+        self.left_container = ttk.Frame(self.paned)
+        self.right_container = ttk.Frame(self.paned)
+        
+        self.paned.add(self.left_container, weight=3)  # App list gets 3/4
+        self.paned.add(self.right_container, weight=1)  # Log gets 1/4
+
         # Progress detail label (below bar)
         self.lbl_progress = ttk.Label(progress_frame, text="", anchor=tk.W, font=FONTS['small'])
         self.lbl_progress.pack(fill=tk.X)
@@ -918,154 +929,10 @@ class App:
         ttk.Button(btn_frame_top, text="☑️ Select All", command=self._select_all).pack(side=tk.LEFT, padx=2)
         ttk.Button(btn_frame_top, text="☐ Deselect All", command=self._deselect_all).pack(side=tk.LEFT, padx=2)
 
-        # ── Top Navigation Tabs (SamFw-style) ──
-        self.main_notebook = ttk.Notebook(self.root)
-        
-        # Create 4 main tabs
-        self.tab_adb = ttk.Frame(self.main_notebook)
-        self.tab_frp = ttk.Frame(self.main_notebook)
-        self.tab_app_manager = ttk.Frame(self.main_notebook)
-        self.tab_root = ttk.Frame(self.main_notebook)
-        
-        self.main_notebook.add(self.tab_adb, text="📱 ADB")
-        self.main_notebook.add(self.tab_frp, text="🔓 FRP")
-        self.main_notebook.add(self.tab_app_manager, text="📦 App Manager")
-        self.main_notebook.add(self.tab_root, text="🔑 Root")
-        
-        # Placeholder content for ADB tab
-        adb_placeholder = ttk.Frame(self.tab_adb)
-        adb_placeholder.pack(expand=True)
-        ttk.Label(adb_placeholder, text="📱 ADB Tools", font=FONTS["heading_large"]).pack(pady=20)
-        ttk.Label(adb_placeholder, text="Advanced ADB commands and utilities", 
-                  font=FONTS["body"], foreground=COLORS["text_secondary"]).pack()
-        ttk.Label(adb_placeholder, text="Coming Soon", 
-                  font=FONTS["subheading"], foreground=COLORS["warning"]).pack(pady=10)
-        
-        # Placeholder content for FRP tab
-        frp_placeholder = ttk.Frame(self.tab_frp)
-        frp_placeholder.pack(expand=True)
-        ttk.Label(frp_placeholder, text="🔓 FRP Bypass", font=FONTS["heading_large"]).pack(pady=20)
-        ttk.Label(frp_placeholder, text="Factory Reset Protection tools", 
-                  font=FONTS["body"], foreground=COLORS["text_secondary"]).pack()
-        ttk.Label(frp_placeholder, text="Coming Soon", 
-                  font=FONTS["subheading"], foreground=COLORS["warning"]).pack(pady=10)
-        
-        # Placeholder content for Root tab
-        root_placeholder = ttk.Frame(self.tab_root)
-        root_placeholder.pack(expand=True)
-        ttk.Label(root_placeholder, text="🔑 Root Status", font=FONTS["heading_large"]).pack(pady=20)
-        ttk.Label(root_placeholder, text="Check and manage root access", 
-                  font=FONTS["body"], foreground=COLORS["text_secondary"]).pack()
-        ttk.Label(root_placeholder, text="Coming Soon", 
-                  font=FONTS["subheading"], foreground=COLORS["warning"]).pack(pady=10)
-        
-        # ── Split Layout using PanedWindow ──
-        self.paned = ttk.PanedWindow(self.tab_app_manager, orient=tk.HORIZONTAL)
 
-        # Left Container (for Notebook)
-        self.left_container = ttk.Frame(self.paned, width=720)
-        self.paned.add(self.left_container, weight=3)
-
-        # Notebook (4 tabs) inside Left Container
+        # Category Notebook (direct, no wrapper)
         self.notebook = ttk.Notebook(self.left_container)
-        self.notebook.pack(fill=tk.BOTH, expand=True)
-
-        # Right Container (for Log & Specs)
-        self.right_container = ttk.Frame(self.paned, padding=(4, 0), width=330)
-        self.paned.add(self.right_container, weight=1)
-
-        # ── Configured AI Panel ──
-        self.ai_frame = ttk.LabelFrame(self.right_container, text="⚙️ PENGATURAN AI (HIDDEN)", padding=8, relief="solid", borderwidth=1)
-        # Note: We do NOT call pack here. It will be packed/unpacked dynamically via self._toggle_ai_panel()
-        
-        # Base URL row
-        f_url = ttk.Frame(self.ai_frame)
-        f_url.pack(fill=tk.X, pady=1)
-        ttk.Label(f_url, text="Base URL:", font=("Inter", 9), foreground=COLORS['text_muted'], width=10, anchor=tk.W).pack(side=tk.LEFT)
-        ent_url = tk.Entry(f_url, textvariable=self.ai_url, font=("Inter", 9), bg=COLORS['bg_primary'], fg=COLORS['text_primary'],
-                           bd=1, relief=tk.SOLID, highlightthickness=0)
-        ent_url.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
-        
-        # API Key row
-        f_key = ttk.Frame(self.ai_frame)
-        f_key.pack(fill=tk.X, pady=1)
-        ttk.Label(f_key, text="API Key:", font=("Inter", 9), foreground=COLORS['text_muted'], width=10, anchor=tk.W).pack(side=tk.LEFT)
-        ent_key = tk.Entry(f_key, textvariable=self.ai_key, show="*", font=("Inter", 9), bg=COLORS['bg_primary'], fg=COLORS['text_primary'],
-                           bd=1, relief=tk.SOLID, highlightthickness=0)
-        ent_key.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
-        
-        # Model row WITH inline Test button (Handy-style)
-        f_model = ttk.Frame(self.ai_frame)
-        f_model.pack(fill=tk.X, pady=1)
-        ttk.Label(f_model, text="Model:", font=("Inter", 9), foreground=COLORS['text_muted'], width=10, anchor=tk.W).pack(side=tk.LEFT)
-        ent_model = tk.Entry(f_model, textvariable=self.ai_model, font=("Inter", 9), bg=COLORS['bg_primary'], fg=COLORS['text_primary'],
-                             bd=1, relief=tk.SOLID, highlightthickness=0)
-        ent_model.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
-        # Inline Test button (⚡ icon)
-        self.btn_test_ai_inline = ttk.Button(f_model, text="⚡", width=3, command=self._on_test_ai)
-        self.btn_test_ai_inline.pack(side=tk.LEFT, padx=(0, 2))
-
-        # Apply button only (bottom)
-        btn_row = ttk.Frame(self.ai_frame)
-        btn_row.pack(fill=tk.X, pady=(6, 0))
-        self.btn_apply_ai = ttk.Button(btn_row, text="💾 Apply & Save", command=self._on_apply_ai)
-        self.btn_apply_ai.pack(fill=tk.X)
-
-        # Layout strategy: Log takes ALL available vertical space
-        # Device Specs and Stats are compact (fill X only)
-        # Log expands to fill remaining space (BOTH + expand=True)
-        
-        # Log Activity Frame
-        self.log_frame = ttk.LabelFrame(self.right_container, text="📝 LOG AKTIVITAS", padding=8, relief="solid", borderwidth=1)
-        self.log_frame.pack(fill=tk.BOTH, expand=True)
-
-        self.log_text = tk.Text(self.log_frame, wrap=tk.WORD, font=("Consolas", 9), state=tk.DISABLED,
-                                bg=COLORS['bg_primary'], fg=COLORS['text_primary'], insertbackground=COLORS['primary'], selectbackground=COLORS['primary'],
-                                bd=0, relief=tk.FLAT)
-        self.log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        
-        log_scroll = ttk.Scrollbar(self.log_frame, orient=tk.VERTICAL, command=self.log_text.yview)
-        self.log_text.configure(yscrollcommand=log_scroll.set)
-        log_scroll.pack(side=tk.RIGHT, fill=tk.Y)
-
-        # Setup colors in Log text (Light theme)
-        self.log_text.tag_config("info", foreground=COLORS['primary'])  # Bright blue
-        self.log_text.tag_config("success", foreground=COLORS['primary'])  # Bright green
-        self.log_text.tag_config("error", foreground="#ff3b30")  # Soft red
-
-        # Log control buttons
-        # Log control toolbar (enhanced)
-        lcf = ttk.Frame(self.right_container)
-        lcf.pack(fill=tk.X, pady=4)
-        
-        # Auto-scroll toggle
-        self.auto_scroll = tk.BooleanVar(value=True)
-        ttk.Checkbutton(lcf, text="🔽 Auto-scroll", variable=self.auto_scroll).pack(side=tk.LEFT, padx=2)
-        
-        # Verbose/Debug mode toggle
-        self.verbose_mode = tk.BooleanVar(value=True)  # Default ON for max detail
-        ttk.Checkbutton(lcf, text="🔍 Verbose", variable=self.verbose_mode).pack(side=tk.LEFT, padx=2)
-        
-        # Log entry counter
-        self.log_counter = tk.IntVar(value=0)
-        self.lbl_log_count = ttk.Label(lcf, text="0 entries", font=FONTS['small'], 
-                                        foreground=COLORS['text_secondary'])
-        self.lbl_log_count.pack(side=tk.LEFT, padx=10)
-        
-        # Log filter dropdown
-        ttk.Label(lcf, text="Filter:", font=FONTS['small']).pack(side=tk.LEFT, padx=(10, 2))
-        self.log_filter = tk.StringVar(value="All")
-        filter_combo = ttk.Combobox(lcf, textvariable=self.log_filter, 
-                                     values=["All", "Info", "Success", "Error"],
-                                     state="readonly", width=8)
-        filter_combo.pack(side=tk.LEFT, padx=2)
-        filter_combo.bind("<<ComboboxSelected>>", lambda e: self._filter_log())
-        
-        # Control buttons (right side)
-        ttk.Button(lcf, text="💾 Export", command=self._export_log).pack(side=tk.RIGHT, padx=1)
-        ttk.Button(lcf, text="🗑️ Clear", command=self._clear_log).pack(side=tk.RIGHT, padx=1)
-        ttk.Button(lcf, text="📋 Copy", command=self._copy_log).pack(side=tk.RIGHT, padx=1)
-
+        self.notebook.pack(fill=tk.BOTH, expand=True, padx=8, pady=(4, 0))
 
         # Frames for tabs
         self.tab_system = ttk.Frame(self.notebook)
@@ -1172,8 +1039,6 @@ class App:
 
         # Pack the middle paned window LAST so it occupies only the remaining space (prevents layout cropping)
         # Pack main notebook
-        self.main_notebook.pack(fill=tk.BOTH, expand=True, padx=8, pady=4)
-        self.main_notebook.select(2)  # Default to App Manager tab
         
         # Pack paned window inside App Manager tab
         self.paned.pack(fill=tk.BOTH, expand=True, padx=8, pady=4)
