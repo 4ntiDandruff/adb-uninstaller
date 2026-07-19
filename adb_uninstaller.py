@@ -757,6 +757,41 @@ class App:
             self.specs_labels[spec_key] = ttk.Label(f, text="N/A", font=("", 10, "bold"), foreground="#ff9500")
             self.specs_labels[spec_key].pack(side=tk.LEFT, padx=4)
 
+
+        # Statistics Card
+        self.stats_frame = ttk.LabelFrame(self.right_container, text="📊 STATISTIK APLIKASI", padding=8, relief="solid", borderwidth=1)
+        self.stats_frame.pack(fill=tk.X, pady=(0, 6))
+        
+        # Create 2x2 grid for stats
+        stats_grid = ttk.Frame(self.stats_frame)
+        stats_grid.pack(fill=tk.X)
+        
+        # Initialize stat labels dict
+        self.stat_labels = {}
+        
+        # Stat items: (key, label, row, col, color)
+        stats_config = [
+            ("total", "Total", 0, 0, "#007aff"),      # Blue
+            ("system", "System", 0, 1, "#5856d6"),    # Purple
+            ("user", "User", 1, 0, "#34c759"),        # Green
+            ("disabled", "Disabled", 1, 1, "#ff9500") # Orange
+        ]
+        
+        for key, label, row, col, color in stats_config:
+            frame = ttk.Frame(stats_grid)
+            frame.grid(row=row, column=col, padx=4, pady=4, sticky="ew")
+            
+            # Label
+            ttk.Label(frame, text=label, font=("", 9), foreground="#86868b").pack(anchor=tk.W)
+            
+            # Value (large, colored)
+            self.stat_labels[key] = ttk.Label(frame, text="0", font=("", 18, "bold"), foreground=color)
+            self.stat_labels[key].pack(anchor=tk.W)
+        
+        # Configure grid columns to expand equally
+        stats_grid.columnconfigure(0, weight=1)
+        stats_grid.columnconfigure(1, weight=1)
+
         # Log Activity Frame
         self.log_frame = ttk.LabelFrame(self.right_container, text="📝 LOG AKTIVITAS", padding=8, relief="solid", borderwidth=1)
         self.log_frame.pack(fill=tk.BOTH, expand=True)
@@ -1049,6 +1084,13 @@ class App:
         self.notebook.tab(1, text=f"👤 User Apps ({usr_count})")
         self.notebook.tab(2, text=f"🚫 Disabled Apps ({dis_count})")
 
+
+        # Update statistics card
+        total_count = len(self.packages)
+        self.stat_labels["total"].config(text=str(total_count))
+        self.stat_labels["system"].config(text=str(sys_count))
+        self.stat_labels["user"].config(text=str(usr_count))
+        self.stat_labels["disabled"].config(text=str(dis_count))
     # ── Filter ──
     def _apply_filter(self):
         query = self.search_var.get().lower()
