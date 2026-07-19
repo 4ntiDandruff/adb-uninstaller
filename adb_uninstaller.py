@@ -940,7 +940,6 @@ class App:
         
         ttk.Button(log_controls_right, text="📋 Copy", command=self._copy_log, width=8).pack(side=tk.LEFT, padx=2)
         ttk.Button(log_controls_right, text="🗑️ Clear", command=self._clear_log, width=8).pack(side=tk.LEFT, padx=2)
-        ttk.Button(log_controls_right, text="📤 Export", command=self._export_log, width=8).pack(side=tk.LEFT, padx=2)
 
 
         # Progress detail label (below bar)
@@ -985,8 +984,6 @@ class App:
 
         btn_frame_top = ttk.Frame(sf)
         btn_frame_top.pack(side=tk.RIGHT)
-        ttk.Button(btn_frame_top, text="☑️ Select All", command=self._select_all).pack(side=tk.LEFT, padx=2)
-        ttk.Button(btn_frame_top, text="☐ Deselect All", command=self._deselect_all).pack(side=tk.LEFT, padx=2)
 
 
         # Category Notebook (direct, no wrapper)
