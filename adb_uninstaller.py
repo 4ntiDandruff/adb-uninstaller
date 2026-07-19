@@ -935,7 +935,7 @@ class App:
         # ── Action Buttons ──
         af = ttk.Frame(self.root, padding=(8, 12))
         af.pack(fill=tk.X, side=tk.BOTTOM, pady=4)
-        self.lbl_selected = ttk.Label(af, text="Selected: 0 apps")
+        self.lbl_selected = ttk.Label(af, text="Action (0 items)", font=FONTS["body_bold"])
         self.lbl_selected.pack(side=tk.LEFT)
 
         # Color Legend
@@ -1022,7 +1022,11 @@ class App:
 
     def _update_selected_count(self):
         count = sum(1 for v in self.check_vars.values() if v)
-        self.lbl_selected.config(text=f"Selected: {count} apps")
+        # Update action counter with SamFw-style formatting
+        if count == 0:
+            self.lbl_selected.config(text="Action (0 items)", foreground=COLORS['text_secondary'])
+        else:
+            self.lbl_selected.config(text=f"Action ({count} items)", foreground=COLORS['primary'])
 
     # ── Scan ──
     def _on_scan(self):
