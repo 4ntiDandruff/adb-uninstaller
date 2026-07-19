@@ -735,8 +735,49 @@ class App:
         ttk.Button(btn_frame_top, text="Select All", command=self._select_all).pack(side=tk.LEFT, padx=2)
         ttk.Button(btn_frame_top, text="Deselect All", command=self._deselect_all).pack(side=tk.LEFT, padx=2)
 
+        # ── Top Navigation Tabs (SamFw-style) ──
+        self.main_notebook = ttk.Notebook(self.root)
+        
+        # Create 4 main tabs
+        self.tab_adb = ttk.Frame(self.main_notebook)
+        self.tab_frp = ttk.Frame(self.main_notebook)
+        self.tab_app_manager = ttk.Frame(self.main_notebook)
+        self.tab_root = ttk.Frame(self.main_notebook)
+        
+        self.main_notebook.add(self.tab_adb, text="📱 ADB")
+        self.main_notebook.add(self.tab_frp, text="🔓 FRP")
+        self.main_notebook.add(self.tab_app_manager, text="📦 App Manager")
+        self.main_notebook.add(self.tab_root, text="🔑 Root")
+        
+        # Placeholder content for ADB tab
+        adb_placeholder = ttk.Frame(self.tab_adb)
+        adb_placeholder.pack(expand=True)
+        ttk.Label(adb_placeholder, text="📱 ADB Tools", font=FONTS["heading_large"]).pack(pady=20)
+        ttk.Label(adb_placeholder, text="Advanced ADB commands and utilities", 
+                  font=FONTS["body"], foreground=COLORS["text_secondary"]).pack()
+        ttk.Label(adb_placeholder, text="Coming Soon", 
+                  font=FONTS["subheading"], foreground=COLORS["warning"]).pack(pady=10)
+        
+        # Placeholder content for FRP tab
+        frp_placeholder = ttk.Frame(self.tab_frp)
+        frp_placeholder.pack(expand=True)
+        ttk.Label(frp_placeholder, text="🔓 FRP Bypass", font=FONTS["heading_large"]).pack(pady=20)
+        ttk.Label(frp_placeholder, text="Factory Reset Protection tools", 
+                  font=FONTS["body"], foreground=COLORS["text_secondary"]).pack()
+        ttk.Label(frp_placeholder, text="Coming Soon", 
+                  font=FONTS["subheading"], foreground=COLORS["warning"]).pack(pady=10)
+        
+        # Placeholder content for Root tab
+        root_placeholder = ttk.Frame(self.tab_root)
+        root_placeholder.pack(expand=True)
+        ttk.Label(root_placeholder, text="🔑 Root Status", font=FONTS["heading_large"]).pack(pady=20)
+        ttk.Label(root_placeholder, text="Check and manage root access", 
+                  font=FONTS["body"], foreground=COLORS["text_secondary"]).pack()
+        ttk.Label(root_placeholder, text="Coming Soon", 
+                  font=FONTS["subheading"], foreground=COLORS["warning"]).pack(pady=10)
+        
         # ── Split Layout using PanedWindow ──
-        self.paned = ttk.PanedWindow(self.root, orient=tk.HORIZONTAL)
+        self.paned = ttk.PanedWindow(self.tab_app_manager, orient=tk.HORIZONTAL)
 
         # Left Container (for Notebook)
         self.left_container = ttk.Frame(self.paned, width=720)
@@ -963,6 +1004,11 @@ class App:
         self.lbl_status.pack(fill=tk.X, side=tk.BOTTOM)
 
         # Pack the middle paned window LAST so it occupies only the remaining space (prevents layout cropping)
+        # Pack main notebook
+        self.main_notebook.pack(fill=tk.BOTH, expand=True, padx=8, pady=4)
+        self.main_notebook.select(2)  # Default to App Manager tab
+        
+        # Pack paned window inside App Manager tab
         self.paned.pack(fill=tk.BOTH, expand=True, padx=8, pady=4)
 
     # ── Sort ──
