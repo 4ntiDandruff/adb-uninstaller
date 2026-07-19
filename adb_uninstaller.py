@@ -609,6 +609,7 @@ class App:
         self.ai_status = 'untested'
         
         self._build_ui()
+        self._setup_styles()  # Apply custom widget styles
         # Set initial layout sash position (70% left, 30% right) after UI loads
         self.root.update()
         self.paned.sashpos(0, 820)
@@ -625,6 +626,51 @@ class App:
         # Silent AI auto-test on startup (if config exists)
         if self.ai_url.get().strip():
             self.root.after(2000, self._silent_ai_test)
+    def _setup_styles(self):
+        """Setup custom ttk widget styles (SamFw-inspired)."""
+        style = ttk.Style()
+        
+        # ── Button Styles ──
+        # Primary Button (blue, main actions)
+        style.configure("Primary.TButton",
+                       foreground=COLORS['primary'],
+                       font=FONTS['body_bold'],
+                       padding=(12, 6))
+        style.map("Primary.TButton",
+                 foreground=[('pressed', COLORS['primary_hover']),
+                            ('active', COLORS['primary_hover'])])
+        
+        # Danger Button (red, destructive actions)
+        style.configure("Danger.TButton",
+                       foreground=COLORS['error'],
+                       font=FONTS['body_bold'],
+                       padding=(12, 6))
+        style.map("Danger.TButton",
+                 foreground=[('pressed', '#B91C1C'),
+                            ('active', '#B91C1C')])
+        
+        # Secondary Button (default style enhancement)
+        style.configure("TButton",
+                       font=FONTS['body'],
+                       padding=(10, 6))
+        
+        # ── Notebook Tab Styles ──
+        style.configure("TNotebook.Tab",
+                       font=FONTS['body'],
+                       padding=(16, 8))
+        style.map("TNotebook.Tab",
+                 font=[('selected', FONTS['body_bold'])],
+                 foreground=[('selected', COLORS['primary'])])
+        
+        # ── Label Styles ──
+        style.configure("Heading.TLabel",
+                       font=FONTS['heading'],
+                       foreground=COLORS['text_primary'])
+        
+        style.configure("Subheading.TLabel",
+                       font=FONTS['subheading'],
+                       foreground=COLORS['text_secondary'])
+
     def _load_knowledge_base(self):
         """Load persistent knowledge base from markdown file (highest priority source)."""
         import os
@@ -690,7 +736,7 @@ class App:
         ctrl_frame.pack(side=tk.RIGHT, fill=tk.Y)
         self.lbl_device = ttk.Label(ctrl_frame, text="Device: Not connected", font=("", 10, "bold"))
         self.lbl_device.pack(side=tk.LEFT, padx=10)
-        self.btn_scan = ttk.Button(ctrl_frame, text="🔍 Scan Device", command=self._on_scan)
+        self.btn_scan = ttk.Button(ctrl_frame, text="🔍 Scan Device", style="Primary.TButton", command=self._on_scan)
         self.btn_scan.pack(side=tk.LEFT, padx=2)
         self.btn_refresh_running = ttk.Button(ctrl_frame, text="🔄 Refresh Running", command=self._on_refresh_running)
         self.btn_refresh_running.pack(side=tk.LEFT, padx=2)
@@ -996,7 +1042,7 @@ class App:
         ttk.Button(af, text="⏹️ Force Stop", command=lambda: self._do_action("force_stop")).pack(side=tk.RIGHT, padx=4)
         ttk.Button(af, text="✅ Enable", command=lambda: self._do_action("enable")).pack(side=tk.RIGHT, padx=4)
         ttk.Button(af, text="🚫 Disable", command=lambda: self._do_action("disable")).pack(side=tk.RIGHT, padx=4)
-        ttk.Button(af, text="🗑️ Uninstall", command=lambda: self._do_action("uninstall")).pack(side=tk.RIGHT, padx=4)
+        ttk.Button(af, text="🗑️ Uninstall", style="Danger.TButton", command=lambda: self._do_action("uninstall")).pack(side=tk.RIGHT, padx=4)
 
         # ── Status Bar ──
         self.lbl_status = ttk.Label(self.root, text="Ready — connect device and press Scan",
