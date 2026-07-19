@@ -769,6 +769,16 @@ class App:
                                      highlightbackground="#d2d2d7", highlightcolor=COLORS['primary'])
         self.search_entry.pack(side=tk.LEFT, padx=(4, 10), fill=tk.X, expand=True)
 
+        # Clear search button
+        self.btn_clear_search = ttk.Button(sf, text="✖", width=3, 
+                                          command=self._clear_search)
+        self.btn_clear_search.pack(side=tk.LEFT, padx=(0, 10))
+        
+        # Results counter label
+        self.lbl_search_results = ttk.Label(sf, text="", font=FONTS['small'], 
+                                           foreground=COLORS['text_secondary'])
+        self.lbl_search_results.pack(side=tk.LEFT, padx=(0, 10))
+
         # Safety Toggle
         self.chk_safety = ttk.Checkbutton(
             sf, text="Sembunyikan Aplikasi Sistem Inti",
@@ -1239,6 +1249,11 @@ class App:
         self.stat_labels["user"].config(text=str(usr_count))
         self.stat_labels["disabled"].config(text=str(dis_count))
     # ── Filter ──
+    def _clear_search(self):
+        """Clear search field and reset filter."""
+        self.search_var.set("")
+        self.search_entry.focus()
+
     def _apply_filter(self):
         query = self.search_var.get().lower()
 
@@ -1303,6 +1318,16 @@ class App:
                             tags=tuple(row_tags))
 
     # ── Actions ──
+
+        # Update search results counter
+        query = self.search_var.get().strip()
+        if query:
+            total_results = sum(len(tree.get_children()) for tree in self.trees.values())
+            self.lbl_search_results.config(text=f"{total_results} results")
+            self.btn_clear_search.config(state="normal")
+        else:
+            self.lbl_search_results.config(text="")
+            self.btn_clear_search.config(state="disabled")
     def _get_selected(self):
         return [pkg for pkg, selected in self.check_vars.items() if selected]
 
