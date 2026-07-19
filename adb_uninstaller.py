@@ -600,8 +600,8 @@ class App:
     def __init__(self, root):
         self.root = root
         self.root.title("ADB Uninstaller — Android Debloater")
-        self.root.geometry("1150x680")  # Made wider for proportional view
-        self.root.minsize(900, 500)
+        self.root.geometry("1400x800")  # Increased for better visibility
+        self.root.minsize(1200, 700)  # Increased minimum size
 
         self.adb = ADBController()
         self.adb.app = self  # Enable verbose logging
@@ -856,9 +856,6 @@ class App:
                                      highlightthickness=0, 
                                      padx=0, pady=0)
         self.ai_status_dot.pack(side=tk.LEFT, padx=(4, 0))
-        self.ai_status_dot.bind("<Button-1>", lambda e: self._show_ai_status_tooltip())
-        self.ai_status_dot = tk.Label(actions_group, text="●", font=("", 10, "bold"), fg="#34c759", cursor="hand2", borderwidth=0, relief=tk.FLAT, highlightthickness=0, padx=0, pady=0)
-        self.ai_status_dot.pack(side=tk.LEFT, padx=(4, 0), pady=0)
         self.ai_status_dot.bind("<Button-1>", lambda e: self._show_ai_status_tooltip())
 
         # ── Progress ──
