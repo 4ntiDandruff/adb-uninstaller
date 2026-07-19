@@ -924,9 +924,6 @@ class App:
         
         # Log entry counter
         self.log_entry_count = 0
-        self.lbl_log_count = ttk.Label(log_controls_left, text="0 entries", font=FONTS['small'], 
-                                        foreground=COLORS['text_secondary'])
-        self.lbl_log_count.pack(side=tk.LEFT, padx=10)
         
         # Log filter dropdown
         ttk.Label(log_controls_left, text="Filter:", font=FONTS['small']).pack(side=tk.LEFT, padx=(10, 2))
@@ -1650,7 +1647,6 @@ class App:
         # Update counter
         count = self.log_entry_count + 1
         self.log_entry_count = count
-        self.lbl_log_count.config(text=f"{count} entries")
 
     def _log_threadsafe(self, msg, tag):
         self.log_text.config(state=tk.NORMAL)
@@ -1684,7 +1680,6 @@ class App:
             self.log_text.delete("1.0", tk.END)
             self.log_text.config(state=tk.DISABLED)
             self.log_entry_count = 0
-            self.lbl_log_count.config(text="0 entries")
     
     def _export_log(self):
         """Export log to a text file."""
