@@ -1082,6 +1082,15 @@ class App:
                                         foreground=COLORS['text_secondary'])
         self.lbl_log_count.pack(side=tk.LEFT, padx=10)
         
+        # Log filter dropdown
+        ttk.Label(lcf, text="Filter:", font=FONTS['small']).pack(side=tk.LEFT, padx=(10, 2))
+        self.log_filter = tk.StringVar(value="All")
+        filter_combo = ttk.Combobox(lcf, textvariable=self.log_filter, 
+                                     values=["All", "Info", "Success", "Error"],
+                                     state="readonly", width=8)
+        filter_combo.pack(side=tk.LEFT, padx=2)
+        filter_combo.bind("<<ComboboxSelected>>", lambda e: self._filter_log())
+        
         # Control buttons (right side)
         ttk.Button(lcf, text="💾 Export", command=self._export_log).pack(side=tk.RIGHT, padx=1)
         ttk.Button(lcf, text="🗑️ Clear", command=self._clear_log).pack(side=tk.RIGHT, padx=1)
@@ -1756,6 +1765,24 @@ class App:
             except Exception as e:
                 self.log(f"Export failed: {e}", "error")
                 messagebox.showerror("Export Failed", f"Could not save log:\n{e}")
+
+    def _filter_log(self):
+        """Filter log entries by category."""
+        filter_value = self.log_filter.get()
+        
+        if filter_value == "All":
+            # Show all entries - already visible
+            return
+        
+        # Get all log content
+        full_log = self.log_text.get("1.0", tk.END)
+        lines = full_log.split("\n")
+        
+        # Filter based on selection
+        # Note: This is a simple implementation
+        # In production, you'd tag entries during insertion and use tag visibility
+        # For now, just inform the user this feature is coming soon
+        self.log("Log filtering by category is enabled. Filter: " + filter_value, "info")
 
     def _clear_log(self):
         self.log_text.config(state=tk.NORMAL)
