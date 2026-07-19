@@ -1106,10 +1106,18 @@ class App:
         lbl_red = tk.Label(legend_frame, text=" Sistem Inti ", bg="#ffebec", fg="#d32f2f", bd=1, relief="solid", font=("Inter", 8, "bold"))
         lbl_red.pack(side=tk.LEFT, padx=3)
 
-        ttk.Button(af, text="⏹️ Force Stop", command=lambda: self._do_action("force_stop")).pack(side=tk.RIGHT, padx=4)
-        ttk.Button(af, text="✅ Enable", command=lambda: self._do_action("enable")).pack(side=tk.RIGHT, padx=4)
-        ttk.Button(af, text="🚫 Disable", command=lambda: self._do_action("disable")).pack(side=tk.RIGHT, padx=4)
-        ttk.Button(af, text="🗑️ Uninstall", style="Danger.TButton", command=lambda: self._do_action("uninstall")).pack(side=tk.RIGHT, padx=4)
+        # Action Buttons Group (SamFw-style)
+        action_buttons_frame = ttk.LabelFrame(af, text="Actions", padding=6)
+        action_buttons_frame.pack(side=tk.RIGHT, padx=(10, 0))
+        
+        ttk.Button(action_buttons_frame, text="🗑️ Uninstall", style="Danger.TButton", 
+                  command=lambda: self._do_action("uninstall")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(action_buttons_frame, text="🚫 Disable", 
+                  command=lambda: self._do_action("disable")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(action_buttons_frame, text="✅ Enable", 
+                  command=lambda: self._do_action("enable")).pack(side=tk.LEFT, padx=2)
+        ttk.Button(action_buttons_frame, text="⏹️ Force Stop", 
+                  command=lambda: self._do_action("force_stop")).pack(side=tk.LEFT, padx=2)
 
         # ── Status Bar ──
         self.lbl_status = ttk.Label(self.root, text="Ready — connect device and press Scan",
