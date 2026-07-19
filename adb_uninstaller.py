@@ -610,6 +610,7 @@ class App:
         
         self._build_ui()
         self._setup_styles()  # Apply custom widget styles
+        self._setup_keyboard_shortcuts()  # Setup keyboard shortcuts
         # Set initial layout sash position (70% left, 30% right) after UI loads
         self.root.update()
         self.paned.sashpos(0, 820)
@@ -670,6 +671,62 @@ class App:
         style.configure("Subheading.TLabel",
                        font=FONTS['subheading'],
                        foreground=COLORS['text_secondary'])
+
+    def _setup_keyboard_shortcuts(self):
+        """Setup keyboard shortcuts for quick actions."""
+        # Ctrl+A: Select all visible items in current tab
+        self.root.bind('<Control-a>', lambda e: self._handle_ctrl_a())
+        
+        # Ctrl+F: Focus search field
+        self.root.bind('<Control-f>', lambda e: self._handle_ctrl_f())
+        
+        # Delete: Uninstall selected
+        self.root.bind('<Delete>', lambda e: self._handle_delete())
+        
+        # F5: Refresh (scan device)
+        self.root.bind('<F5>', lambda e: self._on_scan())
+        
+        # Escape: Clear selection / clear search
+        self.root.bind('<Escape>', lambda e: self._handle_escape())
+    
+    def _handle_ctrl_a(self):
+        """Handle Ctrl+A: Select all visible items."""
+        # Skip if typing in search field
+        if self.root.focus_get() == self.search_entry:
+            return
+        
+        # Select all in current tab
+        self._select_all()
+        return "break"  # Prevent default behavior
+    
+    def _handle_ctrl_f(self):
+        """Handle Ctrl+F: Focus search field."""
+        self.search_entry.focus()
+        self.search_entry.select_range(0, tk.END)
+        return "break"
+    
+    def _handle_delete(self):
+        """Handle Delete key: Uninstall selected items."""
+        # Skip if typing in a text field
+        focus_widget = self.root.focus_get()
+        if isinstance(focus_widget, (tk.Entry, tk.Text)):
+            return
+        
+        # Check if any items selected
+        selected = self._get_selected()
+        if selected:
+            self._do_action("uninstall")
+        return "break"
+    
+    def _handle_escape(self):
+        """Handle Escape: Clear selection or search."""
+        # If search has text, clear it
+        if self.search_var.get():
+            self._clear_search()
+        else:
+            # Otherwise clear selection
+            self._deselect_all()
+        return "break"
 
     def _load_knowledge_base(self):
         """Load persistent knowledge base from markdown file (highest priority source)."""
