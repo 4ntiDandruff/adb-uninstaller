@@ -854,11 +854,32 @@ class App:
         self.ai_status_dot.bind("<Button-1>", lambda e: self._show_ai_status_tooltip())
 
         # ── Progress ──
+        # ── Enhanced Progress Indicators ──
+        progress_container = ttk.Frame(self.root)
+        progress_container.pack(fill=tk.X, padx=8, pady=4)
+        
+        # Operation status label (left)
+        self.lbl_operation = ttk.Label(progress_container, text="", font=FONTS['body_bold'],
+                                       foreground=COLORS['primary'])
+        self.lbl_operation.pack(side=tk.LEFT, padx=(0, 10))
+        
+        # Progress bar (center, expandable)
+        progress_frame = ttk.Frame(progress_container)
+        progress_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        
         self.progress_var = tk.DoubleVar()
-        self.progress = ttk.Progressbar(self.root, variable=self.progress_var, maximum=100)
-        self.progress.pack(fill=tk.X, padx=8)
-        self.lbl_progress = ttk.Label(self.root, text="", anchor=tk.W)
-        self.lbl_progress.pack(fill=tk.X, padx=8)
+        self.progress = ttk.Progressbar(progress_frame, variable=self.progress_var, maximum=100)
+        self.progress.pack(fill=tk.X)
+        
+        # Progress detail label (below bar)
+        self.lbl_progress = ttk.Label(progress_frame, text="", anchor=tk.W, font=FONTS['small'])
+        self.lbl_progress.pack(fill=tk.X)
+        
+        # Time estimate label (right)
+        self.lbl_time_est = ttk.Label(progress_container, text="", font=FONTS['small'],
+                                      foreground=COLORS['text_secondary'])
+        self.lbl_time_est.pack(side=tk.RIGHT, padx=(10, 0))
+
 
         # ── Search & Filter Panel ──
         sf = ttk.Frame(self.root, padding=(8, 8))
@@ -1333,9 +1354,24 @@ class App:
         self.lbl_status.config(text=f"Running apps: {count} user app(s) active in background")
         self.log(f"Running apps updated. {count} aplikasi terdeteksi aktif.", "success")
 
-    def _update_progress(self, pct, msg):
+    def _update_progress(self, pct, msg, operation=""):
+        """Update progress bar with percentage, message, and optional operation type."""
         self.progress_var.set(pct)
         self.lbl_progress.config(text=msg)
+        
+        # Update operation label if provided
+        if operation:
+            self.lbl_operation.config(text=operation)
+        
+        # Calculate time estimate (simple implementation)
+        if pct > 0 and pct < 100:
+            # This is a placeholder - real implementation would track start time
+            self.lbl_time_est.config(text="Processing...")
+        elif pct >= 100:
+            self.lbl_time_est.config(text="✅ Complete")
+            self.lbl_operation.config(text="")
+        else:
+            self.lbl_time_est.config(text="")
 
     def _update_specs_ui(self, specs):
         for k, v in specs.items():
