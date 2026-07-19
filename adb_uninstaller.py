@@ -789,21 +789,39 @@ class App:
         ttk.Label(title_frame, text="Versi 1.15", font=("", 9, "italic"), foreground=COLORS['text_muted']).pack(anchor=tk.W)
 
         # Device & Control Buttons
-        ctrl_frame = ttk.Frame(hdr_main)
-        ctrl_frame.pack(side=tk.RIGHT, fill=tk.Y)
-        self.lbl_device = ttk.Label(ctrl_frame, text="Device: Not connected", font=("", 10, "bold"))
-        self.lbl_device.pack(side=tk.LEFT, padx=10)
-        self.btn_scan = ttk.Button(ctrl_frame, text="🔍 Scan Device", style="Primary.TButton", command=self._on_scan)
-        self.btn_scan.pack(side=tk.LEFT, padx=2)
-        self.btn_refresh_running = ttk.Button(ctrl_frame, text="🔄 Refresh Running", command=self._on_refresh_running)
-        self.btn_refresh_running.pack(side=tk.LEFT, padx=2)
-        self.btn_toggle_ai = ttk.Button(ctrl_frame, text="⚙️ AI Config", command=self._toggle_ai_panel)
-        self.btn_toggle_ai.pack(side=tk.LEFT, padx=2)
+        # ── Enhanced Control Bar (SamFw-style grouped) ──
+        ctrl_container = ttk.Frame(hdr_main)
+        ctrl_container.pack(side=tk.RIGHT, fill=tk.Y)
         
-        # AI Status Indicator Dot (Handy-style) - Use tk.Label for color control
-        self.ai_status_dot = tk.Label(ctrl_frame, text="●", font=("", 14, "bold"), 
-                                       fg="#9e9e9e", bg="#f5f5f7", cursor="hand2")
-        self.ai_status_dot.pack(side=tk.LEFT, padx=(0, 4))
+        # Device Info Group
+        device_group = ttk.LabelFrame(ctrl_container, text="📱 Device", padding=6)
+        device_group.pack(side=tk.LEFT, padx=(0, 8))
+        self.lbl_device = ttk.Label(device_group, text="Not connected", font=FONTS['body_bold'])
+        self.lbl_device.pack()
+        
+        # Action Buttons Group
+        actions_group = ttk.LabelFrame(ctrl_container, text="Quick Actions", padding=6)
+        actions_group.pack(side=tk.LEFT)
+        
+        # Scan button (Primary, prominent)
+        self.btn_scan = ttk.Button(actions_group, text="🔍 Scan Device", 
+                                   style="Primary.TButton", command=self._on_scan)
+        self.btn_scan.pack(side=tk.LEFT, padx=2)
+        
+        # Other action buttons
+        self.btn_refresh_running = ttk.Button(actions_group, text="🔄 Refresh", 
+                                             command=self._on_refresh_running)
+        self.btn_refresh_running.pack(side=tk.LEFT, padx=2)
+        
+        # AI Config with status dot
+        ai_frame = ttk.Frame(actions_group)
+        ai_frame.pack(side=tk.LEFT, padx=2)
+        self.btn_toggle_ai = ttk.Button(ai_frame, text="⚙️ AI Config", 
+                                       command=self._toggle_ai_panel)
+        self.btn_toggle_ai.pack(side=tk.LEFT)
+        self.ai_status_dot = tk.Label(ai_frame, text="●", font=("", 12, "bold"), 
+                                     fg="#9e9e9e", cursor="hand2")
+        self.ai_status_dot.pack(side=tk.LEFT, padx=(2, 0))
         self.ai_status_dot.bind("<Button-1>", lambda e: self._show_ai_status_tooltip())
 
         # ── Progress ──
