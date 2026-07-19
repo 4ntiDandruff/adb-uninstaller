@@ -1011,67 +1011,6 @@ class App:
         self.btn_apply_ai = ttk.Button(btn_row, text="💾 Apply & Save", command=self._on_apply_ai)
         self.btn_apply_ai.pack(fill=tk.X)
 
-        # Device Specs Frame
-        self.specs_frame = ttk.LabelFrame(self.right_container, text="📱 SPESIFIKASI DEVICE", padding=8, relief="solid", borderwidth=1)
-        self.specs_frame.pack(fill=tk.X, pady=(0, 6))
-
-        self.specs_labels = {}
-        for spec_key, label_text in [
-            ("brand", "Manufacturer:"),
-            ("model", "Model:"),
-            ("release", "Android Version:"),
-            ("sdk", "API Level:"),
-            ("abi", "Architecture:"),
-            ("serial", "Serial Number:"),
-            ("battery", "Battery Level:"),
-            ("resolution", "Resolution:"),
-            ("build", "Build Number:"),
-            ("security_patch", "Security Patch:")
-        ]:
-            f = ttk.Frame(self.specs_frame)
-            f.pack(fill=tk.X, pady=2)
-            # Label (muted gray, 9pt)
-            lbl = ttk.Label(f, text=f"{label_text:<18}", font=("Consolas", 9), foreground=COLORS['text_muted'])
-            lbl.pack(side=tk.LEFT)
-            # Value (bold orange, 10pt)
-            self.specs_labels[spec_key] = ttk.Label(f, text="N/A", font=("", 10, "bold"), foreground=COLORS['warning'])
-            self.specs_labels[spec_key].pack(side=tk.LEFT, padx=4)
-
-
-        # Statistics Card
-        self.stats_frame = ttk.LabelFrame(self.right_container, text="📊 STATISTIK APLIKASI", padding=8, relief="solid", borderwidth=1)
-        self.stats_frame.pack(fill=tk.X, pady=(0, 6))
-        
-        # Create 2x2 grid for stats
-        stats_grid = ttk.Frame(self.stats_frame)
-        stats_grid.pack(fill=tk.X)
-        
-        # Initialize stat labels dict
-        self.stat_labels = {}
-        
-        # Stat items: (key, label, row, col, color)
-        stats_config = [
-            ("total", "Total", 0, 0, COLORS['primary']),      # Blue
-            ("system", "System", 0, 1, "#5856d6"),    # Purple
-            ("user", "User", 1, 0, "#34c759"),        # Green
-            ("disabled", "Disabled", 1, 1, COLORS['warning']) # Orange
-        ]
-        
-        for key, label, row, col, color in stats_config:
-            frame = ttk.Frame(stats_grid)
-            frame.grid(row=row, column=col, padx=4, pady=4, sticky="ew")
-            
-            # Label
-            ttk.Label(frame, text=label, font=("", 9), foreground=COLORS['text_muted']).pack(anchor=tk.W)
-            
-            # Value (large, colored)
-            self.stat_labels[key] = ttk.Label(frame, text="0", font=("", 18, "bold"), foreground=color)
-            self.stat_labels[key].pack(anchor=tk.W)
-        
-        # Configure grid columns to expand equally
-        stats_grid.columnconfigure(0, weight=1)
-        stats_grid.columnconfigure(1, weight=1)
-
         # Layout strategy: Log takes ALL available vertical space
         # Device Specs and Stats are compact (fill X only)
         # Log expands to fill remaining space (BOTH + expand=True)
@@ -1391,10 +1330,21 @@ class App:
             self.lbl_time_est.config(text="")
 
     def _update_specs_ui(self, specs):
-        for k, v in specs.items():
-            if k in self.specs_labels:
-                self.specs_labels[k].config(text=v)
-        self.log(f"Specs loaded: Brand={specs['brand']}, OS={specs['release']}, API={specs['sdk']}", "info")
+        """Log device specs instead of displaying in panel."""
+        self.log("=" * 60, "info")
+        self.log("📱 DEVICE INFORMATION", "success")
+        self.log("=" * 60, "info")
+        self.log(f"  Manufacturer    : {specs.get('brand', 'N/A')}", "info")
+        self.log(f"  Model           : {specs.get('model', 'N/A')}", "info")
+        self.log(f"  Android Version : {specs.get('release', 'N/A')}", "info")
+        self.log(f"  API Level       : {specs.get('sdk', 'N/A')}", "info")
+        self.log(f"  Architecture    : {specs.get('abi', 'N/A')}", "info")
+        self.log(f"  Serial Number   : {specs.get('serial', 'N/A')}", "info")
+        self.log(f"  Battery Level   : {specs.get('battery', 'N/A')}", "info")
+        self.log(f"  Resolution      : {specs.get('resolution', 'N/A')}", "info")
+        self.log(f"  Build Number    : {specs.get('build', 'N/A')}", "info")
+        self.log(f"  Security Patch  : {specs.get('security_patch', 'N/A')}", "info")
+        self.log("=" * 60, "info")
 
     def _scan_done(self, packages, error):
         self.btn_scan.config(state=tk.NORMAL)
@@ -1417,6 +1367,21 @@ class App:
         self.check_vars = {p["pkg"]: False for p in packages}
         self._apply_filter()
         
+        # Log statistics instead of displaying in panel
+        system_count = len([p for p in packages if p["category"] == "system"])
+        user_count = len([p for p in packages if p["category"] == "user"])
+        disabled_count = len([p for p in packages if p["status"] == "disabled"])
+        
+        self.log("", "info")
+        self.log("📊 APPLICATION STATISTICS", "success")
+        self.log("=" * 60, "info")
+        self.log(f"  Total Apps    : {len(packages)}", "info")
+        self.log(f"  System Apps   : {system_count}", "info")
+        self.log(f"  User Apps     : {user_count}", "info")
+        self.log(f"  Disabled Apps : {disabled_count}", "info")
+        self.log("=" * 60, "info")
+        self.log("", "info")
+        
         # Trigger background async name resolution for unknown / system-name packages
         if self.ai_url.get().strip():
             threading.Thread(target=self._async_resolve_all_packages, daemon=True).start()
@@ -1438,10 +1403,6 @@ class App:
 
         # Update statistics card
         total_count = len(self.packages)
-        self.stat_labels["total"].config(text=str(total_count))
-        self.stat_labels["system"].config(text=str(sys_count))
-        self.stat_labels["user"].config(text=str(usr_count))
-        self.stat_labels["disabled"].config(text=str(dis_count))
     # ── Filter ──
     def _clear_search(self):
         """Clear search field and reset filter."""
