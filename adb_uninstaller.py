@@ -850,7 +850,10 @@ class App:
         self.btn_toggle_ai = ttk.Button(ai_frame, text="⚙️ AI Config", 
                                        command=self._toggle_ai_panel)
         self.btn_toggle_ai.pack(side=tk.LEFT)
-        self.ai_status_dot = tk.Label(ai_frame, text="●", font=("", 10, "bold"), fg="#9e9e9e", cursor="hand2", borderwidth=0, relief=tk.FLAT, padx=0, pady=0)
+        self.ai_status_dot = tk.Label(ai_frame, text="●", font=("", 10, "bold"), 
+                                     fg="#34c759", bg=COLORS['bg_primary'],
+                                     cursor="hand2", borderwidth=0, relief=tk.FLAT, 
+                                     highlightthickness=0, padx=0, pady=0)
         self.ai_status_dot.pack(side=tk.LEFT, padx=(4, 0), pady=0)
         self.ai_status_dot.bind("<Button-1>", lambda e: self._show_ai_status_tooltip())
 
