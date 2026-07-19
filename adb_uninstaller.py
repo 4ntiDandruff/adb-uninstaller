@@ -849,9 +849,6 @@ class App:
         self.btn_toggle_ai = ttk.Button(actions_group, text="⚙️ AI Config", 
                                        command=self._toggle_ai_panel)
         self.btn_toggle_ai.pack(side=tk.LEFT)
-        self.ai_status_dot = tk.Label(actions_group, text="●", font=("", 10, "bold"), fg="#34c759", cursor="hand2", borderwidth=0, relief=tk.FLAT, highlightthickness=0, padx=0, pady=0)
-        self.ai_status_dot.pack(side=tk.LEFT, padx=(4, 0), pady=0)
-        self.ai_status_dot.bind("<Button-1>", lambda e: self._show_ai_status_tooltip())
 
         # ── Progress ──
         # ── Enhanced Progress Indicators ──
@@ -1947,7 +1944,6 @@ class App:
             'error': ('#f44336', 'Koneksi AI gagal')                 # Red
         }
         color, tooltip = status_map.get(status, ('#9e9e9e', 'Unknown'))
-        self.ai_status_dot.config(fg=color)
         self.ai_status_tooltip = tooltip
     
     def _show_ai_status_tooltip(self):
