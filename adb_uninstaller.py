@@ -600,7 +600,7 @@ class App:
     def __init__(self, root):
         self.root = root
         self.root.title("ADB Uninstaller — Android Debloater")
-        self.root.geometry("1400x800")  # Increased for better visibility
+        self.root.geometry("1450x820")  # Adjusted for full visibility
         self.root.minsize(1200, 700)  # Increased minimum size
 
         self.adb = ADBController()
@@ -960,7 +960,7 @@ class App:
         self.search_var = tk.StringVar()
         self.search_var.trace_add("write", lambda *_: self._apply_filter())
         # Use standard tk.Entry or configure styling for entries
-        self.search_entry = tk.Entry(sf, textvariable=self.search_var, width=30, 
+        self.search_entry = tk.Entry(sf, textvariable=self.search_var, width=25,
                                      bg=COLORS['bg_primary'], fg=COLORS['text_primary'], insertbackground=COLORS['primary'],
                                      bd=1, relief=tk.SOLID, highlightthickness=1,
                                      highlightbackground="#d2d2d7", highlightcolor=COLORS['primary'])
@@ -1031,9 +1031,9 @@ class App:
 
             tree.column("sel", width=40, anchor=tk.CENTER, stretch=False)
             tree.column("no", width=50, anchor=tk.CENTER, stretch=False)
-            tree.column("package", width=320, anchor=tk.W, stretch=True)
+            tree.column("package", width=220, anchor=tk.W, stretch=True)
             tree.column("app_name", width=220, anchor=tk.W, stretch=True)
-            tree.column("status", width=70, anchor=tk.CENTER, stretch=False)
+            tree.column("status", width=110, anchor=tk.CENTER, stretch=False)
 
             # Light theme row colors with subtle alternating pattern
             # Professional desaturated palette
@@ -1092,9 +1092,6 @@ class App:
                   command=lambda: self._do_action("force_stop")).pack(side=tk.LEFT, padx=2)
 
         # ── Status Bar ──
-        self.lbl_status = ttk.Label(self.root, text="Ready — connect device and press Scan",
-                                    relief=tk.SUNKEN, anchor=tk.W, padding=4)
-        self.lbl_status.pack(fill=tk.X, side=tk.BOTTOM)
 
         # Pack the middle paned window LAST so it occupies only the remaining space (prevents layout cropping)
         # Pack main notebook
@@ -1172,7 +1169,6 @@ class App:
             self._remove_scan_glow()
         
         self.btn_scan.config(state=tk.DISABLED)
-        self.lbl_status.config(text="Scanning...")
         self.log("Memulai scan device...", "info")
         self.progress_var.set(0)
         threading.Thread(target=self._scan_thread, daemon=True).start()
@@ -1216,7 +1212,6 @@ class App:
             messagebox.showinfo("No Data", "Scan device first before refreshing running apps.")
             return
         self.btn_refresh_running.config(state=tk.DISABLED)
-        self.lbl_status.config(text="Refreshing running apps...")
         self.log("Memperbarui daftar running apps...", "info")
         threading.Thread(target=self._refresh_running_thread, daemon=True).start()
 
@@ -1231,7 +1226,6 @@ class App:
         self._apply_filter()
         count = len(running)
         self.notebook.tab(3, text=f"🏃 Running Apps ({count})")
-        self.lbl_status.config(text=f"Running apps: {count} user app(s) active in background")
         self.log(f"Running apps updated. {count} aplikasi terdeteksi aktif.", "success")
 
     def _update_progress(self, pct, msg, operation=""):
@@ -1275,7 +1269,6 @@ class App:
         self.progress_var.set(100)
         if error:
             self.lbl_device.config(text="🔴 Disconnected", foreground="#ff3b30")
-            self.lbl_status.config(text=f"Error: {error}")
             self.lbl_progress.config(text="")
             self.log(f"Scan gagal: {error}", "error")
             messagebox.showerror("Error", error)
@@ -1314,7 +1307,6 @@ class App:
         total = len(packages)
         sys_c = sum(1 for p in packages if p["category"] == "system")
         usr_c = total - sys_c
-        self.lbl_status.config(text=f"Scan complete — {total} packages ({sys_c} system, {usr_c} user)")
 
     def _update_tab_counts(self):
         sys_count = sum(1 for p in self.packages if p["category"] == "system" and p["status"] == "enabled")
@@ -1614,7 +1606,6 @@ class App:
             msg += "\n\nErrors:\n" + "\n".join(results["errors"][:10])
 
         # Thread-safe label updates
-        self.root.after(0, lambda: self.lbl_status.config(text=msg.split("\n")[0]))
         self.root.after(0, lambda: self.lbl_progress.config(text=""))
         self.log(f"Aksi selesai. Sukses: {len(results['success'])}, Gagal: {results['fail']}", "info" if results['fail'] == 0 else "error")
         self.root.after(0, lambda: messagebox.showinfo("Results", msg))
