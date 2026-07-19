@@ -623,6 +623,9 @@ class App:
         
         # Auto-scan device on startup (500ms delay for UI init)
         self.root.after(1500, self._on_scan)
+
+        # Start live update timers
+        self.root.after(3000, self._start_live_updates)
         
         # Silent AI auto-test on startup (if config exists)
         if self.ai_url.get().strip():
@@ -1336,6 +1339,88 @@ class App:
         """Clear search field and reset filter."""
         self.search_var.set("")
         self.search_entry.focus()
+
+    def _start_live_updates(self):
+        """Start background live update timers."""
+        # Device connection status check (every 5 seconds)
+        self._check_device_status_timer()
+        
+        # Running apps auto-refresh (every 15 seconds)
+        self._auto_refresh_running_timer()
+    
+    def _check_device_status_timer(self):
+        """Poll device connection status periodically."""
+        try:
+            # Check if device is still connected
+            result = subprocess.run(
+                ["adb", "devices"],
+                capture_output=True,
+                text=True,
+                timeout=2
+            )
+            
+            devices = [line for line in result.stdout.splitlines() 
+                      if line and "\t" in line and "device" in line]
+            
+            # Update UI if status changed
+            if devices and not hasattr(self, '_device_connected'):
+                # Device just connected
+                self._device_connected = True
+            elif not devices and getattr(self, '_device_connected', False):
+                # Device just disconnected
+                self._device_connected = False
+                self.lbl_device.config(text="🔴 Disconnected", 
+                                      foreground=COLORS['error'])
+        except:
+            pass
+        
+        # Schedule next check (5 seconds)
+        self._device_status_timer = self.root.after(5000, self._check_device_status_timer)
+    
+    def _auto_refresh_running_timer(self):
+        """Auto-refresh running apps periodically."""
+        # Only auto-refresh if device connected and apps scanned
+        if hasattr(self, 'device_info') and self.device_info and self.all_packages:
+            try:
+                # Silently refresh running apps count
+                self._refresh_running_apps_silent()
+            except:
+                pass
+        
+        # Schedule next refresh (15 seconds)
+        self._running_refresh_timer = self.root.after(15000, self._auto_refresh_running_timer)
+    
+    def _refresh_running_apps_silent(self):
+        """Refresh running apps without blocking UI or showing progress."""
+        try:
+            result = subprocess.run(
+                ["adb", "shell", "dumpsys", "activity", "processes"],
+                capture_output=True,
+                text=True,
+                timeout=3
+            )
+            
+            running_pkgs = set()
+            for line in result.stdout.splitlines():
+                if "ProcessRecord" in line:
+                    parts = line.split()
+                    for part in parts:
+                        if "/" in part and ":" in part:
+                            pkg = part.split("/")[0].split(":")[-1]
+                            if pkg in self.all_packages:
+                                running_pkgs.add(pkg)
+            
+            # Update running apps data
+            old_count = len(self.running_packages)
+            self.running_packages = running_pkgs
+            new_count = len(running_pkgs)
+            
+            # Update tab label if count changed
+            if old_count != new_count:
+                self.notebook.tab(3, text=f"🏃 Running Apps ({new_count})")
+                self._apply_filter()
+        except:
+            pass
 
     def _apply_filter(self):
         query = self.search_var.get().lower()
