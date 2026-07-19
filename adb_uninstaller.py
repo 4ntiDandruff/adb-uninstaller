@@ -16,6 +16,57 @@ import os
 
 # ─── Critical packages: double-confirm before any action ───
 # AI Prompt Templates
+
+# ═══════════════════════════════════════════════════════════════
+# THEME CONSTANTS — SamFw-Inspired Color Palette & Typography
+# ═══════════════════════════════════════════════════════════════
+
+COLORS = {
+    # Primary Colors
+    "primary": "#2563EB",           # Blue
+    "primary_hover": "#1D4ED8",     # Darker blue
+    "secondary": "#7C3AED",         # Purple
+    "accent": "#8B5CF6",            # Light purple
+    
+    # Status Colors
+    "success": "#059669",           # Green
+    "error": "#DC2626",             # Red
+    "warning": "#D97706",           # Orange
+    "info": "#0891B2",              # Cyan
+    
+    # Semantic UI Colors
+    "user_app": "#34C759",          # Green (user apps)
+    "system_app": "#5856D6",        # Purple (system apps)
+    "disabled_app": "#FF9500",      # Orange (disabled)
+    "running_app": "#007AFF",       # Blue (running)
+    
+    # Neutrals
+    "bg_primary": "#FFFFFF",        # White
+    "bg_secondary": "#F9FAFB",      # Light gray
+    "border": "#E5E7EB",            # Border
+    "text_primary": "#1F2937",      # Dark gray
+    "text_secondary": "#6B7280",    # Medium gray
+    "text_muted": "#86868B",        # Muted
+    
+    # Interactive
+    "hover": "#F3F4F6",             # Hover
+    "selected": "#E3F2FD",          # Selected
+    "checked": "#DBEAFE",           # Checked
+}
+
+FONTS = {
+    "heading_large": ("Segoe UI", 16, "bold"),
+    "heading": ("Segoe UI", 14, "bold"),
+    "subheading": ("Segoe UI", 12, "bold"),
+    "body": ("Segoe UI", 11),
+    "body_bold": ("Segoe UI", 11, "bold"),
+    "small": ("Segoe UI", 10),
+    "mono": ("Consolas", 10),
+    "mono_small": ("Consolas", 9),
+    "stat_value": ("Segoe UI", 18, "bold"),
+    "stat_label": ("Segoe UI", 9),
+}
+
 PROMPT_TEMPLATES = {
     "default": {
         "name": "Default (Batch JSON)",
@@ -632,7 +683,7 @@ class App:
         title_frame = ttk.Frame(hdr_main, padding=(4, 6))
         title_frame.pack(side=tk.LEFT)
         ttk.Label(title_frame, text="ADB Uninstaller By Megapass Sidoarjo", font=("", 14, "bold")).pack(anchor=tk.W)
-        ttk.Label(title_frame, text="Versi 1.15", font=("", 9, "italic"), foreground="#86868b").pack(anchor=tk.W)
+        ttk.Label(title_frame, text="Versi 1.15", font=("", 9, "italic"), foreground=COLORS['text_muted']).pack(anchor=tk.W)
 
         # Device & Control Buttons
         ctrl_frame = ttk.Frame(hdr_main)
@@ -667,9 +718,9 @@ class App:
         self.search_var.trace_add("write", lambda *_: self._apply_filter())
         # Use standard tk.Entry or configure styling for entries
         self.search_entry = tk.Entry(sf, textvariable=self.search_var, width=30, 
-                                     bg="#ffffff", fg="#1d1d1f", insertbackground="#007aff",
+                                     bg=COLORS['bg_primary'], fg=COLORS['text_primary'], insertbackground=COLORS['primary'],
                                      bd=1, relief=tk.SOLID, highlightthickness=1,
-                                     highlightbackground="#d2d2d7", highlightcolor="#007aff")
+                                     highlightbackground="#d2d2d7", highlightcolor=COLORS['primary'])
         self.search_entry.pack(side=tk.LEFT, padx=(4, 10), fill=tk.X, expand=True)
 
         # Safety Toggle
@@ -706,24 +757,24 @@ class App:
         # Base URL row
         f_url = ttk.Frame(self.ai_frame)
         f_url.pack(fill=tk.X, pady=1)
-        ttk.Label(f_url, text="Base URL:", font=("Inter", 9), foreground="#86868b", width=10, anchor=tk.W).pack(side=tk.LEFT)
-        ent_url = tk.Entry(f_url, textvariable=self.ai_url, font=("Inter", 9), bg="#ffffff", fg="#1d1d1f",
+        ttk.Label(f_url, text="Base URL:", font=("Inter", 9), foreground=COLORS['text_muted'], width=10, anchor=tk.W).pack(side=tk.LEFT)
+        ent_url = tk.Entry(f_url, textvariable=self.ai_url, font=("Inter", 9), bg=COLORS['bg_primary'], fg=COLORS['text_primary'],
                            bd=1, relief=tk.SOLID, highlightthickness=0)
         ent_url.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
         
         # API Key row
         f_key = ttk.Frame(self.ai_frame)
         f_key.pack(fill=tk.X, pady=1)
-        ttk.Label(f_key, text="API Key:", font=("Inter", 9), foreground="#86868b", width=10, anchor=tk.W).pack(side=tk.LEFT)
-        ent_key = tk.Entry(f_key, textvariable=self.ai_key, show="*", font=("Inter", 9), bg="#ffffff", fg="#1d1d1f",
+        ttk.Label(f_key, text="API Key:", font=("Inter", 9), foreground=COLORS['text_muted'], width=10, anchor=tk.W).pack(side=tk.LEFT)
+        ent_key = tk.Entry(f_key, textvariable=self.ai_key, show="*", font=("Inter", 9), bg=COLORS['bg_primary'], fg=COLORS['text_primary'],
                            bd=1, relief=tk.SOLID, highlightthickness=0)
         ent_key.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
         
         # Model row WITH inline Test button (Handy-style)
         f_model = ttk.Frame(self.ai_frame)
         f_model.pack(fill=tk.X, pady=1)
-        ttk.Label(f_model, text="Model:", font=("Inter", 9), foreground="#86868b", width=10, anchor=tk.W).pack(side=tk.LEFT)
-        ent_model = tk.Entry(f_model, textvariable=self.ai_model, font=("Inter", 9), bg="#ffffff", fg="#1d1d1f",
+        ttk.Label(f_model, text="Model:", font=("Inter", 9), foreground=COLORS['text_muted'], width=10, anchor=tk.W).pack(side=tk.LEFT)
+        ent_model = tk.Entry(f_model, textvariable=self.ai_model, font=("Inter", 9), bg=COLORS['bg_primary'], fg=COLORS['text_primary'],
                              bd=1, relief=tk.SOLID, highlightthickness=0)
         ent_model.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
         # Inline Test button (⚡ icon)
@@ -751,10 +802,10 @@ class App:
             f = ttk.Frame(self.specs_frame)
             f.pack(fill=tk.X, pady=2)
             # Label (muted gray, 9pt)
-            lbl = ttk.Label(f, text=f"{label_text:<18}", font=("Consolas", 9), foreground="#86868b")
+            lbl = ttk.Label(f, text=f"{label_text:<18}", font=("Consolas", 9), foreground=COLORS['text_muted'])
             lbl.pack(side=tk.LEFT)
             # Value (bold orange, 10pt)
-            self.specs_labels[spec_key] = ttk.Label(f, text="N/A", font=("", 10, "bold"), foreground="#ff9500")
+            self.specs_labels[spec_key] = ttk.Label(f, text="N/A", font=("", 10, "bold"), foreground=COLORS['warning'])
             self.specs_labels[spec_key].pack(side=tk.LEFT, padx=4)
 
 
@@ -771,10 +822,10 @@ class App:
         
         # Stat items: (key, label, row, col, color)
         stats_config = [
-            ("total", "Total", 0, 0, "#007aff"),      # Blue
+            ("total", "Total", 0, 0, COLORS['primary']),      # Blue
             ("system", "System", 0, 1, "#5856d6"),    # Purple
             ("user", "User", 1, 0, "#34c759"),        # Green
-            ("disabled", "Disabled", 1, 1, "#ff9500") # Orange
+            ("disabled", "Disabled", 1, 1, COLORS['warning']) # Orange
         ]
         
         for key, label, row, col, color in stats_config:
@@ -782,7 +833,7 @@ class App:
             frame.grid(row=row, column=col, padx=4, pady=4, sticky="ew")
             
             # Label
-            ttk.Label(frame, text=label, font=("", 9), foreground="#86868b").pack(anchor=tk.W)
+            ttk.Label(frame, text=label, font=("", 9), foreground=COLORS['text_muted']).pack(anchor=tk.W)
             
             # Value (large, colored)
             self.stat_labels[key] = ttk.Label(frame, text="0", font=("", 18, "bold"), foreground=color)
@@ -797,7 +848,7 @@ class App:
         self.log_frame.pack(fill=tk.BOTH, expand=True)
 
         self.log_text = tk.Text(self.log_frame, wrap=tk.WORD, font=("Consolas", 9), state=tk.DISABLED,
-                                bg="#ffffff", fg="#1d1d1f", insertbackground="#007aff", selectbackground="#007aff",
+                                bg=COLORS['bg_primary'], fg=COLORS['text_primary'], insertbackground=COLORS['primary'], selectbackground=COLORS['primary'],
                                 bd=0, relief=tk.FLAT)
         self.log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         
@@ -806,8 +857,8 @@ class App:
         log_scroll.pack(side=tk.RIGHT, fill=tk.Y)
 
         # Setup colors in Log text (Light theme)
-        self.log_text.tag_config("info", foreground="#007aff")  # Bright blue
-        self.log_text.tag_config("success", foreground="#007aff")  # Bright green
+        self.log_text.tag_config("info", foreground=COLORS['primary'])  # Bright blue
+        self.log_text.tag_config("success", foreground=COLORS['primary'])  # Bright green
         self.log_text.tag_config("error", foreground="#ff3b30")  # Soft red
 
         # Log control buttons
@@ -860,16 +911,16 @@ class App:
 
             # Light theme row colors with subtle alternating pattern
             # Professional desaturated palette
-            tree.tag_configure("enabled", background="#ffffff", foreground="#1d1d1f")   # Clean White
-            tree.tag_configure("disabled", background="#f2f2f7", foreground="#8e8e93")  # Soft Cool Gray
+            tree.tag_configure("enabled", background=COLORS['bg_primary'], foreground=COLORS['text_primary'])   # Clean White
+            tree.tag_configure("disabled", background=COLORS['bg_secondary'], foreground="#8e8e93")  # Soft Cool Gray
             tree.tag_configure("critical", background="#ffebec", foreground="#d32f2f")  # Soft desaturated red
             
             # Alternating row backgrounds for better visual separation
             tree.tag_configure("oddrow", background="#fafafa")   # Very light gray for odd rows
-            tree.tag_configure("evenrow", background="#ffffff")  # Pure white for even rows
+            tree.tag_configure("evenrow", background=COLORS['bg_primary'])  # Pure white for even rows
             
             # Visual check states (a clean light accent blue background for selected items to make them highly visible)
-            tree.tag_configure("checked", background="#e3f2fd", foreground="#1d1d1f", font=("Inter", 10, "bold"))  # Clean light blue for checked rows
+            tree.tag_configure("checked", background="#e3f2fd", foreground=COLORS['text_primary'], font=("Inter", 10, "bold"))  # Clean light blue for checked rows
 
             scrollbar = ttk.Scrollbar(container, orient=tk.VERTICAL, command=tree.yview)
             tree.configure(yscrollcommand=scrollbar.set)
@@ -892,10 +943,10 @@ class App:
         legend_frame.pack(side=tk.LEFT, padx=20)
         ttk.Label(legend_frame, text="Legenda Warna:", font=("", 9, "bold")).pack(side=tk.LEFT)
         
-        lbl_green = tk.Label(legend_frame, text=" Aktif ", bg="#ffffff", fg="#1d1d1f", bd=1, relief="solid", font=("Inter", 8, "bold"))
+        lbl_green = tk.Label(legend_frame, text=" Aktif ", bg=COLORS['bg_primary'], fg=COLORS['text_primary'], bd=1, relief="solid", font=("Inter", 8, "bold"))
         lbl_green.pack(side=tk.LEFT, padx=3)
         
-        lbl_orange = tk.Label(legend_frame, text=" Disabled ", bg="#f2f2f7", fg="#8e8e93", bd=1, relief="solid", font=("Inter", 8, "bold"))
+        lbl_orange = tk.Label(legend_frame, text=" Disabled ", bg=COLORS['bg_secondary'], fg="#8e8e93", bd=1, relief="solid", font=("Inter", 8, "bold"))
         lbl_orange.pack(side=tk.LEFT, padx=3)
         
         lbl_red = tk.Label(legend_frame, text=" Sistem Inti ", bg="#ffebec", fg="#d32f2f", bd=1, relief="solid", font=("Inter", 8, "bold"))
@@ -993,7 +1044,7 @@ class App:
             return
         self.device_id = dev_id
         self.device_name = dev_name
-        self.root.after(0, lambda: self.lbl_device.config(text=f"🟢 {dev_name} ({dev_id})", foreground="#007aff"))
+        self.root.after(0, lambda: self.lbl_device.config(text=f"🟢 {dev_name} ({dev_id})", foreground=COLORS['primary']))
         self.root.after(0, lambda: self.log(f"Device terhubung: {dev_name} ({dev_id})", "success"))
         
         # Get specs
@@ -1698,13 +1749,13 @@ def main():
     
     # ── Modern Light Theme (Clean & Bright) ──
     bg_main = "#f5f5f7"       # Light gray background (Apple-style)
-    bg_card = "#ffffff"       # Pure white cards/panels
+    bg_card = COLORS['bg_primary']       # Pure white cards/panels
     bg_input = "#e8e8ea"      # Light gray input fields
-    fg_main = "#1d1d1f"       # Soft black text
-    fg_muted = "#86868b"      # Muted gray text
-    accent = "#ff9500"        # Vibrant orange accent
-    accent_blue = "#007aff"   # Bright blue (focus/links)
-    bg_tree = "#ffffff"       # White table background
+    fg_main = COLORS['text_primary']       # Soft black text
+    fg_muted = COLORS['text_muted']      # Muted gray text
+    accent = COLORS['warning']        # Vibrant orange accent
+    accent_blue = COLORS['primary']   # Bright blue (focus/links)
+    bg_tree = COLORS['bg_primary']       # White table background
     border = "#d2d2d7"        # Subtle border gray
     
     style = ttk.Style()
@@ -1721,24 +1772,24 @@ def main():
                     bordercolor=border, focuscolor=accent_blue, padding=(12, 6),
                     font=("Inter", 9, "bold"), relief="flat")
     style.map("TButton", 
-              background=[("active", accent_blue), ("disabled", "#f2f2f7")], 
-              foreground=[("active", "#ffffff"), ("disabled", "#aeaeb2")],
+              background=[("active", accent_blue), ("disabled", COLORS['bg_secondary'])], 
+              foreground=[("active", COLORS['bg_primary']), ("disabled", "#aeaeb2")],
               bordercolor=[("active", accent_blue), ("!active", border)])
               
     # Modern Apple-style segment tabs
-    style.configure("TNotebook", background=bg_main, bordercolor="#e5e5ea", tabmargins=[2, 4, 2, 0])
-    style.configure("TNotebook.Tab", background="#e5e5ea", foreground=fg_muted, 
-                    bordercolor="#e5e5ea", padding=(14, 6), font=("Inter", 9, "bold"), relief="flat")
+    style.configure("TNotebook", background=bg_main, bordercolor=COLORS['border'], tabmargins=[2, 4, 2, 0])
+    style.configure("TNotebook.Tab", background=COLORS['border'], foreground=fg_muted, 
+                    bordercolor=COLORS['border'], padding=(14, 6), font=("Inter", 9, "bold"), relief="flat")
     style.map("TNotebook.Tab", 
               background=[("selected", bg_card), ("active", "#e0e0e5")], 
               foreground=[("selected", accent_blue), ("active", fg_main)],
-              bordercolor=[("selected", "#e5e5ea"), ("!selected", "#e5e5ea")])
+              bordercolor=[("selected", COLORS['border']), ("!selected", COLORS['border'])])
               
     # Treeview - Professional clean rows
     style.configure("Treeview", background=bg_tree, foreground=fg_main, 
                     fieldbackground=bg_tree, rowheight=28, font=("Inter", 9))
     style.configure("Treeview.Heading", background=bg_card, foreground=fg_main, 
-                    bordercolor="#e5e5ea", padding=6, font=("Inter", 9, "bold"), relief="flat")
+                    bordercolor=COLORS['border'], padding=6, font=("Inter", 9, "bold"), relief="flat")
     
     # Fix Treeview tag background bug in modern Tkinter (Ubuntu/Kubuntu)
     def fixed_map(option):
