@@ -540,34 +540,60 @@ class ADBController:
         return code == 0, out
 
     def get_device_specs(self):
-        """Return dict of hardware specs using a single ADB call."""
+        """Return dict of hardware specs including extended info."""
+        # Batch fetch basic props
         out, code = self.run(
             'shell "getprop ro.product.brand; '
             'getprop ro.product.model; '
             'getprop ro.build.version.release; '
             'getprop ro.build.version.sdk; '
-            'getprop ro.product.cpu.abi"',
+            'getprop ro.product.cpu.abi; '
+            'getprop ro.build.display.id; '
+            'getprop ro.build.version.security_patch"',
             timeout=10
         )
-        if code != 0 or not out:
-            return {
-                "brand": "UNKNOWN", "model": "UNKNOWN", 
-                "release": "UNKNOWN", "sdk": "UNKNOWN", "abi": "UNKNOWN"
-            }
         
-        lines = [line.strip() for line in out.split("\n") if line.strip()]
-        # Ensure we have at least 5 lines (pad if missing)
-        while len(lines) < 5:
-            lines.append("UNKNOWN")
-            
-        return {
-            "brand": lines[0].upper(),
-            "model": lines[1],
-            "release": lines[2],
-            "sdk": lines[3],
-            "abi": lines[4]
+        lines_out = [line.strip() for line in out.split("\n") if line.strip()] if code == 0 else []
+        while len(lines_out) < 7:
+            lines_out.append("UNKNOWN")
+        
+        specs = {
+            "brand": lines_out[0].upper(),
+            "model": lines_out[1],
+            "release": lines_out[2],
+            "sdk": lines_out[3],
+            "abi": lines_out[4],
+            "build": lines_out[5],
+            "security_patch": lines_out[6]
         }
-
+        
+        # Get serial number
+        serial_out, serial_code = self.run("get-serialno", timeout=5)
+        specs["serial"] = serial_out.strip() if serial_code == 0 else "UNKNOWN"
+        
+        # Get battery level
+        battery_out, battery_code = self.run('shell "dumpsys battery | grep level"', timeout=5)
+        if battery_code == 0 and "level:" in battery_out:
+            try:
+                level = battery_out.split("level:")[1].strip().split()[0]
+                specs["battery"] = f"{level}%"
+            except:
+                specs["battery"] = "UNKNOWN"
+        else:
+            specs["battery"] = "UNKNOWN"
+        
+        # Get screen resolution
+        res_out, res_code = self.run('shell "wm size"', timeout=5)
+        if res_code == 0 and "Physical size:" in res_out:
+            try:
+                res = res_out.split("Physical size:")[1].strip().split()[0]
+                specs["resolution"] = res
+            except:
+                specs["resolution"] = "UNKNOWN"
+        else:
+            specs["resolution"] = "UNKNOWN"
+        
+        return specs
 
 class App:
     def __init__(self, root):
@@ -972,7 +998,12 @@ class App:
             ("model", "Model:"),
             ("release", "Android Version:"),
             ("sdk", "API Level:"),
-            ("abi", "Architecture:")
+            ("abi", "Architecture:"),
+            ("serial", "Serial Number:"),
+            ("battery", "Battery Level:"),
+            ("resolution", "Resolution:"),
+            ("build", "Build Number:"),
+            ("security_patch", "Security Patch:")
         ]:
             f = ttk.Frame(self.specs_frame)
             f.pack(fill=tk.X, pady=2)
