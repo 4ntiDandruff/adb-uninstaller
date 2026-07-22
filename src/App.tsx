@@ -249,8 +249,10 @@ export default function App() {
     const pkg = undoStack[undoStack.length - 1];
     setBusy(true);
     try {
-      const { invoke } = await import("@tauri-apps/api/core");
-      await invoke("restore_package", { deviceId, package: pkg });
+      const res = await api.restore(deviceId, pkg);
+      if (!res.success) {
+        throw new Error(res.error ?? "Restore gagal");
+      }
       setUndoStack((u) => u.slice(0, -1));
       toast.success(`Undo: ${pkg} dikembalikan`);
       log({ level: "success", source: "adb", message: `undo: restore ${pkg}` });

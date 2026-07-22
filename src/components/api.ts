@@ -30,6 +30,8 @@ export const api = {
     invoke<CommandResult>("disable_package", { deviceId, package: pkg }),
   enable: (deviceId: string, pkg: string) =>
     invoke<CommandResult>("enable_package", { deviceId, package: pkg }),
+  restore: (deviceId: string, pkg: string) =>
+    invoke<CommandResult>("restore_package", { deviceId, package: pkg }),
   forceStop: (deviceId: string, pkg: string) =>
     invoke<CommandResult>("force_stop_package", { deviceId, package: pkg }),
   clearData: (deviceId: string, pkg: string) =>

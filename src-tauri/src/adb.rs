@@ -235,7 +235,15 @@ pub async fn list_apps(device_id: String) -> Result<Vec<AppInfo>, String> {
         }
         let is_system = system_set.contains(&package_name);
         let is_disabled = disabled_set.contains(&package_name);
-        let is_running = run_out.contains(&package_name);
+        // Exact match: package name harus muncul sebagai token utuh di line proses,
+        // bukan substring dari package lain. Contoh: "com.foo" tidak boleh match "com.foo.bar".
+        let is_running = run_out
+            .lines()
+            .filter(|l| l.contains("ProcessRecord") || l.contains("pid="))
+            .any(|l| {
+                l.split_whitespace()
+                    .any(|tok| tok.trim_end_matches(':').trim_end_matches(',') == package_name)
+            });
 
         apps.push(AppInfo {
             package_name: package_name.clone(),
@@ -270,20 +278,37 @@ pub async fn get_app_size(device_id: String, package: String) -> Result<String, 
         if path.is_empty() {
             continue;
         }
-        // stat -c %s = ukuran byte; fallback parse `ls -la`
+        // Coba `stat -c %s` dulu (GNU coreutils). Kalau gagal (Toybox/BusyBox),
+        // fallback ke `wc -c` yang lebih portable lalu `ls -la`.
+        let mut size_done = false;
         if let Ok((sz, _, 0)) =
             run_adb_device(&device_id, &["shell", "stat", "-c", "%s", path]).await
         {
             if let Ok(b) = sz.trim().parse::<u64>() {
                 total_bytes += b;
-                continue;
+                size_done = true;
             }
         }
-        if let Ok((ll, _, 0)) = run_adb_device(&device_id, &["shell", "ls", "-la", path]).await {
-            let cols: Vec<&str> = ll.split_whitespace().collect();
-            if cols.len() >= 5 {
-                if let Ok(b) = cols[4].parse::<u64>() {
-                    total_bytes += b;
+        if !size_done {
+            if let Ok((wc, _, 0)) =
+                run_adb_device(&device_id, &["shell", "wc", "-c", path]).await
+            {
+                if let Some(num) = wc.split_whitespace().next() {
+                    if let Ok(b) = num.parse::<u64>() {
+                        total_bytes += b;
+                        size_done = true;
+                    }
+                }
+            }
+        }
+        if !size_done {
+            if let Ok((ll, _, 0)) = run_adb_device(&device_id, &["shell", "ls", "-la", path]).await {
+                // Ambil kolom ukuran (biasanya kolom ke-5), skip kolom nama file yang bisa ada spasi
+                let cols: Vec<&str> = ll.split_whitespace().collect();
+                if cols.len() >= 5 {
+                    if let Ok(b) = cols[4].parse::<u64>() {
+                        total_bytes += b;
+                    }
                 }
             }
         }
