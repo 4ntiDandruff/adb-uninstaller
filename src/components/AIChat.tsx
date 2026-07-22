@@ -24,6 +24,12 @@ export function AIChat({ context, msgs, setMsgs, pos, setPos, minimized, onClose
   const dragRef = useRef<HTMLDivElement>(null);
   const offsetRef = useRef({ x: 0, y: 0 });
   const isDragging = useRef(false);
+  const msgsEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll ke pesan terbaru
+  useEffect(() => {
+    msgsEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [msgs, busy]);
 
   const onMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -128,6 +134,7 @@ export function AIChat({ context, msgs, setMsgs, pos, setPos, minimized, onClose
               <Loader2 size={14} className="animate-spin" /> mengetik…
             </div>
           )}
+          <div ref={msgsEndRef} />
         </div>
         <div className="ai-input-row">
           <input

@@ -235,14 +235,19 @@ pub async fn list_apps(device_id: String) -> Result<Vec<AppInfo>, String> {
         }
         let is_system = system_set.contains(&package_name);
         let is_disabled = disabled_set.contains(&package_name);
-        // Exact match: package name harus muncul sebagai token utuh di line proses,
-        // bukan substring dari package lain. Contoh: "com.foo" tidak boleh match "com.foo.bar".
+        // Parse ProcessRecord line: "ProcessRecord{hash pid:package.name/uid}"
+        // Ambil token setelah ":" dan sebelum "/" sebagai package name.
         let is_running = run_out
             .lines()
-            .filter(|l| l.contains("ProcessRecord") || l.contains("pid="))
+            .filter(|l| l.contains("ProcessRecord{"))
             .any(|l| {
-                l.split_whitespace()
-                    .any(|tok| tok.trim_end_matches(':').trim_end_matches(',') == package_name)
+                // Format: ProcessRecord{xxx pid:com.example.app/u0a123}
+                l.split('{')
+                    .nth(1)
+                    .and_then(|s| s.split(':').nth(1))
+                    .and_then(|s| s.split('/').next())
+                    .map(|pkg| pkg == package_name)
+                    .unwrap_or(false)
             });
 
         apps.push(AppInfo {

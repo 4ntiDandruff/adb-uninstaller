@@ -41,7 +41,7 @@ export default function App() {
   const [rightOpen, setRightOpen] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [, setSettings] = useState<AppSettings | null>(null);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
   const [undoStack, setUndoStack] = useState<string[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -67,6 +67,12 @@ export default function App() {
       .then((s) => {
         setSettings(s);
         log({ level: "info", source: "system", message: "Settings dimuat" });
+        // Apply theme
+        if (s.theme === "light") {
+          document.documentElement.setAttribute("data-theme", "light");
+        } else {
+          document.documentElement.removeAttribute("data-theme");
+        }
       })
       .catch((e) => log({ level: "warn", source: "system", message: `Settings: ${e}` }));
   }, [log]);
@@ -84,9 +90,19 @@ export default function App() {
         detail: devs.map((d) => `${d.id} [${d.status}] ${d.model}`).join("\n"),
         duration_ms: Math.round(performance.now() - t0),
       });
-      if (devs.length > 0 && !deviceId) {
-        const online = devs.find((d) => d.status === "online") ?? devs[0];
-        setDeviceId(online.id);
+      // Reset selection kalau device yang dipilih sudah tidak ada
+      if (deviceId && !devs.some((d) => d.id === deviceId)) {
+        setDeviceId(null);
+        setApps([]);
+        setDeviceInfo(null);
+      }
+      // Auto-select kalau belum ada yang dipilih
+      if (devs.length > 0) {
+        setDeviceId((prev) => {
+          if (prev && devs.some((d) => d.id === prev)) return prev;
+          const online = devs.find((d) => d.status === "online") ?? devs[0];
+          return online.id;
+        });
       }
     } catch (e) {
       log({ level: "error", source: "adb", message: `Scan gagal: ${e}` });
@@ -97,7 +113,9 @@ export default function App() {
   }, [deviceId, log]);
 
   useEffect(() => {
-    if (adbOk) scanDevices();
+    if (adbOk === true) {
+      scanDevices();
+    }
   }, [adbOk, scanDevices]);
 
   const loadApps = useCallback(
@@ -413,6 +431,25 @@ export default function App() {
           >
             <MessageSquare size={14} />
             AI Chat
+          </button>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              const next = settings?.theme === "light" ? "dark" : "light";
+              if (next === "light") {
+                document.documentElement.setAttribute("data-theme", "light");
+              } else {
+                document.documentElement.removeAttribute("data-theme");
+              }
+              if (settings) {
+                const updated = { ...settings, theme: next };
+                setSettings(updated);
+                api.saveSettings(updated).catch((e) => log({ level: "warn", source: "system", message: `Simpan theme gagal: ${e}` }));
+              }
+            }}
+            title="Toggle dark/light"
+          >
+            {settings?.theme === "light" ? "🌙" : "☀️"}
           </button>
         </div>
 
