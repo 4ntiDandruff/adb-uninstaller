@@ -632,6 +632,48 @@ input[type="checkbox"] {
   cursor: default;
 }
 
+/* ===== AI Floating Window ===== */
+.ai-float {
+  position: fixed;
+  z-index: 100;
+  width: 380px;
+  max-height: 520px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.ai-float.minimized {
+  width: 160px;
+  height: 36px;
+  cursor: pointer;
+}
+.ai-float.minimized .ai-float-head {
+  border-bottom: none;
+  border-radius: 12px;
+}
+.ai-float-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  cursor: grab;
+  user-select: none;
+  font-size: 13px;
+}
+.ai-float-head:active {
+  cursor: grabbing;
+}
+.ai-float .ai-panel {
+  flex: 1;
+  min-height: 0;
+}
+
 /* ===== AI chat ===== */
 .ai-panel {
   display: flex;

@@ -18,12 +18,12 @@ import { AppTable } from "./components/AppTable";
 import { DetailPanel } from "./components/DetailPanel";
 import { LogDrawer } from "./components/LogDrawer";
 import { SettingsDialog } from "./components/SettingsDialog";
-import { AIChat } from "./components/AIChat";
+import { AIChat, type Msg } from "./components/AIChat";
 import { DebloatPresets } from "./components/DebloatPresets";
 import { enrichApps } from "./lib/safety-tags";
 
 type OpKind = "uninstall" | "disable" | "enable" | "force_stop" | "clear_data";
-type RightTab = "detail" | "ai";
+
 
 export default function App() {
   const [adbOk, setAdbOk] = useState<boolean | null>(null);
@@ -38,13 +38,16 @@ export default function App() {
   const [levelFilter, setLevelFilter] = useState<SafetyLevel | "all">("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [detail, setDetail] = useState<AppInfo | null>(null);
-  const [rightTab, setRightTab] = useState<RightTab>("detail");
   const [rightOpen, setRightOpen] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [, setSettings] = useState<AppSettings | null>(null);
   const [undoStack, setUndoStack] = useState<string[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMinimized, setChatMinimized] = useState(false);
+  const [chatPos, setChatPos] = useState({ x: 100, y: 100 });
+  const [chatMsgs, setChatMsgs] = useState<Msg[]>([]);
 
   const log = useCallback((entry: Omit<LogEntry, "id" | "ts">) => {
     setLogs((l) => [...l.slice(-499), makeLog(entry)]);
@@ -147,7 +150,6 @@ export default function App() {
   const openDetail = useCallback(
     (app: AppInfo) => {
       setDetail(app);
-      setRightTab("detail");
       setRightOpen(true);
       // Lazy-fetch ukuran APK saat detail dibuka
       if (deviceId && (!app.size || app.size === "?")) {
@@ -237,6 +239,46 @@ export default function App() {
         }
       }
       toast.success(`Batch: ${success} OK, ${fail} gagal`);
+      setSelected(new Set());
+      if (deviceId) loadApps(deviceId);
+      setBusy(false);
+    },
+    [deviceId, apps, loadApps, log],
+  );
+
+  const runBatchOp = useCallback(
+    async (kind: OpKind, packages: string[]) => {
+      if (!deviceId || packages.length === 0) return;
+      const label = kind.replace("_", " ");
+      const ok = window.confirm(`Yakin mau ${label} batch ${packages.length} package?\n\n${packages.slice(0, 8).join("\n")}${packages.length > 8 ? `\n… +${packages.length - 8} lagi` : ""}`);
+      if (!ok) return;
+      setBusy(true);
+      let success = 0;
+      let fail = 0;
+      for (const pkg of packages) {
+        const app = apps.find((a) => a.package_name === pkg);
+        if (app?.safety_level === "critical") {
+          log({ level: "warn", source: "adb", message: `Skip critical: ${pkg}` });
+          fail++;
+          continue;
+        }
+        try {
+          const res = await api[
+            kind === "force_stop" ? "forceStop" : kind === "clear_data" ? "clearData" : kind
+          ](deviceId, pkg);
+          if (res.success) {
+            success++;
+            log({ level: "success", source: "adb", message: `${label} OK: ${pkg}`, duration_ms: res.duration_ms });
+          } else {
+            fail++;
+            log({ level: "error", source: "adb", message: `${label} gagal: ${pkg}`, detail: res.error ?? res.output });
+          }
+        } catch (e) {
+          fail++;
+          log({ level: "error", source: "adb", message: `${label} exception: ${pkg}`, detail: String(e) });
+        }
+      }
+      toast.success(`Batch ${label}: ${success} OK, ${fail} gagal`);
       setSelected(new Set());
       if (deviceId) loadApps(deviceId);
       setBusy(false);
@@ -364,8 +406,8 @@ export default function App() {
           <button
             className="btn btn-ghost btn-sm"
             onClick={() => {
-              setRightTab("ai");
-              setRightOpen((o) => rightTab === "ai" ? !o : true);
+              setChatOpen((o) => !o);
+              setChatMinimized(false);
             }}
             title="AI Assistant"
           >
@@ -411,9 +453,43 @@ export default function App() {
                 </button>
               )}
               {selected.size > 0 && (
-                <button className="btn btn-danger btn-sm ml-auto" disabled={busy} onClick={() => runBatch([...selected])}>
-                  Uninstall {selected.size}
-                </button>
+                <div className="ml-auto flex items-center gap-1.5">
+                  <button className="btn btn-danger btn-sm" disabled={busy} onClick={() => runBatch([...selected])}>
+                    Uninstall {selected.size}
+                  </button>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    disabled={busy}
+                    onClick={() => runBatchOp("disable", [...selected])}
+                    title="Disable semua yang dipilih"
+                  >
+                    Disable
+                  </button>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    disabled={busy}
+                    onClick={() => runBatchOp("enable", [...selected])}
+                    title="Enable semua yang dipilih"
+                  >
+                    Enable
+                  </button>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    disabled={busy}
+                    onClick={() => runBatchOp("force_stop", [...selected])}
+                    title="Force stop semua yang dipilih"
+                  >
+                    Stop
+                  </button>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    disabled={busy}
+                    onClick={() => runBatchOp("clear_data", [...selected])}
+                    title="Clear data semua yang dipilih"
+                  >
+                    Clear
+                  </button>
+                </div>
               )}
             </div>
 
@@ -436,32 +512,33 @@ export default function App() {
           {/* Right panel: detail atau AI */}
           {rightOpen && (
             <div className="detail-panel">
-              {rightTab === "detail" ? (
-                <DetailPanel
-                  app={detail}
-                  onClose={() => setRightOpen(false)}
-                  onUninstall={(a) => runOp("uninstall", a.package_name)}
-                  onDisable={(a) => runOp("disable", a.package_name)}
-                  onEnable={(a) => runOp("enable", a.package_name)}
-                  onForceStop={(a) => runOp("force_stop", a.package_name)}
-                  onClearData={(a) => runOp("clear_data", a.package_name)}
-                  busy={busy}
-                />
-              ) : (
-                <div className="flex h-full flex-col">
-                  <div className="detail-head flex items-center justify-between">
-                    <span className="font-semibold">AI Assistant</span>
-                    <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setRightOpen(false)}>
-                      ×
-                    </button>
-                  </div>
-                  <AIChat context={chatContext} />
-                </div>
-              )}
+              <DetailPanel
+                app={detail}
+                onClose={() => setRightOpen(false)}
+                onUninstall={(a) => runOp("uninstall", a.package_name)}
+                onDisable={(a) => runOp("disable", a.package_name)}
+                onEnable={(a) => runOp("enable", a.package_name)}
+                onForceStop={(a) => runOp("force_stop", a.package_name)}
+                onClearData={(a) => runOp("clear_data", a.package_name)}
+                busy={busy}
+              />
             </div>
           )}
         </div>
       </div>
+
+      {chatOpen && (
+        <AIChat
+          context={chatContext}
+          msgs={chatMsgs}
+          setMsgs={setChatMsgs}
+          pos={chatPos}
+          setPos={setChatPos}
+          minimized={chatMinimized}
+          onClose={() => setChatOpen(false)}
+          onToggleMinimize={() => setChatMinimized((m) => !m)}
+        />
+      )}
 
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} onSaved={setSettings} />
     </div>
