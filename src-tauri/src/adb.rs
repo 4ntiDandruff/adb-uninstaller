@@ -355,6 +355,27 @@ pub async fn enable_package(device_id: String, package: String) -> CommandResult
     }
 }
 
+pub async fn restore_package(device_id: String, package: String) -> CommandResult {
+    let start = Instant::now();
+    match run_adb_device(
+        &device_id,
+        &["shell", "cmd", "package", "install-existing", &package],
+    )
+    .await
+    {
+        Ok((out, err, code)) => {
+            let success = code == 0 && (out.contains("Success") || out.contains("installed"));
+            timed_result(
+                start,
+                success,
+                out,
+                if success { None } else { Some(format!("[ADB-3006] Restore gagal: {err}")) },
+            )
+        }
+        Err(e) => timed_result(start, false, String::new(), Some(e)),
+    }
+}
+
 pub async fn force_stop_package(device_id: String, package: String) -> CommandResult {
     let start = Instant::now();
     match run_adb_device(&device_id, &["shell", "am", "force-stop", &package]).await {

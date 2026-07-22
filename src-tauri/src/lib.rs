@@ -40,6 +40,11 @@ async fn enable_package(device_id: String, package: String) -> CommandResult {
 }
 
 #[tauri::command]
+async fn restore_package(device_id: String, package: String) -> CommandResult {
+    adb::restore_package(device_id, package).await
+}
+
+#[tauri::command]
 async fn force_stop_package(device_id: String, package: String) -> CommandResult {
     adb::force_stop_package(device_id, package).await
 }
@@ -96,6 +101,7 @@ pub fn run() {
             uninstall_package,
             disable_package,
             enable_package,
+            restore_package,
             force_stop_package,
             clear_app_data,
             analyze_apps_batch,
