@@ -255,30 +255,60 @@ pub async fn list_apps(device_id: String) -> Result<Vec<AppInfo>, String> {
 }
 
 pub async fn get_app_size(device_id: String, package: String) -> Result<String, String> {
-    let (out, err, code) =
-        run_adb_device(&device_id, &["shell", "dumpsys", "package", &package]).await?;
+    // Pakai `pm path` lalu jumlahkan ukuran semua file APK (base + splits).
+    let (out, err, code) = run_adb_device(&device_id, &["shell", "pm", "path", &package]).await?;
     if code != 0 {
-        return Err(format!("[ADB-2002] Gagal get size: {err}"));
+        return Err(format!("[ADB-2002] Gagal get path: {err}"));
     }
 
-    // Prefer codePath file size via du if present
-    let code_path = out
-        .lines()
-        .find(|l| l.trim().starts_with("codePath="))
-        .and_then(|l| l.split('=').nth(1))
-        .map(|s| s.trim().to_string());
-
-    if let Some(path) = code_path {
-        if let Ok((du_out, _, 0)) =
-            run_adb_device(&device_id, &["shell", "du", "-sh", &path]).await
+    let mut total_bytes: u64 = 0;
+    for line in out.lines() {
+        let Some(path) = line.strip_prefix("package:") else {
+            continue;
+        };
+        let path = path.trim();
+        if path.is_empty() {
+            continue;
+        }
+        // stat -c %s = ukuran byte; fallback parse `ls -la`
+        if let Ok((sz, _, 0)) =
+            run_adb_device(&device_id, &["shell", "stat", "-c", "%s", path]).await
         {
-            if let Some(size) = du_out.split_whitespace().next() {
-                return Ok(size.to_string());
+            if let Ok(b) = sz.trim().parse::<u64>() {
+                total_bytes += b;
+                continue;
+            }
+        }
+        if let Ok((ll, _, 0)) = run_adb_device(&device_id, &["shell", "ls", "-la", path]).await {
+            let cols: Vec<&str> = ll.split_whitespace().collect();
+            if cols.len() >= 5 {
+                if let Ok(b) = cols[4].parse::<u64>() {
+                    total_bytes += b;
+                }
             }
         }
     }
 
-    Ok("?".into())
+    if total_bytes == 0 {
+        return Ok("?".into());
+    }
+    Ok(format_bytes(total_bytes))
+}
+
+fn format_bytes(b: u64) -> String {
+    const KB: f64 = 1024.0;
+    const MB: f64 = KB * 1024.0;
+    const GB: f64 = MB * 1024.0;
+    let bf = b as f64;
+    if bf >= GB {
+        format!("{:.1} GB", bf / GB)
+    } else if bf >= MB {
+        format!("{:.1} MB", bf / MB)
+    } else if bf >= KB {
+        format!("{:.0} KB", bf / KB)
+    } else {
+        format!("{} B", b)
+    }
 }
 
 pub async fn uninstall_package(device_id: String, package: String) -> CommandResult {

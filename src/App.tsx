@@ -144,11 +144,26 @@ export default function App() {
     });
   }, []);
 
-  const openDetail = useCallback((app: AppInfo) => {
-    setDetail(app);
-    setRightTab("detail");
-    setRightOpen(true);
-  }, []);
+  const openDetail = useCallback(
+    (app: AppInfo) => {
+      setDetail(app);
+      setRightTab("detail");
+      setRightOpen(true);
+      // Lazy-fetch ukuran APK saat detail dibuka
+      if (deviceId && (!app.size || app.size === "?")) {
+        api
+          .getAppSize(deviceId, app.package_name)
+          .then((size) => {
+            setApps((prev) =>
+              prev.map((x) => (x.package_name === app.package_name ? { ...x, size } : x)),
+            );
+            setDetail((d) => (d && d.package_name === app.package_name ? { ...d, size } : d));
+          })
+          .catch(() => {});
+      }
+    },
+    [deviceId],
+  );
 
   const runOp = useCallback(
     async (kind: OpKind, pkg: string) => {

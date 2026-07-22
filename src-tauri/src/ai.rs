@@ -33,7 +33,7 @@ impl Default for AppSettings {
         Self {
             ai_base_url: "http://43.163.100.241:1997/v1".into(),
             ai_api_key: String::new(),
-            ai_model: "gk/gx-grok-4.5".into(),
+            ai_model: "kr/claude-haiku-4.5".into(),
             ai_system_prompt: "You are an Android package safety analyst for technicians. Be concise.".into(),
             language: "id".into(),
             theme: "dark".into(),
@@ -133,7 +133,8 @@ pub async fn test_ai_connection(
         "model": model,
         "messages": [{"role": "user", "content": "ping"}],
         "max_tokens": 8,
-        "temperature": 0.0
+        "temperature": 0.0,
+        "stream": false
     });
 
     let resp = client
@@ -194,7 +195,8 @@ pub async fn analyze_apps_batch(packages: Vec<String>) -> Result<Vec<SafetyAnaly
             {"role": "user", "content": user}
         ],
         "temperature": settings.temperature,
-        "max_tokens": settings.max_tokens
+        "max_tokens": settings.max_tokens,
+        "stream": false
     });
 
     let resp = client
@@ -266,7 +268,8 @@ pub async fn chat_with_ai(message: String, context: String) -> Result<String, St
             {"role": "user", "content": user}
         ],
         "temperature": settings.temperature,
-        "max_tokens": settings.max_tokens
+        "max_tokens": settings.max_tokens,
+        "stream": false
     });
 
     let resp = client
