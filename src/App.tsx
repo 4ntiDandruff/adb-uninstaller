@@ -21,6 +21,7 @@ import { SettingsDialog } from "./components/SettingsDialog";
 import { AIChat, type Msg } from "./components/AIChat";
 import { DebloatPresets } from "./components/DebloatPresets";
 import { enrichApps } from "./lib/safety-tags";
+import { translate, type Lang } from "./i18n";
 
 type OpKind = "uninstall" | "disable" | "enable" | "force_stop" | "clear_data";
 
@@ -44,12 +45,15 @@ export default function App() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [lang, setLang] = useState<Lang>("id");
   const [undoStack, setUndoStack] = useState<string[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMinimized, setChatMinimized] = useState(false);
   const [chatPos, setChatPos] = useState({ x: 100, y: 100 });
   const [chatMsgs, setChatMsgs] = useState<Msg[]>([]);
+
+  const t = useCallback((key: string) => translate(lang, key), [lang]);
 
   const log = useCallback((entry: Omit<LogEntry, "id" | "ts">) => {
     setLogs((l) => [...l.slice(-499), makeLog(entry)]);
@@ -68,6 +72,7 @@ export default function App() {
       .loadSettings()
       .then((s) => {
         setSettings(s);
+        setLang((s.language as Lang) || "id");
         log({ level: "info", source: "system", message: "Settings dimuat" });
         // Apply theme
         if (s.theme === "light") {
@@ -447,12 +452,13 @@ export default function App() {
         deviceInfo={deviceInfo}
         onOpenSettings={() => setSettingsOpen(true)}
         appCount={apps.length}
+        t={t}
       />
 
       <div className="main">
         {/* Topbar */}
         <div className="topbar">
-          <div className="topbar-title">Aplikasi</div>
+          <div className="topbar-title">{t("topbar.title")}</div>
           <div className="topbar-spacer" />
           <button
             className="btn btn-ghost btn-sm"
@@ -478,7 +484,7 @@ export default function App() {
               setChatOpen((o) => !o);
               setChatMinimized(false);
             }}
-            title="AI Assistant"
+            title={t("chat.title")}
           >
             <MessageSquare size={14} />
             AI Chat
@@ -498,10 +504,27 @@ export default function App() {
                 api.saveSettings(updated).catch((e) => log({ level: "warn", source: "system", message: `Simpan theme gagal: ${e}` }));
               }
             }}
-            title="Toggle dark/light"
+            title={t("topbar.theme")}
           >
             {settings?.theme === "light" ? "🌙" : "☀️"}
           </button>
+          <select
+            className="select-dark btn-sm"
+            style={{ width: 70 }}
+            value={lang}
+            onChange={(e) => {
+              const next = e.target.value as Lang;
+              setLang(next);
+              if (settings) {
+                const updated = { ...settings, language: next };
+                setSettings(updated);
+                api.saveSettings(updated).catch(() => {});
+              }
+            }}
+          >
+            <option value="id">ID</option>
+            <option value="en">EN</option>
+          </select>
         </div>
 
         {/* Progress bar */}
@@ -604,6 +627,7 @@ export default function App() {
               onToggleAll={toggleAll}
               onOpenDetail={openDetail}
               activeApp={detail?.package_name ?? null}
+              t={t}
             />
 
             <DebloatPresets installedApps={apps} onExecute={runBatch} busy={busy} />

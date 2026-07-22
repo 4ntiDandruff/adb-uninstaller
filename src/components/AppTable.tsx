@@ -5,12 +5,12 @@ import type { AppInfo, SafetyLevel } from "../types";
 export type TabKey = "all" | "system" | "user" | "disabled" | "running";
 type SortKey = "package_name" | "safety_level" | "size";
 
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "all", label: "Semua" },
-  { key: "system", label: "System" },
-  { key: "user", label: "User" },
-  { key: "disabled", label: "Disabled" },
-  { key: "running", label: "Running" },
+const TABS: { key: TabKey; labelKey: string }[] = [
+  { key: "all", labelKey: "table.all" },
+  { key: "system", labelKey: "table.system" },
+  { key: "user", labelKey: "table.user" },
+  { key: "disabled", labelKey: "table.disabled" },
+  { key: "running", labelKey: "table.running" },
 ];
 
 const LEVEL_BADGE: Record<string, string> = {
@@ -37,6 +37,7 @@ interface Props {
   onOpenDetail: (app: AppInfo) => void;
   activeApp: string | null;
   onTabChange?: (tab: TabKey) => void;
+  t: (key: string) => string;
 }
 
 export function AppTable({
@@ -50,6 +51,7 @@ export function AppTable({
   onOpenDetail,
   activeApp,
   onTabChange,
+  t,
 }: Props) {
   const [tab, setTab] = useState<TabKey>("all");
   const [sortKey, setSortKey] = useState<SortKey>("package_name");
@@ -110,14 +112,14 @@ export function AppTable({
   return (
     <>
       <div className="tabs">
-        {TABS.map((t) => (
+        {TABS.map((tabItem) => (
           <button
-            key={t.key}
-            className={`tab ${tab === t.key ? "active" : ""}`}
-            onClick={() => changeTab(t.key)}
+            key={tabItem.key}
+            className={`tab ${tab === tabItem.key ? "active" : ""}`}
+            onClick={() => changeTab(tabItem.key)}
           >
-            {t.label}
-            <span className="tab-count">{counts[t.key]}</span>
+            {t(tabItem.labelKey)}
+            <span className="tab-count">{counts[tabItem.key]}</span>
           </button>
         ))}
         <div className="ml-auto flex items-center pb-1 text-xs text-dim">
@@ -134,19 +136,19 @@ export function AppTable({
               </th>
               <th onClick={() => toggleSort("package_name")} className="cursor-pointer select-none">
                 <span className="inline-flex items-center gap-1.5">
-                  Package <SortIcon k="package_name" />
+                  {t("table.package")} <SortIcon k="package_name" />
                 </span>
               </th>
               <th onClick={() => toggleSort("safety_level")} className="cursor-pointer select-none w-28">
                 <span className="inline-flex items-center gap-1.5">
-                  Safety <SortIcon k="safety_level" />
+                  {t("table.safety")} <SortIcon k="safety_level" />
                 </span>
               </th>
-              <th className="w-24">Type</th>
-              <th className="w-24">Status</th>
+              <th className="w-24">{t("table.type")}</th>
+              <th className="w-24">{t("table.status")}</th>
               <th onClick={() => toggleSort("size")} className="cursor-pointer select-none w-20">
                 <span className="inline-flex items-center gap-1.5">
-                  Size <SortIcon k="size" />
+                  {t("table.size")} <SortIcon k="size" />
                 </span>
               </th>
             </tr>
@@ -166,7 +168,7 @@ export function AppTable({
                   <div className="empty">
                     <PackageSearch size={36} className="text-faint" />
                     <div className="text-sm">
-                      {apps.length === 0 ? "Belum ada data. Scan device dulu." : "Tidak ada hasil untuk filter ini."}
+                      {apps.length === 0 ? t("table.empty") : t("table.no_result")}
                     </div>
                   </div>
                 </td>
@@ -195,16 +197,16 @@ export function AppTable({
                   <td>
                     <span className={LEVEL_BADGE[a.safety_level] ?? LEVEL_BADGE.unknown}>
                       <span>{LEVEL_DOT[a.safety_level] ?? "●"}</span>
-                      {a.safety_level}
+                      {t(`safety.${a.safety_level}`)}
                     </span>
                   </td>
                   <td>
                     <span className={a.is_system ? "badge badge-system" : "badge badge-user"}>
-                      {a.is_system ? "system" : "user"}
+                      {a.is_system ? t("table.system") : t("table.user")}
                     </span>
                   </td>
                   <td className="text-dim text-xs">
-                    {a.is_disabled ? "disabled" : a.is_running ? "running" : "—"}
+                    {a.is_disabled ? t("table.disabled") : a.is_running ? t("table.running") : "—"}
                   </td>
                   <td className="text-dim text-xs">{a.size || "?"}</td>
                 </tr>

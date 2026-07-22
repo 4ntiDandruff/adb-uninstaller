@@ -528,10 +528,21 @@ table.app-table tbody tr.selected {
 
 /* ===== Checkbox ===== */
 input[type="checkbox"] {
-  width: 15px;
-  height: 15px;
+  width: 16px;
+  height: 16px;
   accent-color: var(--primary);
   cursor: pointer;
+  margin: 0;
+  vertical-align: middle;
+  position: relative;
+  top: -1px;
+}
+
+/* Wrapper untuk centering di table cell */
+td input[type="checkbox"],
+th input[type="checkbox"] {
+  display: block;
+  margin: 0 auto;
 }
 
 /* ===== Skeleton ===== */

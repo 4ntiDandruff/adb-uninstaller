@@ -10,6 +10,7 @@ interface Props {
   deviceInfo: DeviceInfo | null;
   onOpenSettings: () => void;
   appCount: number;
+  t: (key: string) => string;
 }
 
 export function Sidebar({
@@ -21,6 +22,7 @@ export function Sidebar({
   deviceInfo,
   onOpenSettings,
   appCount,
+  t,
 }: Props) {
   return (
     <aside className="sidebar">
@@ -33,14 +35,14 @@ export function Sidebar({
       </div>
 
       <div className="side-section">
-        <div className="side-label">Perangkat</div>
+        <div className="side-label">{t("sidebar.devices")}</div>
         <div className="flex gap-2">
           <select
             className="select-dark"
             value={deviceId ?? ""}
             onChange={(e) => onSelectDevice(e.target.value)}
           >
-            <option value="">— Pilih device —</option>
+            <option value="">{t("sidebar.select_device")}</option>
             {devices.map((d) => (
               <option key={d.id} value={d.id}>
                 {d.model !== "unknown" ? d.model : d.id}
@@ -51,7 +53,7 @@ export function Sidebar({
             className="btn btn-ghost btn-icon"
             onClick={onRefresh}
             disabled={loadingDevices}
-            title="Refresh"
+            title={t("sidebar.refresh")}
           >
             <RefreshCw size={15} className={loadingDevices ? "animate-spin" : ""} />
           </button>
@@ -70,13 +72,13 @@ export function Sidebar({
 
       {deviceInfo && (
         <div className="side-section">
-          <div className="side-label">Info Perangkat</div>
+          <div className="side-label">{t("sidebar.device_info")}</div>
           <div className="space-y-1.5 text-xs">
-            <InfoRow k="Model" v={`${deviceInfo.manufacturer} ${deviceInfo.model}`} />
-            <InfoRow k="Android" v={`${deviceInfo.android_version} (SDK ${deviceInfo.sdk_level})`} />
-            <InfoRow k="Baterai" v={deviceInfo.battery_level >= 0 ? `${deviceInfo.battery_level}%` : "?"} />
-            <InfoRow k="Storage" v={`${deviceInfo.storage_free} / ${deviceInfo.storage_total}`} />
-            <InfoRow k="RAM" v={deviceInfo.ram_total} />
+            <InfoRow k={t("sidebar.model")} v={`${deviceInfo.manufacturer} ${deviceInfo.model}`} />
+            <InfoRow k={t("sidebar.android")} v={`${deviceInfo.android_version} (SDK ${deviceInfo.sdk_level})`} />
+            <InfoRow k={t("sidebar.battery")} v={deviceInfo.battery_level >= 0 ? `${deviceInfo.battery_level}%` : "?"} />
+            <InfoRow k={t("sidebar.storage")} v={`${deviceInfo.storage_free} / ${deviceInfo.storage_total}`} />
+            <InfoRow k={t("sidebar.ram")} v={deviceInfo.ram_total} />
           </div>
         </div>
       )}
@@ -84,14 +86,14 @@ export function Sidebar({
       <div className="side-section">
         <div className="side-label">Statistik</div>
         <div className="space-y-1.5 text-xs">
-          <InfoRow k="Total aplikasi" v={String(appCount)} />
+          <InfoRow k={t("sidebar.total_apps")} v={String(appCount)} />
         </div>
       </div>
 
       <div className="mt-auto p-3">
         <button className="btn btn-ghost w-full" onClick={onOpenSettings}>
           <SettingsIcon size={15} />
-          Pengaturan
+          {t("sidebar.settings")}
         </button>
       </div>
     </aside>
