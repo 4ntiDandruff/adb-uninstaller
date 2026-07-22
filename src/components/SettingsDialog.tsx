@@ -93,7 +93,7 @@ export function SettingsDialog({ open, onClose, onSaved }: Props) {
             </div>
             <div>
               <label className="mb-1 block text-slate-400">Bahasa UI</label>
-              <select className="input" value={s.language} onChange={(e) => set("language", e.target.value)}>
+              <select className="select-dark" value={s.language} onChange={(e) => set("language", e.target.value)}>
                 <option value="id">Indonesia</option>
                 <option value="en">English</option>
               </select>

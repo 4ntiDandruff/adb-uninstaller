@@ -13,7 +13,7 @@ export function DeviceSelector({ devices, selected, onSelect, onRefresh, loading
   return (
     <div className="flex items-center gap-2">
       <select
-        className="input w-64"
+        className="select-dark w-64"
         value={selected ?? ""}
         onChange={(e) => onSelect(e.target.value)}
       >

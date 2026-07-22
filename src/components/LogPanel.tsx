@@ -38,7 +38,7 @@ export function LogPanel({ logs, onClear }: Props) {
         </button>
         <span className="text-sm font-semibold">Log / Riwayat</span>
         <select
-          className="ml-2 rounded bg-slate-900 px-2 py-0.5 text-xs text-slate-300"
+          className="select-dark ml-2 w-32 px-2 py-0.5 text-xs"
           value={levelFilter}
           onChange={(e) => setLevelFilter(e.target.value as typeof levelFilter)}
         >

@@ -68,3 +68,15 @@ table.app-table tbody tr:hover {
 .skeleton {
   @apply animate-pulse rounded bg-slate-700/70;
 }
+
+.select-dark {
+  @apply w-full appearance-none rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-500;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%2394a3b8%27 stroke-width=%272%27><path d=%27m6 9 6 6 6-6%27/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0.6rem center;
+  padding-right: 2rem;
+}
+.select-dark option {
+  background-color: #0f172a;
+  color: #f1f5f9;
+}

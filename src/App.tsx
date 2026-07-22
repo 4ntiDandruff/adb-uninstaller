@@ -380,7 +380,7 @@ export default function App() {
       <div className="flex flex-wrap items-center gap-2">
         <SearchBar value={query} onChange={setQuery} onClear={() => setQuery("")} />
         <select
-          className="input w-40"
+          className="select-dark w-40"
           value={levelFilter}
           onChange={(e) => setLevelFilter(e.target.value as SafetyLevel | "all")}
         >

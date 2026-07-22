@@ -39,7 +39,7 @@ export function DebloatPresets({ installedApps, onExecute, busy }: Props) {
     <div className="card p-3">
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <span className="text-sm font-semibold">Debloat Presets</span>
-        <select className="input w-56" value={brand} onChange={(e) => setBrand(parseInt(e.target.value))}>
+        <select className="select-dark w-56" value={brand} onChange={(e) => setBrand(parseInt(e.target.value))}>
           {DEBLOAT_PRESETS.map((p, i) => (
             <option key={p.brand} value={i}>
               {p.brand}

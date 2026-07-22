@@ -69,6 +69,23 @@ pub fn save_settings(settings: AppSettings) -> Result<(), String> {
     std::fs::write(&path, raw).map_err(|e| format!("[ADB-5006] Gagal tulis settings: {e}"))
 }
 
+
+fn strip_sse(text: &str) -> String {
+    // ZevaiRouter kadang return SSE: "data: {...}data: [DONE]"
+    // Ambil payload JSON pertama yang utuh.
+    for line in text.lines() {
+        let l = line.trim();
+        if l.starts_with("data:") {
+            let payload = l.trim_start_matches("data:").trim();
+            if payload != "[DONE]" && payload.starts_with("{") {
+                return payload.to_string();
+            }
+        }
+    }
+    // Bukan SSE: return apa adanya (trim)
+    text.trim().to_string()
+}
+
 fn normalize_base_url(base: &str) -> String {
     let mut b = base.trim().trim_end_matches('/').to_string();
     if !b.ends_with("/v1") {
@@ -270,10 +287,35 @@ pub async fn chat_with_ai(message: String, context: String) -> Result<String, St
         return Err(format!("[ADB-4004] HTTP {status}: {text}"));
     }
 
-    let v: Value = serde_json::from_str(&text)
-        .map_err(|e| format!("[ADB-4007] Parse response gagal: {e}"))?;
-    Ok(v["choices"][0]["message"]["content"]
-        .as_str()
-        .unwrap_or("")
-        .to_string())
+    let text = strip_sse(&text);
+    if text.is_empty() {
+        return Err("[ADB-4009] AI balas body kosong (HTTP 200 tapi no content). Cek model/provider di ZevaiRouter.".into());
+    }
+    let v: Value = serde_json::from_str(&text).map_err(|e| {
+        let preview: String = text.chars().take(200).collect();
+        format!("[ADB-4007] Parse response gagal: {e} | body={preview}")
+    })?;
+    // Toleran: content bisa string atau array of parts (OpenAI vs lain)
+    let msg = &v["choices"][0]["message"]["content"];
+    if let Some(s) = msg.as_str() {
+        return Ok(s.to_string());
+    }
+    if let Some(arr) = msg.as_array() {
+        let joined: String = arr
+            .iter()
+            .filter_map(|p| p.get("text").and_then(|t| t.as_str()))
+            .collect::<Vec<_>>()
+            .join("");
+        if !joined.is_empty() {
+            return Ok(joined);
+        }
+    }
+    // Fallback: beberapa provider taruh di "text" atau "content" root
+    if let Some(t) = v["choices"][0]["text"].as_str() {
+        return Ok(t.to_string());
+    }
+    Err(format!(
+        "[ADB-4010] Struktur response tidak dikenal: {}",
+        text.chars().take(200).collect::<String>()
+    ))
 }
