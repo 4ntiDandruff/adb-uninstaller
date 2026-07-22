@@ -1,5 +1,6 @@
 mod adb;
 mod ai;
+mod db;
 
 use adb::{AppInfo, CommandResult, Device, DeviceInfo};
 use ai::{AppSettings, ConnectionTest, SafetyAnalysis};
@@ -88,9 +89,34 @@ async fn check_adb_available() -> Result<bool, String> {
     adb::check_adb_available().await
 }
 
+#[tauri::command]
+async fn get_cached_apps(state: tauri::State<'_, db::DbState>, device_id: String) -> Result<Vec<db::CachedApp>, String> {
+    let guard = db::get_conn(&state)?;
+    let conn = guard.as_ref().ok_or("[DB-007] Database tidak terinit")?;
+    db::load_apps(conn, &device_id).map_err(|e| format!("[DB-008] Load cache gagal: {e}"))
+}
+
+#[tauri::command]
+async fn get_last_scan_time(state: tauri::State<'_, db::DbState>, device_id: String) -> Result<Option<String>, String> {
+    let guard = db::get_conn(&state)?;
+    let conn = guard.as_ref().ok_or("[DB-007] Database tidak terinit")?;
+    db::get_last_scan_time(conn, &device_id).map_err(|e| format!("[DB-009] Get scan time gagal: {e}"))
+}
+
+#[tauri::command]
+async fn clear_device_cache(state: tauri::State<'_, db::DbState>, device_id: String) -> Result<usize, String> {
+    let guard = db::get_conn(&state)?;
+    let conn = guard.as_ref().ok_or("[DB-007] Database tidak terinit")?;
+    db::clear_device_cache(conn, &device_id).map_err(|e| format!("[DB-010] Clear cache gagal: {e}"))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let db_conn = db::init_db().expect("Gagal init database");
+    let db_state = db::DbState(std::sync::Mutex::new(Some(db_conn)));
+    
     tauri::Builder::default()
+        .manage(db_state)
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
@@ -110,6 +136,9 @@ pub fn run() {
             save_settings,
             load_settings,
             check_adb_available,
+            get_cached_apps,
+            get_last_scan_time,
+            clear_device_cache,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -264,6 +264,12 @@ pub async fn list_apps(device_id: String) -> Result<Vec<AppInfo>, String> {
     }
 
     apps.sort_by(|a, b| a.package_name.cmp(&b.package_name));
+    
+    // Simpan ke cache database
+    if let Ok(conn) = crate::db::init_db() {
+        let _ = crate::db::save_apps(&conn, &device_id, &apps);
+    }
+    
     Ok(apps)
 }
 

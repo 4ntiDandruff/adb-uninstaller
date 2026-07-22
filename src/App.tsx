@@ -33,6 +33,8 @@ export default function App() {
   const [apps, setApps] = useState<AppInfo[]>([]);
   const [loadingDevices, setLoadingDevices] = useState(false);
   const [loadingApps, setLoadingApps] = useState(false);
+  const [scanProgress, setScanProgress] = useState(0);
+  const [scanMessage, setScanMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [query, setQuery] = useState("");
   const [levelFilter, setLevelFilter] = useState<SafetyLevel | "all">("all");
@@ -79,9 +81,15 @@ export default function App() {
 
   const scanDevices = useCallback(async () => {
     setLoadingDevices(true);
+    setScanProgress(10);
+    setScanMessage("Mencari device...");
     const t0 = performance.now();
     try {
+      setScanProgress(30);
+      setScanMessage("Menjalankan adb devices...");
       const devs = await api.scanDevices();
+      setScanProgress(80);
+      setScanMessage("Memproses hasil...");
       setDevices(devs);
       log({
         level: "success",
@@ -104,11 +112,15 @@ export default function App() {
           return online.id;
         });
       }
+      setScanProgress(100);
+      setScanMessage("Scan selesai");
     } catch (e) {
       log({ level: "error", source: "adb", message: `Scan gagal: ${e}` });
       toast.error(`Scan device gagal`);
+      setScanMessage("Scan gagal");
     } finally {
       setLoadingDevices(false);
+      setTimeout(() => setScanProgress(0), 1000);
     }
   }, [deviceId, log]);
 
@@ -121,22 +133,61 @@ export default function App() {
   const loadApps = useCallback(
     async (id: string) => {
       setLoadingApps(true);
+      setScanProgress(5);
+      setScanMessage("Cek cache lokal...");
       const t0 = performance.now();
       try {
+        // Cek dulu ada cache tidak
+        setScanProgress(15);
+        setScanMessage("Query database lokal...");
+        const cached = await api.getCachedApps(id);
+        if (cached.length > 0) {
+          setScanProgress(50);
+          setScanMessage(`Load ${cached.length} app dari cache...`);
+          // Convert CachedApp ke AppInfo
+          const apps: AppInfo[] = cached.map((c) => ({
+            package_name: c.package_name,
+            label: c.label,
+            is_system: c.is_system,
+            is_disabled: c.is_disabled,
+            is_running: false, // akan di-update setelah scan fresh
+            safety_level: c.safety_level,
+            safety_reason: c.safety_reason,
+            size: c.size,
+            version: c.version,
+          }));
+          setApps(enrichApps(apps));
+          log({
+            level: "success",
+            source: "cache",
+            message: `Load dari cache: ${cached.length} package (terakhir scan: ${cached[0]?.scanned_at ?? "?"})`,
+            duration_ms: Math.round(performance.now() - t0),
+          });
+        }
+        
+        // Scan fresh untuk update running status dan data terbaru
+        setScanProgress(60);
+        setScanMessage("Scan device untuk update terbaru...");
         const raw = await api.listApps(id);
+        setScanProgress(90);
+        setScanMessage("Memproses hasil...");
         setApps(enrichApps(raw));
         log({
           level: "success",
           source: "adb",
-          message: `List apps: ${raw.length} package`,
+          message: `List apps: ${raw.length} package (fresh scan)`,
           duration_ms: Math.round(performance.now() - t0),
         });
         api.getDeviceInfo(id).then(setDeviceInfo).catch(() => setDeviceInfo(null));
+        setScanProgress(100);
+        setScanMessage("Selesai");
       } catch (e) {
         log({ level: "error", source: "adb", message: `List apps gagal: ${e}` });
         toast.error(`List apps gagal`);
+        setScanMessage("Gagal");
       } finally {
         setLoadingApps(false);
+        setTimeout(() => setScanProgress(0), 1500);
       }
     },
     [log],
@@ -452,6 +503,19 @@ export default function App() {
             {settings?.theme === "light" ? "🌙" : "☀️"}
           </button>
         </div>
+
+        {/* Progress bar */}
+        {(loadingDevices || loadingApps) && scanProgress > 0 && (
+          <div className="progress-container">
+            <div className="progress-info">
+              <span className="progress-text">{scanMessage}</span>
+              <span className="progress-pct">{scanProgress}%</span>
+            </div>
+            <div className="progress-bar">
+              <div className="progress-fill" style={{ width: `${scanProgress}%` }} />
+            </div>
+          </div>
+        )}
 
         {/* Stat cards */}
         <div className="stat-grid">

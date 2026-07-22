@@ -63,11 +63,24 @@ export interface AppSettings {
   max_tokens: number;
 }
 
+export interface CachedApp {
+  package_name: string;
+  label: string;
+  is_system: boolean;
+  is_disabled: boolean;
+  safety_level: string;
+  safety_reason: string;
+  size: string;
+  version: string;
+  device_id: string;
+  scanned_at: string;
+}
+
 export interface LogEntry {
   id: string;
   ts: string;
   level: "info" | "success" | "warn" | "error";
-  source: "adb" | "ai" | "ui" | "system";
+  source: "adb" | "ai" | "ui" | "system" | "cache";
   message: string;
   detail?: string;
   duration_ms?: number;

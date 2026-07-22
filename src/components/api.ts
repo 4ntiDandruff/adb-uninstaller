@@ -40,6 +40,12 @@ export const api = {
     invoke<SafetyAnalysis[]>("analyze_apps_batch", { packages }),
   chat: (message: string, context: string) =>
     invoke<string>("chat_with_ai", { message, context }),
+  getCachedApps: (deviceId: string) =>
+    invoke<import("../types").CachedApp[]>("get_cached_apps", { deviceId }),
+  getLastScanTime: (deviceId: string) =>
+    invoke<string | null>("get_last_scan_time", { deviceId }),
+  clearDeviceCache: (deviceId: string) =>
+    invoke<number>("clear_device_cache", { deviceId }),
   loadSettings: () => invoke<AppSettings>("load_settings"),
   saveSettings: (settings: AppSettings) =>
     invoke<void>("save_settings", { settings }),

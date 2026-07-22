@@ -735,19 +735,57 @@ input[type="checkbox"] {
   color: var(--primary);
 }
 
+/* ===== Progress Bar ===== */
+.progress-container {
+  padding: 8px 16px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+.progress-text {
+  color: var(--text-dim);
+}
+.progress-pct {
+  color: var(--primary);
+  font-weight: 600;
+  font-family: ui-monospace, Menlo, monospace;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--bg-card);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), #7c3aed);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
 /* ===== Light Theme ===== */
 [data-theme="light"] {
-  --bg: #f1f5f9;
+  --bg: #fafbfc;
   --bg-panel: #ffffff;
-  --bg-card: #f8fafc;
-  --bg-hover: #e2e8f0;
-  --border: #cbd5e1;
-  --border-strong: #94a3b8;
-  --text: #0f172a;
-  --text-dim: #475569;
-  --text-faint: #94a3b8;
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
+  --bg-card: #f6f8fa;
+  --bg-hover: #eaeef2;
+  --border: #d0d7de;
+  --border-strong: #8c959f;
+  --text: #1f2328;
+  --text-dim: #57606a;
+  --text-faint: #8c959f;
+  --primary: #0969da;
+  --primary-hover: #0550ae;
+  --success: #1a7f37;
+  --warning: #9a6700;
+  --danger: #cf222e;
 }
 
 [data-theme="light"] .ai-float {
