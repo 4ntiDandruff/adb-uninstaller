@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, ChevronDown } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronsUpDown, PackageSearch } from "lucide-react";
 import type { AppInfo, SafetyLevel } from "../types";
-import { cn } from "../lib/utils";
 
 export type TabKey = "all" | "system" | "user" | "disabled" | "running";
 type SortKey = "package_name" | "safety_level" | "size";
@@ -14,17 +13,17 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "running", label: "Running" },
 ];
 
-const LEVEL_STYLE: Record<string, string> = {
-  safe: "bg-emerald-500/20 text-emerald-300",
-  risky: "bg-amber-500/20 text-amber-300",
-  critical: "bg-red-500/20 text-red-300",
-  unknown: "bg-slate-500/20 text-slate-300",
+const LEVEL_BADGE: Record<string, string> = {
+  safe: "badge badge-safe",
+  risky: "badge badge-risky",
+  critical: "badge badge-critical",
+  unknown: "badge badge-unknown",
 };
 const LEVEL_DOT: Record<string, string> = {
-  safe: "🟢",
-  risky: "🟡",
-  critical: "🔴",
-  unknown: "⚪",
+  safe: "●",
+  risky: "●",
+  critical: "●",
+  unknown: "●",
 };
 
 interface Props {
@@ -36,6 +35,8 @@ interface Props {
   onToggleSelect: (pkg: string) => void;
   onToggleAll: (visible: AppInfo[]) => void;
   onOpenDetail: (app: AppInfo) => void;
+  activeApp: string | null;
+  onTabChange?: (tab: TabKey) => void;
 }
 
 export function AppTable({
@@ -47,10 +48,22 @@ export function AppTable({
   onToggleSelect,
   onToggleAll,
   onOpenDetail,
+  activeApp,
+  onTabChange,
 }: Props) {
   const [tab, setTab] = useState<TabKey>("all");
   const [sortKey, setSortKey] = useState<SortKey>("package_name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  const counts = useMemo(() => {
+    return {
+      all: apps.length,
+      system: apps.filter((a) => a.is_system).length,
+      user: apps.filter((a) => !a.is_system).length,
+      disabled: apps.filter((a) => a.is_disabled).length,
+      running: apps.filter((a) => a.is_running).length,
+    };
+  }, [apps]);
 
   const filtered = useMemo(() => {
     let out = apps;
@@ -62,9 +75,7 @@ export function AppTable({
     if (query.trim()) {
       const q = query.toLowerCase();
       out = out.filter(
-        (a) =>
-          a.package_name.toLowerCase().includes(q) ||
-          a.label.toLowerCase().includes(q),
+        (a) => a.package_name.toLowerCase().includes(q) || a.label.toLowerCase().includes(q),
       );
     }
     const dir = sortDir === "asc" ? 1 : -1;
@@ -76,6 +87,11 @@ export function AppTable({
     return out;
   }, [apps, tab, levelFilter, query, sortKey, sortDir]);
 
+  function changeTab(t: TabKey) {
+    setTab(t);
+    onTabChange?.(t);
+  }
+
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     else {
@@ -84,62 +100,52 @@ export function AppTable({
     }
   }
 
-  const SortIcon = ({ k }: { k: SortKey }) =>
-    sortKey !== k ? (
-      <ChevronDown size={14} className="opacity-40" />
-    ) : sortDir === "asc" ? (
-      <ArrowUp size={14} />
-    ) : (
-      <ArrowDown size={14} />
-    );
+  function SortIcon({ k }: { k: SortKey }) {
+    if (sortKey !== k) return <ChevronsUpDown size={13} className="text-faint" />;
+    return sortDir === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} />;
+  }
+
+  const allChecked = filtered.length > 0 && filtered.every((a) => selected.has(a.package_name));
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-1">
+    <>
+      <div className="tabs">
         {TABS.map((t) => (
           <button
             key={t.key}
-            onClick={() => setTab(t.key)}
-            className={cn(
-              "rounded-md px-3 py-1.5 text-sm",
-              tab === t.key
-                ? "bg-blue-600 text-white"
-                : "bg-slate-800 text-slate-300 hover:bg-slate-700",
-            )}
+            className={`tab ${tab === t.key ? "active" : ""}`}
+            onClick={() => changeTab(t.key)}
           >
             {t.label}
+            <span className="tab-count">{counts[t.key]}</span>
           </button>
         ))}
-        <span className="ml-auto text-xs text-slate-400">
-          {filtered.length} / {apps.length} app · {selected.size} dipilih
-        </span>
+        <div className="ml-auto flex items-center pb-1 text-xs text-dim">
+          {filtered.length} tampil · {selected.size} dipilih
+        </div>
       </div>
 
-      <div className="table-wrap min-h-0 flex-1">
+      <div className="table-scroll">
         <table className="app-table">
           <thead>
             <tr>
               <th className="w-10">
-                <input
-                  type="checkbox"
-                  checked={filtered.length > 0 && filtered.every((a) => selected.has(a.package_name))}
-                  onChange={() => onToggleAll(filtered)}
-                />
+                <input type="checkbox" checked={allChecked} onChange={() => onToggleAll(filtered)} />
               </th>
-              <th className="cursor-pointer select-none" onClick={() => toggleSort("package_name")}>
-                <span className="inline-flex items-center gap-1">
+              <th onClick={() => toggleSort("package_name")} className="cursor-pointer select-none">
+                <span className="inline-flex items-center gap-1.5">
                   Package <SortIcon k="package_name" />
                 </span>
               </th>
-              <th className="cursor-pointer select-none w-32" onClick={() => toggleSort("safety_level")}>
-                <span className="inline-flex items-center gap-1">
+              <th onClick={() => toggleSort("safety_level")} className="cursor-pointer select-none w-28">
+                <span className="inline-flex items-center gap-1.5">
                   Safety <SortIcon k="safety_level" />
                 </span>
               </th>
               <th className="w-24">Type</th>
               <th className="w-24">Status</th>
-              <th className="cursor-pointer select-none w-24" onClick={() => toggleSort("size")}>
-                <span className="inline-flex items-center gap-1">
+              <th onClick={() => toggleSort("size")} className="cursor-pointer select-none w-20">
+                <span className="inline-flex items-center gap-1.5">
                   Size <SortIcon k="size" />
                 </span>
               </th>
@@ -147,7 +153,7 @@ export function AppTable({
           </thead>
           <tbody>
             {loading &&
-              Array.from({ length: 8 }).map((_, i) => (
+              Array.from({ length: 10 }).map((_, i) => (
                 <tr key={`sk-${i}`}>
                   <td colSpan={6}>
                     <div className="skeleton h-5 w-full" />
@@ -156,8 +162,13 @@ export function AppTable({
               ))}
             {!loading && filtered.length === 0 && (
               <tr>
-                <td colSpan={6} className="py-10 text-center text-slate-500">
-                  Tidak ada aplikasi. Scan device dulu.
+                <td colSpan={6}>
+                  <div className="empty">
+                    <PackageSearch size={36} className="text-faint" />
+                    <div className="text-sm">
+                      {apps.length === 0 ? "Belum ada data. Scan device dulu." : "Tidak ada hasil untuk filter ini."}
+                    </div>
+                  </div>
                 </td>
               </tr>
             )}
@@ -165,7 +176,7 @@ export function AppTable({
               filtered.map((a) => (
                 <tr
                   key={a.package_name}
-                  className="cursor-pointer"
+                  className={activeApp === a.package_name ? "selected" : ""}
                   onClick={() => onOpenDetail(a)}
                 >
                   <td onClick={(e) => e.stopPropagation()}>
@@ -175,24 +186,32 @@ export function AppTable({
                       onChange={() => onToggleSelect(a.package_name)}
                     />
                   </td>
-                  <td className="font-mono text-xs">{a.package_name}</td>
                   <td>
-                    <span className={cn("badge", LEVEL_STYLE[a.safety_level] ?? LEVEL_STYLE.unknown)}>
-                      {LEVEL_DOT[a.safety_level] ?? "⚪"} {a.safety_level}
+                    <div className="mono">{a.package_name}</div>
+                    {a.safety_reason && (
+                      <div className="text-xs text-faint">{a.safety_reason}</div>
+                    )}
+                  </td>
+                  <td>
+                    <span className={LEVEL_BADGE[a.safety_level] ?? LEVEL_BADGE.unknown}>
+                      <span>{LEVEL_DOT[a.safety_level] ?? "●"}</span>
+                      {a.safety_level}
                     </span>
                   </td>
-                  <td className="text-xs text-slate-400">
-                    {a.is_system ? "system" : "user"}
+                  <td>
+                    <span className={a.is_system ? "badge badge-system" : "badge badge-user"}>
+                      {a.is_system ? "system" : "user"}
+                    </span>
                   </td>
-                  <td className="text-xs text-slate-400">
+                  <td className="text-dim text-xs">
                     {a.is_disabled ? "disabled" : a.is_running ? "running" : "—"}
                   </td>
-                  <td className="text-xs text-slate-400">{a.size || "?"}</td>
+                  <td className="text-dim text-xs">{a.size || "?"}</td>
                 </tr>
               ))}
           </tbody>
         </table>
       </div>
-    </div>
+    </>
   );
 }

@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { Search, X } from "lucide-react";
 
 interface Props {
   value: string;
@@ -9,20 +9,17 @@ interface Props {
 
 export function SearchBar({ value, onChange, onClear, placeholder }: Props) {
   return (
-    <div className="relative w-full max-w-sm">
+    <div className="search-wrap">
+      <Search size={15} className="search-icon" />
       <input
-        className="input pr-9"
-        placeholder={placeholder ?? "Cari nama aplikasi..."}
+        className="input"
+        placeholder={placeholder ?? "Cari nama aplikasi atau package..."}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
       {value && (
-        <button
-          aria-label="clear"
-          className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:bg-slate-700 hover:text-slate-100"
-          onClick={onClear}
-        >
-          <X size={16} />
+        <button className="search-clear" onClick={onClear} aria-label="clear" title="Clear">
+          <X size={14} />
         </button>
       )}
     </div>

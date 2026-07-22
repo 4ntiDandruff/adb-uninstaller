@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { X, Loader2, CheckCircle2, XCircle } from "lucide-react";
-import type { AppSettings } from "../types";
-import { api, toast } from "./api";
 import { invoke } from "@tauri-apps/api/core";
-import type { ConnectionTest } from "../types";
+import type { AppSettings, ConnectionTest } from "../types";
+import { api, toast } from "./api";
 
 interface Props {
   open: boolean;
@@ -18,10 +17,7 @@ export function SettingsDialog({ open, onClose, onSaved }: Props) {
 
   useEffect(() => {
     if (!open) return;
-    api
-      .loadSettings()
-      .then(setS)
-      .catch((e) => toast.error(`Load settings gagal: ${e}`));
+    api.loadSettings().then(setS).catch((e) => toast.error(`Load settings gagal: ${e}`));
   }, [open]);
 
   if (!open || !s) return null;
@@ -53,7 +49,7 @@ export function SettingsDialog({ open, onClose, onSaved }: Props) {
     if (!s) return;
     try {
       await api.saveSettings(s);
-      toast.success("Settings tersimpan");
+      toast.success("Pengaturan tersimpan");
       onSaved(s);
       onClose();
     } catch (e) {
@@ -62,22 +58,22 @@ export function SettingsDialog({ open, onClose, onSaved }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
-      <div className="card max-h-[90vh] w-full max-w-xl overflow-auto p-5" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Pengaturan</h3>
-          <button className="rounded p-1 text-slate-400 hover:bg-slate-700 hover:text-white" onClick={onClose}>
-            <X size={18} />
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <div className="modal-title">Pengaturan</div>
+          <button className="btn btn-ghost btn-icon btn-sm" onClick={onClose}>
+            <X size={16} />
           </button>
         </div>
 
-        <div className="space-y-3 text-sm">
-          <div>
-            <label className="mb-1 block text-slate-400">AI Base URL (wajib /v1)</label>
+        <div className="modal-body">
+          <div className="field">
+            <label className="field-label">AI Base URL (wajib /v1)</label>
             <input className="input" value={s.ai_base_url} onChange={(e) => set("ai_base_url", e.target.value)} />
           </div>
-          <div>
-            <label className="mb-1 block text-slate-400">API Key</label>
+          <div className="field">
+            <label className="field-label">API Key</label>
             <input
               className="input"
               type="password"
@@ -87,12 +83,12 @@ export function SettingsDialog({ open, onClose, onSaved }: Props) {
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-slate-400">Model</label>
+            <div className="field">
+              <label className="field-label">Model</label>
               <input className="input" value={s.ai_model} onChange={(e) => set("ai_model", e.target.value)} />
             </div>
-            <div>
-              <label className="mb-1 block text-slate-400">Bahasa UI</label>
+            <div className="field">
+              <label className="field-label">Bahasa UI</label>
               <select className="select-dark" value={s.language} onChange={(e) => set("language", e.target.value)}>
                 <option value="id">Indonesia</option>
                 <option value="en">English</option>
@@ -100,8 +96,8 @@ export function SettingsDialog({ open, onClose, onSaved }: Props) {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-slate-400">Temperature</label>
+            <div className="field">
+              <label className="field-label">Temperature</label>
               <input
                 className="input"
                 type="number"
@@ -112,8 +108,8 @@ export function SettingsDialog({ open, onClose, onSaved }: Props) {
                 onChange={(e) => set("temperature", parseFloat(e.target.value) || 0)}
               />
             </div>
-            <div>
-              <label className="mb-1 block text-slate-400">Max Tokens</label>
+            <div className="field">
+              <label className="field-label">Max Tokens</label>
               <input
                 className="input"
                 type="number"
@@ -122,10 +118,11 @@ export function SettingsDialog({ open, onClose, onSaved }: Props) {
               />
             </div>
           </div>
-          <div>
-            <label className="mb-1 block text-slate-400">System Prompt</label>
+          <div className="field">
+            <label className="field-label">System Prompt</label>
             <textarea
-              className="input min-h-20"
+              className="input"
+              rows={3}
               value={s.ai_system_prompt}
               onChange={(e) => set("ai_system_prompt", e.target.value)}
             />
@@ -133,16 +130,16 @@ export function SettingsDialog({ open, onClose, onSaved }: Props) {
 
           {testResult && (
             <div
-              className={`flex items-start gap-2 rounded-md p-2 text-xs ${
-                testResult.success ? "bg-emerald-500/15 text-emerald-300" : "bg-red-500/15 text-red-300"
+              className={`flex items-start gap-2 rounded-lg p-3 text-xs ${
+                testResult.success ? "bg-emerald-500/10 text-emerald-300" : "bg-red-500/10 text-red-300"
               }`}
             >
-              {testResult.success ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
+              {testResult.success ? <CheckCircle2 size={15} /> : <XCircle size={15} />}
               <div className="min-w-0 flex-1 break-words">
                 {testResult.message}
                 {testResult.models.length > 0 && (
-                  <div className="mt-1 text-slate-400">
-                    {testResult.models.length} models: {testResult.models.slice(0, 5).join(", ")}
+                  <div className="mt-1 text-dim">
+                    {testResult.models.length} model: {testResult.models.slice(0, 5).join(", ")}
                     {testResult.models.length > 5 ? "…" : ""}
                   </div>
                 )}
@@ -151,7 +148,7 @@ export function SettingsDialog({ open, onClose, onSaved }: Props) {
           )}
         </div>
 
-        <div className="mt-4 flex justify-end gap-2">
+        <div className="modal-foot">
           <button className="btn btn-ghost" onClick={testConnection} disabled={testing}>
             {testing ? <Loader2 size={14} className="animate-spin" /> : null}
             Test Koneksi
