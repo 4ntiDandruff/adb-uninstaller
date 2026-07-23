@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 import {
   Sparkles,
   RotateCcw,
@@ -22,6 +23,8 @@ import { AIChat, type Msg } from "./components/AIChat";
 import { DebloatPresets } from "./components/DebloatPresets";
 import { enrichApps } from "./lib/safety-tags";
 import { translate, type Lang } from "./i18n";
+import { humanizeError } from "./errorMessages";
+import { exportPreset } from "./lib/exportPreset";
 
 type OpKind = "uninstall" | "disable" | "enable" | "force_stop" | "clear_data";
 
@@ -57,6 +60,16 @@ export default function App() {
 
   const log = useCallback((entry: Omit<LogEntry, "id" | "ts">) => {
     setLogs((l) => [...l.slice(-499), makeLog(entry)]);
+  }, []);
+
+  useEffect(() => {
+    const unlisten = listen<{ pct: number; msg: string }>("scan-progress", (event) => {
+      setScanProgress(event.payload.pct);
+      setScanMessage(event.payload.msg);
+    });
+    return () => {
+      unlisten.then((f) => f());
+    };
   }, []);
 
   useEffect(() => {
@@ -120,7 +133,7 @@ export default function App() {
       setScanProgress(100);
       setScanMessage("Scan selesai");
     } catch (e) {
-      log({ level: "error", source: "adb", message: `Scan gagal: ${e}` });
+      log({ level: "error", source: "adb", message: `Scan gagal: ${humanizeError(String(e))}` });
       toast.error(`Scan device gagal`);
       setScanMessage("Scan gagal");
     } finally {
@@ -187,7 +200,7 @@ export default function App() {
         setScanProgress(100);
         setScanMessage("Selesai");
       } catch (e) {
-        log({ level: "error", source: "adb", message: `List apps gagal: ${e}` });
+        log({ level: "error", source: "adb", message: `List apps gagal: ${humanizeError(String(e))}` });
         toast.error(`List apps gagal`);
         setScanMessage("Gagal");
       } finally {
@@ -270,7 +283,7 @@ export default function App() {
         }
       } catch (e) {
         toast.error(`${label} error`);
-        log({ level: "error", source: "adb", message: `${label} exception: ${pkg}`, detail: String(e) });
+        log({ level: "error", source: "adb", message: `${label} exception: ${pkg}`, detail: humanizeError(String(e)) });
       } finally {
         setBusy(false);
       }
@@ -305,11 +318,11 @@ export default function App() {
             log({ level: "success", source: "adb", message: `uninstall OK: ${pkg}`, duration_ms: res.duration_ms });
           } else {
             fail++;
-            log({ level: "error", source: "adb", message: `uninstall gagal: ${pkg}`, detail: res.error ?? res.output });
+            log({ level: "error", source: "adb", message: `uninstall gagal: ${pkg}`, detail: humanizeError(res.error ?? res.output) });
           }
         } catch (e) {
           fail++;
-          log({ level: "error", source: "adb", message: `uninstall exception: ${pkg}`, detail: String(e) });
+          log({ level: "error", source: "adb", message: `uninstall exception: ${pkg}`, detail: humanizeError(String(e)) });
         }
       }
       toast.success(`Batch: ${success} OK, ${fail} gagal`);
@@ -345,11 +358,11 @@ export default function App() {
             log({ level: "success", source: "adb", message: `${label} OK: ${pkg}`, duration_ms: res.duration_ms });
           } else {
             fail++;
-            log({ level: "error", source: "adb", message: `${label} gagal: ${pkg}`, detail: res.error ?? res.output });
+            log({ level: "error", source: "adb", message: `${label} gagal: ${pkg}`, detail: humanizeError(res.error ?? res.output) });
           }
         } catch (e) {
           fail++;
-          log({ level: "error", source: "adb", message: `${label} exception: ${pkg}`, detail: String(e) });
+          log({ level: "error", source: "adb", message: `${label} exception: ${pkg}`, detail: humanizeError(String(e)) });
         }
       }
       toast.success(`Batch ${label}: ${success} OK, ${fail} gagal`);
@@ -579,39 +592,47 @@ export default function App() {
               {selected.size > 0 && (
                 <div className="ml-auto flex items-center gap-1.5">
                   <button className="btn btn-danger btn-sm" disabled={busy} onClick={() => runBatch([...selected])}>
-                    Uninstall {selected.size}
+                    {t("toolbar.uninstall")} {selected.size}
                   </button>
                   <button
                     className="btn btn-ghost btn-sm"
                     disabled={busy}
                     onClick={() => runBatchOp("disable", [...selected])}
-                    title="Disable semua yang dipilih"
+                    title={t("toolbar.disable")}
                   >
-                    Disable
+                    {t("toolbar.disable")}
                   </button>
                   <button
                     className="btn btn-ghost btn-sm"
                     disabled={busy}
                     onClick={() => runBatchOp("enable", [...selected])}
-                    title="Enable semua yang dipilih"
+                    title={t("toolbar.enable")}
                   >
-                    Enable
+                    {t("toolbar.enable")}
                   </button>
                   <button
                     className="btn btn-ghost btn-sm"
                     disabled={busy}
                     onClick={() => runBatchOp("force_stop", [...selected])}
-                    title="Force stop semua yang dipilih"
+                    title={t("toolbar.stop")}
                   >
-                    Stop
+                    {t("toolbar.stop")}
                   </button>
                   <button
                     className="btn btn-ghost btn-sm"
                     disabled={busy}
                     onClick={() => runBatchOp("clear_data", [...selected])}
-                    title="Clear data semua yang dipilih"
+                    title={t("toolbar.clear")}
                   >
-                    Clear
+                    {t("toolbar.clear")}
+                  </button>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    disabled={busy}
+                    onClick={() => exportPreset(apps, selected, deviceInfo?.model)}
+                    title="Export preset debloat"
+                  >
+                    💾 Export
                   </button>
                 </div>
               )}

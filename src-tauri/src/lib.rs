@@ -2,12 +2,17 @@ mod adb;
 mod ai;
 mod db;
 
+use tauri::Emitter;
+
 use adb::{AppInfo, CommandResult, Device, DeviceInfo};
 use ai::{AppSettings, ConnectionTest, SafetyAnalysis};
 
 #[tauri::command]
-async fn scan_devices() -> Result<Vec<Device>, String> {
-    adb::scan_devices().await
+async fn scan_devices(window: tauri::Window) -> Result<Vec<Device>, String> {
+    let _ = window.emit("scan-progress", serde_json::json!({"pct": 10, "msg": "Menjalankan adb devices..."}));
+    let result = adb::scan_devices().await;
+    let _ = window.emit("scan-progress", serde_json::json!({"pct": 100, "msg": "Scan selesai"}));
+    result
 }
 
 #[tauri::command]
@@ -16,8 +21,11 @@ async fn get_device_info(device_id: String) -> Result<DeviceInfo, String> {
 }
 
 #[tauri::command]
-async fn list_apps(device_id: String) -> Result<Vec<AppInfo>, String> {
-    adb::list_apps(device_id).await
+async fn list_apps(window: tauri::Window, device_id: String) -> Result<Vec<AppInfo>, String> {
+    let _ = window.emit("scan-progress", serde_json::json!({"pct": 20, "msg": "Membaca package manager..."}));
+    let result = adb::list_apps(device_id).await;
+    let _ = window.emit("scan-progress", serde_json::json!({"pct": 100, "msg": "Selesai"}));
+    result
 }
 
 #[tauri::command]
@@ -119,6 +127,8 @@ pub fn run() {
         .manage(db_state)
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![
             scan_devices,
             get_device_info,
