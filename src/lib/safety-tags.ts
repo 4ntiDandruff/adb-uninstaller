@@ -119,15 +119,20 @@ export function classifyPackage(packageName: string): SafetyTag {
   return { level: "unknown", reason: "Belum diklasifikasi" };
 }
 
-export function enrichApps<T extends { package_name: string; safety_level: string; safety_reason: string }>(
+export function enrichApps<T extends { package_name: string; safety_level: string; safety_reason: string; label?: string }>(
   apps: T[],
 ): T[] {
   return apps.map((a) => {
+    // Jangan overwrite hasil AI / cache yang sudah known
+    if (a.safety_level && a.safety_level !== "unknown") {
+      return a;
+    }
     const tag = classifyPackage(a.package_name);
+    // Kalau label kosong/sama package, biarkan apa adanya
     return {
       ...a,
       safety_level: tag.level,
-      safety_reason: tag.reason,
+      safety_reason: tag.reason || a.safety_reason,
     };
   });
 }

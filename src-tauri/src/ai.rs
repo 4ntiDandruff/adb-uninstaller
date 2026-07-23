@@ -221,6 +221,7 @@ pub async fn analyze_apps_batch(packages: Vec<String>) -> Result<Vec<SafetyAnaly
         return Err(format!("[ADB-4004] HTTP {status}: {text}"));
     }
 
+    let text = strip_sse(&text);
     let v: Value = serde_json::from_str(&text)
         .map_err(|e| format!("[ADB-4007] Parse response gagal: {e}"))?;
     let content = v["choices"][0]["message"]["content"]
@@ -235,9 +236,24 @@ pub async fn analyze_apps_batch(packages: Vec<String>) -> Result<Vec<SafetyAnaly
         .trim_end_matches("```")
         .trim();
 
-    let parsed: Vec<SafetyAnalysis> = serde_json::from_str(cleaned).map_err(|e| {
+    // Cari array JSON di dalam content kalau AI nambah teks
+    let json_slice = if let (Some(s), Some(e)) = (cleaned.find('['), cleaned.rfind(']')) {
+        &cleaned[s..=e]
+    } else {
+        cleaned
+    };
+
+    let parsed: Vec<SafetyAnalysis> = serde_json::from_str(json_slice).map_err(|e| {
         format!("[ADB-4008] AI JSON invalid: {e} | content={cleaned}")
     })?;
+
+    // Persist hasil AI ke cache (semua device yang punya package tsb)
+    if let Ok(conn) = crate::db::init_db() {
+        for item in &parsed {
+            let _ = crate::db::update_safety(&conn, &item.package_name, &item.level, &item.reason);
+        }
+    }
+
     Ok(parsed)
 }
 

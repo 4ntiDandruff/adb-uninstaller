@@ -66,21 +66,68 @@ pub fn get_conn(state: &DbState) -> Result<std::sync::MutexGuard<Option<Connecti
 pub fn save_apps(conn: &Connection, device_id: &str, apps: &[crate::adb::AppInfo]) -> SqlResult<usize> {
     let now = chrono::Local::now().to_rfc3339();
     let mut count = 0;
-    
+
     for app in apps {
+        // Ambil data lama dulu biar safety/label AI tidak ter-overwrite jadi unknown
+        let existing: Option<(String, String, String, String, String)> = conn
+            .query_row(
+                "SELECT label, safety_level, safety_reason, size, version FROM app_cache WHERE package_name = ?1 AND device_id = ?2",
+                rusqlite::params![app.package_name, device_id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?)),
+            )
+            .ok();
+
+        let (old_label, old_level, old_reason, old_size, old_version) = existing.unwrap_or_default();
+
+        let label = if !app.label.is_empty() && app.label != app.package_name {
+            app.label.clone()
+        } else if !old_label.is_empty() {
+            old_label
+        } else {
+            app.label.clone()
+        };
+
+        let safety_level = if app.safety_level != "unknown" && !app.safety_level.is_empty() {
+            app.safety_level.clone()
+        } else if !old_level.is_empty() {
+            old_level
+        } else {
+            "unknown".into()
+        };
+
+        let safety_reason = if !app.safety_reason.is_empty() {
+            app.safety_reason.clone()
+        } else {
+            old_reason
+        };
+
+        let size = if !app.size.is_empty() && app.size != "?" {
+            app.size.clone()
+        } else if !old_size.is_empty() {
+            old_size
+        } else {
+            app.size.clone()
+        };
+
+        let version = if !app.version.is_empty() {
+            app.version.clone()
+        } else {
+            old_version
+        };
+
         conn.execute(
             "INSERT OR REPLACE INTO app_cache 
              (package_name, label, is_system, is_disabled, safety_level, safety_reason, size, version, device_id, scanned_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
             rusqlite::params![
                 app.package_name,
-                app.label,
+                label,
                 app.is_system as i32,
                 app.is_disabled as i32,
-                app.safety_level,
-                app.safety_reason,
-                app.size,
-                app.version,
+                safety_level,
+                safety_reason,
+                size,
+                version,
                 device_id,
                 now,
             ],
@@ -88,6 +135,18 @@ pub fn save_apps(conn: &Connection, device_id: &str, apps: &[crate::adb::AppInfo
         count += 1;
     }
     Ok(count)
+}
+
+pub fn update_safety(
+    conn: &Connection,
+    package_name: &str,
+    safety_level: &str,
+    safety_reason: &str,
+) -> SqlResult<usize> {
+    conn.execute(
+        "UPDATE app_cache SET safety_level = ?1, safety_reason = ?2 WHERE package_name = ?3",
+        rusqlite::params![safety_level, safety_reason, package_name],
+    )
 }
 
 pub fn load_apps(conn: &Connection, device_id: &str) -> SqlResult<Vec<CachedApp>> {

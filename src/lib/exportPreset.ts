@@ -35,15 +35,28 @@ export async function exportPreset(apps: AppInfo[], selected: Set<string>, devic
   };
 
   const json = JSON.stringify(preset, null, 2);
-  
-  const filePath = await save({
-    filters: [{ name: "JSON", extensions: ["json"] }],
-    defaultPath: `debloat-preset-${Date.now()}.json`,
-  });
-  
-  if (filePath) {
-    await writeTextFile(filePath, json);
+  const fileName = `debloat-preset-${Date.now()}.json`;
+
+  try {
+    const filePath = await save({
+      filters: [{ name: "JSON", extensions: ["json"] }],
+      defaultPath: fileName,
+    });
+    if (filePath) {
+      await writeTextFile(filePath, json);
+      return;
+    }
+  } catch {
+    // Fallback: browser download
   }
+
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export async function importPreset(filePath: string): Promise<PresetExport> {

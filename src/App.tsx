@@ -148,6 +148,39 @@ export default function App() {
     }
   }, [adbOk, scanDevices]);
 
+  const autoAnalyzeUnknown = useCallback(async (packages: string[]) => {
+    if (packages.length === 0) return;
+    setAnalyzing(true);
+    const t0 = performance.now();
+    try {
+      // Batch 50, sesuai spek
+      const batch = packages.slice(0, 50);
+      log({ level: "info", source: "ai", message: `Auto AI: analisis ${batch.length} package unknown` });
+      const results = await api.analyzeBatch(batch);
+      const map = new Map(results.map((r) => [r.package_name, r]));
+      setApps((prev) =>
+        prev.map((a) => {
+          const r = map.get(a.package_name);
+          return r
+            ? { ...a, safety_level: r.level as AppInfo["safety_level"], safety_reason: r.reason }
+            : a;
+        }),
+      );
+      log({
+        level: "success",
+        source: "ai",
+        message: `Auto AI selesai: ${results.length} package`,
+        duration_ms: Math.round(performance.now() - t0),
+      });
+      toast.success(`AI auto: ${results.length} package dianalisis`);
+    } catch (e) {
+      log({ level: "error", source: "ai", message: `Auto AI gagal`, detail: humanizeError(String(e)) });
+      // Silent toast supaya tidak ganggu user — masih bisa klik tombol AI manual
+    } finally {
+      setAnalyzing(false);
+    }
+  }, [log]);
+
   const loadApps = useCallback(
     async (id: string) => {
       setLoadingApps(true);
@@ -190,7 +223,8 @@ export default function App() {
         const raw = await api.listApps(id);
         setScanProgress(90);
         setScanMessage("Memproses hasil...");
-        setApps(enrichApps(raw));
+        const enriched = enrichApps(raw);
+        setApps(enriched);
         log({
           level: "success",
           source: "adb",
@@ -200,6 +234,12 @@ export default function App() {
         api.getDeviceInfo(id).then(setDeviceInfo).catch(() => setDeviceInfo(null));
         setScanProgress(100);
         setScanMessage("Selesai");
+        // Auto AI untuk package unknown (spek v2: unknown LANGSUNG diproses AI)
+        const unknowns = enriched.filter((a) => a.safety_level === "unknown").map((a) => a.package_name);
+        if (unknowns.length > 0) {
+          // fire-and-forget, tidak block UI
+          void autoAnalyzeUnknown(unknowns);
+        }
       } catch (e) {
         log({ level: "error", source: "adb", message: `List apps gagal: ${humanizeError(String(e))}` });
         toast.error(`List apps gagal`);
@@ -209,7 +249,7 @@ export default function App() {
         setTimeout(() => setScanProgress(0), 1500);
       }
     },
-    [log],
+    [log, autoAnalyzeUnknown],
   );
 
   useEffect(() => {

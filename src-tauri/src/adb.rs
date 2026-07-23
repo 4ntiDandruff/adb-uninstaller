@@ -189,37 +189,22 @@ pub async fn get_device_info(device_id: String) -> Result<DeviceInfo, String> {
     })
 }
 
-async fn get_app_label(device_id: &str, package: &str) -> String {
-    // Coba ambil label dari dumpsys package
-    if let Ok((out, _, 0)) = run_adb_device(
-        device_id,
-        &["shell", "dumpsys", "package", package],
-    ).await {
-        // Cari line "labelRes=..." atau "nonLocalizedLabel=..."
-        for line in out.lines() {
-            if line.contains("nonLocalizedLabel=") {
-                if let Some(label) = line.split("nonLocalizedLabel=").nth(1) {
-                    let label = label.trim().trim_end_matches(',').trim_matches('"');
-                    if !label.is_empty() && label != "null" {
-                        return label.to_string();
-                    }
-                }
-            }
+fn pretty_label(package: &str) -> String {
+    // Format package name jadi lebih readable: com.example.my_app -> My App
+    let last = package.split('.').last().unwrap_or(package);
+    let spaced = last.replace('_', " ").replace('-', " ");
+    let mut out = String::new();
+    for (i, part) in spaced.split_whitespace().enumerate() {
+        if i > 0 {
+            out.push(' ');
+        }
+        let mut chars = part.chars();
+        if let Some(first) = chars.next() {
+            out.push_str(&first.to_uppercase().collect::<String>());
+            out.push_str(chars.as_str());
         }
     }
-    // Fallback: format package name jadi lebih readable
-    // com.example.app -> Example App
-    package
-        .split('.')
-        .last()
-        .map(|s| {
-            let mut chars = s.chars();
-            match chars.next() {
-                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
-                None => s.to_string(),
-            }
-        })
-        .unwrap_or_else(|| package.to_string())
+    if out.is_empty() { package.to_string() } else { out }
 }
 
 pub async fn list_apps(device_id: String) -> Result<Vec<AppInfo>, String> {
@@ -283,7 +268,9 @@ pub async fn list_apps(device_id: String) -> Result<Vec<AppInfo>, String> {
                     .unwrap_or(false)
             });
 
-        let label = get_app_label(&device_id, &package_name).await;
+        // Label cepat dulu; cache lama + AI nanti yang isi lebih akurat.
+        // JANGAN dumpsys per-package (N+1 = sangat lambat di 200+ app).
+        let label = pretty_label(&package_name);
         apps.push(AppInfo {
             package_name: package_name.clone(),
             label,
@@ -298,12 +285,38 @@ pub async fn list_apps(device_id: String) -> Result<Vec<AppInfo>, String> {
     }
 
     apps.sort_by(|a, b| a.package_name.cmp(&b.package_name));
-    
-    // Simpan ke cache database
+
+    // Merge safety/label dari cache lama biar AI result tidak hilang
     if let Ok(conn) = crate::db::init_db() {
+        if let Ok(cached) = crate::db::load_apps(&conn, &device_id) {
+            let map: std::collections::HashMap<String, crate::db::CachedApp> = cached
+                .into_iter()
+                .map(|c| (c.package_name.clone(), c))
+                .collect();
+            for app in &mut apps {
+                if let Some(c) = map.get(&app.package_name) {
+                    if c.safety_level != "unknown" {
+                        app.safety_level = c.safety_level.clone();
+                        app.safety_reason = c.safety_reason.clone();
+                    }
+                    if !c.label.is_empty() && c.label != c.package_name {
+                        // Prefer label lama yang lebih bagus dari cache
+                        if app.label == pretty_label(&app.package_name) || app.label == app.package_name {
+                            app.label = c.label.clone();
+                        }
+                    }
+                    if !c.size.is_empty() && app.size.is_empty() {
+                        app.size = c.size.clone();
+                    }
+                    if !c.version.is_empty() && app.version.is_empty() {
+                        app.version = c.version.clone();
+                    }
+                }
+            }
+        }
         let _ = crate::db::save_apps(&conn, &device_id, &apps);
     }
-    
+
     Ok(apps)
 }
 
