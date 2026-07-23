@@ -162,18 +162,19 @@ export default function App() {
         if (cached.length > 0) {
           setScanProgress(50);
           setScanMessage(`Load ${cached.length} app dari cache...`);
-          // Convert CachedApp ke AppInfo
+          // Convert CachedApp ke AppInfo, enrich untuk safety tags
           const apps: AppInfo[] = cached.map((c) => ({
             package_name: c.package_name,
             label: c.label,
             is_system: c.is_system,
             is_disabled: c.is_disabled,
-            is_running: false, // akan di-update setelah scan fresh
+            is_running: false,
             safety_level: c.safety_level,
             safety_reason: c.safety_reason,
             size: c.size,
             version: c.version,
           }));
+          // Enrich untuk update safety level dari static tags
           setApps(enrichApps(apps));
           log({
             level: "success",

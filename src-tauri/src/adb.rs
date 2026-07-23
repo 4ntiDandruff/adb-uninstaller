@@ -189,6 +189,39 @@ pub async fn get_device_info(device_id: String) -> Result<DeviceInfo, String> {
     })
 }
 
+async fn get_app_label(device_id: &str, package: &str) -> String {
+    // Coba ambil label dari dumpsys package
+    if let Ok((out, _, 0)) = run_adb_device(
+        device_id,
+        &["shell", "dumpsys", "package", package],
+    ).await {
+        // Cari line "labelRes=..." atau "nonLocalizedLabel=..."
+        for line in out.lines() {
+            if line.contains("nonLocalizedLabel=") {
+                if let Some(label) = line.split("nonLocalizedLabel=").nth(1) {
+                    let label = label.trim().trim_end_matches(',').trim_matches('"');
+                    if !label.is_empty() && label != "null" {
+                        return label.to_string();
+                    }
+                }
+            }
+        }
+    }
+    // Fallback: format package name jadi lebih readable
+    // com.example.app -> Example App
+    package
+        .split('.')
+        .last()
+        .map(|s| {
+            let mut chars = s.chars();
+            match chars.next() {
+                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+                None => s.to_string(),
+            }
+        })
+        .unwrap_or_else(|| package.to_string())
+}
+
 pub async fn list_apps(device_id: String) -> Result<Vec<AppInfo>, String> {
     let (all_out, err, code) =
         run_adb_device(&device_id, &["shell", "pm", "list", "packages", "-f"]).await?;
@@ -250,9 +283,10 @@ pub async fn list_apps(device_id: String) -> Result<Vec<AppInfo>, String> {
                     .unwrap_or(false)
             });
 
+        let label = get_app_label(&device_id, &package_name).await;
         apps.push(AppInfo {
             package_name: package_name.clone(),
-            label: package_name.clone(),
+            label,
             is_system,
             is_disabled,
             is_running,
