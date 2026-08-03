@@ -4,6 +4,50 @@ Semua perubahan penting dicatat di file ini.
 
 Format mirip [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.1.0] — 2026-08-03
+
+Patch besar: bug fixes kritis + UI/UX overhaul + dukungan penuh Bahasa Indonesia.
+
+### Fixed (Bug Kritis)
+- `db.rs` — `update_safety` sekarang filter per `device_id` (sebelumnya bisa overwrite data device lain)
+- `ai.rs` — hapus `init_db()` duplikat yang menyebabkan SQLite lock conflict
+- `adb.rs` — tambah timeout 30s pada semua ADB command (sebelumnya bisa hang selamanya)
+- `adb.rs` — `disable_package` cek output `"disabled"` bukan hanya exit code
+- `adb.rs` — `enable_package` cek output `"enabled"` bukan hanya exit code
+- `adb.rs` — `force_stop` cek stderr kosong (am force-stop selalu return 0)
+- `App.tsx` — `runBatch` sekarang `await loadApps` sebelum `setBusy(false)` (race condition)
+- `App.tsx` — `autoAnalyzeUnknown` queue semua unknown dalam batch 50, bukan hanya 50 pertama
+- `App.tsx` — undo stack sekarang track `disable` juga, bukan hanya `uninstall`
+
+### Added (UI/UX)
+- `AppTable` — kolom label app (nama readable) + package name sebagai subtitle
+- `AppTable` — sort size numeric yang benar (bukan string comparison)
+- `AppTable` — skeleton loading per-kolom proporsional
+- `Sidebar` — statistik breakdown: safe / risky / kritis / unknown dengan warna
+- `DetailPanel` — tombol copy package name
+- `DetailPanel` — semua label aksi sekarang mengikuti bahasa UI (i18n)
+- `DetailPanel` — safety badge translated sesuai bahasa
+- `SettingsDialog` — toggle tema Dark/Light langsung di Settings (tidak hanya dari topbar)
+- `LogDrawer` — auto-scroll ke log entry terbaru
+- `LogDrawer` — tombol export log ke file `.txt`
+- `SearchBar` — debounce 200ms (tidak lag saat mengetik cepat)
+- `AIChat` — support drag via touch (tablet/layar sentuh)
+- `AIChat` — minimized window bisa di-drag
+- `AIChat` — tombol clear history
+
+### Changed
+- `App.css` — hapus scaffold Tauri default yang tidak terpakai
+- `tauri.conf.json` — Content Security Policy aktif (sebelumnya `null`)
+- `db.rs` — WAL mode aktif (`PRAGMA journal_mode=WAL`) untuk performa SQLite lebih baik
+
+### Internasionalisasi (i18n)
+- `safety-tags.ts` — semua `reason` static tags sekarang punya versi Bahasa Indonesia
+- `ai.rs` — prompt AI batch kirim instruksi bahasa dari settings (reason AI ikut bahasa UI)
+- `App.tsx` — `enrichApps` pass `lang` ke semua call site
+- `App.tsx` — `useEffect` re-enrich otomatis saat bahasa diubah di Settings
+
+---
+
 ## [2.0.0] — 2026-07-23
 
 Rilis v2 penuh (rebuild dari scaffold Tauri v2 + React + Rust). Target: Linux teknisi Megapass Sidoarjo.

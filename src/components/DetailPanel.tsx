@@ -1,5 +1,6 @@
-import { X } from "lucide-react";
+import { Copy, X } from "lucide-react";
 import type { AppInfo } from "../types";
+import { toast } from "./api";
 
 interface Props {
   app: AppInfo | null;
@@ -10,6 +11,7 @@ interface Props {
   onForceStop: (app: AppInfo) => void;
   onClearData: (app: AppInfo) => void;
   busy: boolean;
+  t: (key: string) => string;
 }
 
 const LEVEL_BADGE: Record<string, string> = {
@@ -20,15 +22,14 @@ const LEVEL_BADGE: Record<string, string> = {
 };
 
 export function DetailPanel({
-  app,
-  onClose,
-  onUninstall,
-  onDisable,
-  onEnable,
-  onForceStop,
-  onClearData,
-  busy,
+  app, onClose, onUninstall, onDisable, onEnable, onForceStop, onClearData, busy, t,
 }: Props) {
+  function copyPkg() {
+    if (!app) return;
+    navigator.clipboard.writeText(app.package_name);
+    toast.success("Package name disalin");
+  }
+
   return (
     <div className={`detail-panel ${app ? "" : "closed"}`}>
       {app && (
@@ -36,13 +37,18 @@ export function DetailPanel({
           <div className="detail-head">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <div className="detail-title">{app.package_name}</div>
+                <div className="flex items-center gap-1.5">
+                  <div className="detail-title truncate">{app.package_name}</div>
+                  <button className="btn btn-ghost btn-icon btn-sm" onClick={copyPkg} title="Copy package name">
+                    <Copy size={13} />
+                  </button>
+                </div>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   <span className={LEVEL_BADGE[app.safety_level] ?? LEVEL_BADGE.unknown}>
-                    {app.safety_level}
+                    {t(`safety.${app.safety_level}`)}
                   </span>
                   <span className={app.is_system ? "badge badge-system" : "badge badge-user"}>
-                    {app.is_system ? "system" : "user"}
+                    {app.is_system ? t("table.system") : t("table.user")}
                   </span>
                 </div>
               </div>
@@ -54,7 +60,7 @@ export function DetailPanel({
 
           <div className="detail-body">
             <dl>
-              <Row k="Status" v={app.is_disabled ? "Disabled" : app.is_running ? "Running" : "Stopped"} />
+              <Row k="Status" v={app.is_disabled ? t("table.disabled") : app.is_running ? t("table.running") : "Stopped"} />
               <Row k="Ukuran" v={app.size || "?"} />
               <Row k="Versi" v={app.version || "?"} />
               <Row k="Alasan safety" v={app.safety_reason || "—"} />
@@ -72,11 +78,11 @@ export function DetailPanel({
               disabled={busy || app.safety_level === "critical"}
               onClick={() => onUninstall(app)}
             >
-              Uninstall
+              {t("detail.uninstall")}
             </button>
             {app.is_disabled ? (
               <button className="btn btn-success" disabled={busy} onClick={() => onEnable(app)}>
-                Enable
+                {t("detail.enable")}
               </button>
             ) : (
               <button
@@ -84,14 +90,14 @@ export function DetailPanel({
                 disabled={busy || app.safety_level === "critical"}
                 onClick={() => onDisable(app)}
               >
-                Disable
+                {t("detail.disable")}
               </button>
             )}
             <button className="btn btn-ghost" disabled={busy} onClick={() => onForceStop(app)}>
-              Force Stop
+              {t("detail.force_stop")}
             </button>
             <button className="btn btn-ghost" disabled={busy} onClick={() => onClearData(app)}>
-              Clear Data
+              {t("detail.clear_data")}
             </button>
           </div>
         </>

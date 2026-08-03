@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ChevronDown, ChevronUp, Copy, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronDown, ChevronUp, Copy, Download, Trash2 } from "lucide-react";
 import type { LogEntry } from "../types";
 import { toast } from "./api";
 
@@ -18,7 +18,12 @@ interface Props {
 export function LogDrawer({ logs, onClear }: Props) {
   const [open, setOpen] = useState(false);
   const [levelFilter, setLevelFilter] = useState<"all" | LogEntry["level"]>("all");
+  const bottomRef = useRef<HTMLDivElement>(null);
   const filtered = logs.filter((l) => levelFilter === "all" || l.level === levelFilter);
+
+  useEffect(() => {
+    if (open) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [filtered.length, open]);
 
   async function copyAll() {
     const text = filtered
@@ -26,6 +31,19 @@ export function LogDrawer({ logs, onClear }: Props) {
       .join("\n");
     await navigator.clipboard.writeText(text);
     toast.success("Log disalin");
+  }
+
+  function exportLog() {
+    const text = filtered
+      .map((l) => `[${l.ts}] [${l.level.toUpperCase()}] [${l.source}] ${l.message}${l.detail ? `\n  ${l.detail}` : ""}${l.duration_ms != null ? ` (${l.duration_ms}ms)` : ""}`)
+      .join("\n");
+    const blob = new Blob([text], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `adb-log-${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   return (
@@ -47,6 +65,9 @@ export function LogDrawer({ logs, onClear }: Props) {
             <option value="warn">Warn</option>
             <option value="error">Error</option>
           </select>
+          <button className="btn btn-ghost btn-icon btn-sm" onClick={exportLog} title="Export log">
+            <Download size={14} />
+          </button>
           <button className="btn btn-ghost btn-icon btn-sm" onClick={copyAll} title="Copy">
             <Copy size={14} />
           </button>
@@ -69,6 +90,7 @@ export function LogDrawer({ logs, onClear }: Props) {
               </span>
             </div>
           ))}
+          <div ref={bottomRef} />
         </div>
       )}
     </div>

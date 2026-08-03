@@ -49,6 +49,9 @@ export function SettingsDialog({ open, onClose, onSaved }: Props) {
     if (!s) return;
     try {
       await api.saveSettings(s);
+      // Apply theme immediately
+      if (s.theme === "light") document.documentElement.setAttribute("data-theme", "light");
+      else document.documentElement.removeAttribute("data-theme");
       toast.success("Pengaturan tersimpan");
       onSaved(s);
       onClose();
@@ -68,6 +71,23 @@ export function SettingsDialog({ open, onClose, onSaved }: Props) {
         </div>
 
         <div className="modal-body">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="field">
+              <label className="field-label">Bahasa UI</label>
+              <select className="select-dark" value={s.language} onChange={(e) => set("language", e.target.value)}>
+                <option value="id">Indonesia</option>
+                <option value="en">English</option>
+              </select>
+            </div>
+            <div className="field">
+              <label className="field-label">Tema</label>
+              <select className="select-dark" value={s.theme} onChange={(e) => set("theme", e.target.value as "dark" | "light")}>
+                <option value="dark">Gelap</option>
+                <option value="light">Terang</option>
+              </select>
+            </div>
+          </div>
+
           <div className="field">
             <label className="field-label">AI Base URL (wajib /v1)</label>
             <input className="input" value={s.ai_base_url} onChange={(e) => set("ai_base_url", e.target.value)} />
@@ -88,15 +108,6 @@ export function SettingsDialog({ open, onClose, onSaved }: Props) {
               <input className="input" value={s.ai_model} onChange={(e) => set("ai_model", e.target.value)} />
             </div>
             <div className="field">
-              <label className="field-label">Bahasa UI</label>
-              <select className="select-dark" value={s.language} onChange={(e) => set("language", e.target.value)}>
-                <option value="id">Indonesia</option>
-                <option value="en">English</option>
-              </select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="field">
               <label className="field-label">Temperature</label>
               <input
                 className="input"
@@ -108,15 +119,15 @@ export function SettingsDialog({ open, onClose, onSaved }: Props) {
                 onChange={(e) => set("temperature", parseFloat(e.target.value) || 0)}
               />
             </div>
-            <div className="field">
-              <label className="field-label">Max Tokens</label>
-              <input
-                className="input"
-                type="number"
-                value={s.max_tokens}
-                onChange={(e) => set("max_tokens", parseInt(e.target.value) || 0)}
-              />
-            </div>
+          </div>
+          <div className="field">
+            <label className="field-label">Max Tokens</label>
+            <input
+              className="input"
+              type="number"
+              value={s.max_tokens}
+              onChange={(e) => set("max_tokens", parseInt(e.target.value) || 0)}
+            />
           </div>
           <div className="field">
             <label className="field-label">System Prompt</label>

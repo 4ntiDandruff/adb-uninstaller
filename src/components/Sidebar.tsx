@@ -1,5 +1,5 @@
 import { Smartphone, RefreshCw, Usb, Wifi, Settings as SettingsIcon } from "lucide-react";
-import type { Device, DeviceInfo } from "../types";
+import type { AppInfo, Device, DeviceInfo } from "../types";
 
 interface Props {
   devices: Device[];
@@ -9,21 +9,22 @@ interface Props {
   loadingDevices: boolean;
   deviceInfo: DeviceInfo | null;
   onOpenSettings: () => void;
-  appCount: number;
+  apps: AppInfo[];
   t: (key: string) => string;
 }
 
 export function Sidebar({
-  devices,
-  deviceId,
-  onSelectDevice,
-  onRefresh,
-  loadingDevices,
-  deviceInfo,
-  onOpenSettings,
-  appCount,
-  t,
+  devices, deviceId, onSelectDevice, onRefresh, loadingDevices,
+  deviceInfo, onOpenSettings, apps, t,
 }: Props) {
+  const stats = {
+    total: apps.length,
+    safe: apps.filter((a) => a.safety_level === "safe").length,
+    risky: apps.filter((a) => a.safety_level === "risky").length,
+    critical: apps.filter((a) => a.safety_level === "critical").length,
+    unknown: apps.filter((a) => a.safety_level === "unknown").length,
+  };
+
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -83,12 +84,18 @@ export function Sidebar({
         </div>
       )}
 
-      <div className="side-section">
-        <div className="side-label">Statistik</div>
-        <div className="space-y-1.5 text-xs">
-          <InfoRow k={t("sidebar.total_apps")} v={String(appCount)} />
+      {apps.length > 0 && (
+        <div className="side-section">
+          <div className="side-label">Statistik</div>
+          <div className="space-y-1.5 text-xs">
+            <InfoRow k={t("sidebar.total_apps")} v={String(stats.total)} />
+            <InfoRow k={t("stats.safe")} v={String(stats.safe)} color="text-success" />
+            <InfoRow k={t("stats.risky")} v={String(stats.risky)} color="text-warning" />
+            <InfoRow k="Kritis" v={String(stats.critical)} color="text-danger" />
+            <InfoRow k={t("stats.unknown")} v={String(stats.unknown)} color="text-dim" />
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="mt-auto p-3">
         <button className="btn btn-ghost w-full" onClick={onOpenSettings}>
@@ -100,11 +107,11 @@ export function Sidebar({
   );
 }
 
-function InfoRow({ k, v }: { k: string; v: string }) {
+function InfoRow({ k, v, color }: { k: string; v: string; color?: string }) {
   return (
     <div className="flex justify-between gap-2">
       <span className="text-faint">{k}</span>
-      <span className="truncate text-right font-medium">{v}</span>
+      <span className={`truncate text-right font-medium ${color ?? ""}`}>{v}</span>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, Minus, Send, X } from "lucide-react";
+import { Loader2, Minus, Send, Trash2, X } from "lucide-react";
 import { api, toast } from "./api";
 
 export interface Msg {
@@ -26,44 +26,50 @@ export function AIChat({ context, msgs, setMsgs, pos, setPos, minimized, onClose
   const isDragging = useRef(false);
   const msgsEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll ke pesan terbaru
   useEffect(() => {
     msgsEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [msgs, busy]);
 
-  const onMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      if ((e.target as HTMLElement).closest("button")) return;
-      isDragging.current = true;
-      const rect = dragRef.current?.getBoundingClientRect();
-      if (rect) {
-        offsetRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-      }
-    },
-    [],
-  );
+  function startDrag(clientX: number, clientY: number) {
+    isDragging.current = true;
+    const rect = dragRef.current?.getBoundingClientRect();
+    if (rect) offsetRef.current = { x: clientX - rect.left, y: clientY - rect.top };
+  }
+
+  function moveDrag(clientX: number, clientY: number) {
+    if (!isDragging.current) return;
+    const maxX = window.innerWidth - 320;
+    const maxY = window.innerHeight - 48;
+    setPos({
+      x: Math.max(0, Math.min(clientX - offsetRef.current.x, maxX)),
+      y: Math.max(0, Math.min(clientY - offsetRef.current.y, maxY)),
+    });
+  }
+
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest("button")) return;
+    startDrag(e.clientX, e.clientY);
+  }, []);
+
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    if ((e.target as HTMLElement).closest("button")) return;
+    const t = e.touches[0];
+    startDrag(t.clientX, t.clientY);
+  }, []);
 
   useEffect(() => {
-    function onMove(e: MouseEvent) {
-      if (!isDragging.current) return;
-      const nx = e.clientX - offsetRef.current.x;
-      const ny = e.clientY - offsetRef.current.y;
-      // Clamp: jangan biarkan window keluar layar
-      const maxX = window.innerWidth - 320;
-      const maxY = window.innerHeight - 200;
-      setPos({
-        x: Math.max(0, Math.min(nx, maxX)),
-        y: Math.max(0, Math.min(ny, maxY)),
-      });
-    }
-    function onUp() {
-      isDragging.current = false;
-    }
+    function onMove(e: MouseEvent) { moveDrag(e.clientX, e.clientY); }
+    function onTouch(e: TouchEvent) { moveDrag(e.touches[0].clientX, e.touches[0].clientY); }
+    function onUp() { isDragging.current = false; }
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
+    window.addEventListener("touchmove", onTouch, { passive: true });
+    window.addEventListener("touchend", onUp);
     return () => {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("touchmove", onTouch);
+      window.removeEventListener("touchend", onUp);
     };
   }, [setPos]);
 
@@ -84,15 +90,12 @@ export function AIChat({ context, msgs, setMsgs, pos, setPos, minimized, onClose
     }
   }
 
+  const headProps = { onMouseDown, onTouchStart };
+
   if (minimized) {
     return (
-      <div
-        className="ai-float minimized"
-        style={{ left: pos.x, top: pos.y }}
-        onClick={onToggleMinimize}
-        title="Klik untuk buka"
-      >
-        <div className="ai-float-head" onMouseDown={onMouseDown}>
+      <div ref={dragRef} className="ai-float minimized" style={{ left: pos.x, top: pos.y }}>
+        <div className="ai-float-head" {...headProps} onClick={onToggleMinimize} title="Klik untuk buka">
           <span>AI Assistant</span>
         </div>
       </div>
@@ -100,14 +103,13 @@ export function AIChat({ context, msgs, setMsgs, pos, setPos, minimized, onClose
   }
 
   return (
-    <div
-      ref={dragRef}
-      className="ai-float"
-      style={{ left: pos.x, top: pos.y }}
-    >
-      <div className="ai-float-head" onMouseDown={onMouseDown}>
+    <div ref={dragRef} className="ai-float" style={{ left: pos.x, top: pos.y }}>
+      <div className="ai-float-head" {...headProps}>
         <span className="font-semibold">AI Assistant</span>
         <div className="flex items-center gap-1">
+          <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setMsgs([])} title="Clear history">
+            <Trash2 size={13} />
+          </button>
           <button className="btn btn-ghost btn-icon btn-sm" onClick={onToggleMinimize} title="Minimize">
             <Minus size={13} />
           </button>
@@ -120,8 +122,7 @@ export function AIChat({ context, msgs, setMsgs, pos, setPos, minimized, onClose
         <div className="ai-messages">
           {msgs.length === 0 && (
             <div className="text-xs text-dim">
-              Tanya seputar debloat, keamanan package, atau perintah ADB. Contoh: "aplikasi apa yang aman dihapus di
-              Xiaomi?"
+              Tanya seputar debloat, keamanan package, atau perintah ADB.
             </div>
           )}
           {msgs.map((m, i) => (

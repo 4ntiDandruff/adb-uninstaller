@@ -44,11 +44,13 @@ pub struct DeviceInfo {
 }
 
 async fn run_adb(args: &[&str]) -> Result<(String, String, i32), String> {
-    let output = Command::new("adb")
-        .args(args)
-        .output()
-        .await
-        .map_err(|e| format!("[ADB-1001] ADB tidak ditemukan atau gagal dijalankan: {e}"))?;
+    let output = tokio::time::timeout(
+        std::time::Duration::from_secs(30),
+        Command::new("adb").args(args).output(),
+    )
+    .await
+    .map_err(|_| "[ADB-1001] ADB timeout (30s)".to_string())?
+    .map_err(|e| format!("[ADB-1001] ADB tidak ditemukan atau gagal dijalankan: {e}"))?;
 
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
@@ -432,7 +434,7 @@ pub async fn disable_package(device_id: String, package: String) -> CommandResul
     .await
     {
         Ok((out, err, code)) => {
-            let success = code == 0;
+            let success = code == 0 && (out.contains("disabled") || out.contains("new state: disabled"));
             timed_result(
                 start,
                 success,
@@ -452,7 +454,7 @@ pub async fn enable_package(device_id: String, package: String) -> CommandResult
     let start = Instant::now();
     match run_adb_device(&device_id, &["shell", "pm", "enable", &package]).await {
         Ok((out, err, code)) => {
-            let success = code == 0;
+            let success = code == 0 && (out.contains("enabled") || out.contains("new state: enabled"));
             timed_result(
                 start,
                 success,
@@ -493,7 +495,7 @@ pub async fn force_stop_package(device_id: String, package: String) -> CommandRe
     let start = Instant::now();
     match run_adb_device(&device_id, &["shell", "am", "force-stop", &package]).await {
         Ok((out, err, code)) => {
-            let success = code == 0;
+            let success = code == 0 && err.trim().is_empty();
             timed_result(
                 start,
                 success,

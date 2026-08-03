@@ -21,7 +21,7 @@ import { LogDrawer } from "./components/LogDrawer";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { AIChat, type Msg } from "./components/AIChat";
 import { DebloatPresets } from "./components/DebloatPresets";
-import { enrichApps } from "./lib/safety-tags";
+import { enrichApps, classifyPackage } from "./lib/safety-tags";
 import { translate, type Lang } from "./i18n";
 import { humanizeError } from "./errorMessages";
 import { exportPreset } from "./lib/exportPreset";
@@ -152,30 +152,25 @@ export default function App() {
     if (packages.length === 0) return;
     setAnalyzing(true);
     const t0 = performance.now();
+    let totalDone = 0;
     try {
-      // Batch 50, sesuai spek
-      const batch = packages.slice(0, 50);
-      log({ level: "info", source: "ai", message: `Auto AI: analisis ${batch.length} package unknown` });
-      const results = await api.analyzeBatch(batch);
-      const map = new Map(results.map((r) => [r.package_name, r]));
-      setApps((prev) =>
-        prev.map((a) => {
-          const r = map.get(a.package_name);
-          return r
-            ? { ...a, safety_level: r.level as AppInfo["safety_level"], safety_reason: r.reason }
-            : a;
-        }),
-      );
-      log({
-        level: "success",
-        source: "ai",
-        message: `Auto AI selesai: ${results.length} package`,
-        duration_ms: Math.round(performance.now() - t0),
-      });
-      toast.success(`AI auto: ${results.length} package dianalisis`);
+      for (let i = 0; i < packages.length; i += 50) {
+        const batch = packages.slice(i, i + 50);
+        log({ level: "info", source: "ai", message: `Auto AI: batch ${Math.floor(i/50)+1} (${batch.length} pkg)` });
+        const results = await api.analyzeBatch(batch);
+        const map = new Map(results.map((r) => [r.package_name, r]));
+        setApps((prev) =>
+          prev.map((a) => {
+            const r = map.get(a.package_name);
+            return r ? { ...a, safety_level: r.level as AppInfo["safety_level"], safety_reason: r.reason } : a;
+          }),
+        );
+        totalDone += results.length;
+      }
+      log({ level: "success", source: "ai", message: `Auto AI selesai: ${totalDone} package`, duration_ms: Math.round(performance.now() - t0) });
+      toast.success(`AI auto: ${totalDone} package dianalisis`);
     } catch (e) {
       log({ level: "error", source: "ai", message: `Auto AI gagal`, detail: humanizeError(String(e)) });
-      // Silent toast supaya tidak ganggu user — masih bisa klik tombol AI manual
     } finally {
       setAnalyzing(false);
     }
@@ -208,7 +203,7 @@ export default function App() {
             version: c.version,
           }));
           // Enrich untuk update safety level dari static tags
-          setApps(enrichApps(apps));
+          setApps(enrichApps(apps, lang));
           log({
             level: "success",
             source: "cache",
@@ -223,7 +218,7 @@ export default function App() {
         const raw = await api.listApps(id);
         setScanProgress(90);
         setScanMessage("Memproses hasil...");
-        const enriched = enrichApps(raw);
+        const enriched = enrichApps(raw, lang);
         setApps(enriched);
         log({
           level: "success",
@@ -255,6 +250,19 @@ export default function App() {
   useEffect(() => {
     if (deviceId) loadApps(deviceId);
   }, [deviceId, loadApps]);
+
+  // Re-enrich static safety reasons saat lang berubah
+  useEffect(() => {
+    if (apps.length === 0) return;
+    setApps((prev) => prev.map((a) => {
+      const tag = classifyPackage(a.package_name, lang);
+      // Hanya update kalau reason masih dari static tags (bukan AI)
+      if (tag.level === "unknown" && a.safety_level !== "unknown") return a;
+      if (a.safety_level !== tag.level && a.safety_level !== "unknown") return a;
+      return { ...a, safety_reason: tag.reason };
+    }));
+  }, [lang]);
+
 
   const toggleSelect = useCallback((pkg: string) => {
     setSelected((prev) => {
@@ -316,7 +324,7 @@ export default function App() {
         if (res.success) {
           toast.success(`${label} OK`);
           log({ level: "success", source: "adb", message: `${label} sukses: ${pkg}`, detail: res.output, duration_ms: res.duration_ms });
-          if (kind === "uninstall") setUndoStack((u) => [...u, pkg]);
+          if (kind === "uninstall" || kind === "disable") setUndoStack((u) => [...u, pkg]);
           if (deviceId) loadApps(deviceId);
         } else {
           toast.error(`${label} gagal`);
@@ -368,7 +376,7 @@ export default function App() {
       }
       toast.success(`Batch: ${success} OK, ${fail} gagal`);
       setSelected(new Set());
-      if (deviceId) loadApps(deviceId);
+      if (deviceId) await loadApps(deviceId);
       setBusy(false);
     },
     [deviceId, apps, loadApps, log],
@@ -505,7 +513,7 @@ export default function App() {
         loadingDevices={loadingDevices}
         deviceInfo={deviceInfo}
         onOpenSettings={() => setSettingsOpen(true)}
-        appCount={apps.length}
+        apps={apps}
         t={t}
       />
 
@@ -708,6 +716,7 @@ export default function App() {
                 onForceStop={(a) => runOp("force_stop", a.package_name)}
                 onClearData={(a) => runOp("clear_data", a.package_name)}
                 busy={busy}
+                t={t}
               />
             </div>
           )}

@@ -32,6 +32,8 @@ pub fn init_db() -> Result<Connection, String> {
     let path = db_path()?;
     let conn = Connection::open(path)
         .map_err(|e| format!("[DB-003] Gagal buka database: {e}"))?;
+    conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;")
+        .map_err(|e| format!("[DB-003b] WAL mode gagal: {e}"))?;
     
     conn.execute(
         "CREATE TABLE IF NOT EXISTS app_cache (
@@ -142,10 +144,11 @@ pub fn update_safety(
     package_name: &str,
     safety_level: &str,
     safety_reason: &str,
+    device_id: &str,
 ) -> SqlResult<usize> {
     conn.execute(
-        "UPDATE app_cache SET safety_level = ?1, safety_reason = ?2 WHERE package_name = ?3",
-        rusqlite::params![safety_level, safety_reason, package_name],
+        "UPDATE app_cache SET safety_level = ?1, safety_reason = ?2 WHERE package_name = ?3 AND device_id = ?4",
+        rusqlite::params![safety_level, safety_reason, package_name, device_id],
     )
 }
 

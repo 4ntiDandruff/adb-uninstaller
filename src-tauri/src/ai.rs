@@ -188,7 +188,13 @@ pub async fn analyze_apps_batch(packages: Vec<String>) -> Result<Vec<SafetyAnaly
         .build()
         .map_err(|e| format!("[ADB-4001] HTTP client error: {e}"))?;
 
-    let system = "Analyze Android package names. For EACH package return JSON object with keys: package_name, level (safe|risky|critical|unknown), reason (short), can_remove (bool). Return ONLY a JSON array, no markdown.";
+    let lang_note = if settings.language == "id" {
+        " Tulis field reason dalam Bahasa Indonesia, singkat maksimal 5 kata."
+    } else {
+        " Write the reason field in English, max 5 words."
+    };
+    let system_str = format!("Analyze Android package names. For EACH package return JSON object with keys: package_name, level (safe|risky|critical|unknown), reason (short), can_remove (bool). Return ONLY a JSON array, no markdown.{}", lang_note);
+    let system = system_str.as_str();
     let user = serde_json::to_string(&packages)
         .map_err(|e| format!("[ADB-4006] Serialize packages gagal: {e}"))?;
 
@@ -246,13 +252,6 @@ pub async fn analyze_apps_batch(packages: Vec<String>) -> Result<Vec<SafetyAnaly
     let parsed: Vec<SafetyAnalysis> = serde_json::from_str(json_slice).map_err(|e| {
         format!("[ADB-4008] AI JSON invalid: {e} | content={cleaned}")
     })?;
-
-    // Persist hasil AI ke cache (semua device yang punya package tsb)
-    if let Ok(conn) = crate::db::init_db() {
-        for item in &parsed {
-            let _ = crate::db::update_safety(&conn, &item.package_name, &item.level, &item.reason);
-        }
-    }
 
     Ok(parsed)
 }

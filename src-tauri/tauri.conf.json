@@ -20,12 +20,15 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src self; connect-src self http: https:; script-src self unsafe-inline; style-src self unsafe-inline; img-src self data:"
     }
   },
   "bundle": {
     "active": true,
-    "targets": ["deb", "appimage"],
+    "targets": [
+      "deb",
+      "appimage"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -35,7 +38,9 @@
     ],
     "linux": {
       "deb": {
-        "depends": ["android-tools-adb"]
+        "depends": [
+          "android-tools-adb"
+        ]
       }
     },
     "shortDescription": "Manage Android apps via ADB",

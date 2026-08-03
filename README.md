@@ -6,6 +6,7 @@ Desktop app Linux untuk manage aplikasi Android via ADB: scan device, list packa
 
 ![Platform](https://img.shields.io/badge/platform-Linux-blue)
 ![Stack](https://img.shields.io/badge/stack-Tauri%20v2%20%7C%20React%20%7C%20Rust-orange)
+![Version](https://img.shields.io/badge/version-2.1.0-green)
 ![License](https://img.shields.io/badge/license-Private-lightgrey)
 
 ---
@@ -13,37 +14,42 @@ Desktop app Linux untuk manage aplikasi Android via ADB: scan device, list packa
 ## Fitur
 
 ### Core ADB
-- Deteksi device USB / Wi‑Fi
+- Deteksi device USB / Wi‑Fi + auto-select
 - List apps: tab Semua / System / User / Disabled / Running
-- Sort ascending / descending (package, safety, size)
-- Search + clear (tombol X)
+- Kolom label app (nama readable) + package name
+- Sort ascending / descending (label, safety, size — numeric)
+- Search + debounce 200ms + tombol clear
 - Sticky table header
-- Detail panel per package
+- Detail panel per package + tombol copy package name
 - Batch actions: Uninstall, Disable, Enable, Force Stop, Clear Data
 - Undo restore (package yang di-uninstall/disable)
 
 ### Keamanan
 - 4 level: **safe / risky / critical / unknown**
 - Static offline tags (Android/Google/Xiaomi/Samsung/OPPO/Vivo bloat)
-- **Unknown otomatis dianalisis AI** (batch 50 package/call)
+- **Unknown otomatis dianalisis AI** — semua package, bukan hanya 50 pertama
 - Hasil AI disimpan ke SQLite cache (tidak hilang setelah restart)
+- Critical package diblokir dari uninstall/disable
 
 ### AI
 - Custom OpenAI-compatible provider (ZevaiRouter / lokal / OpenAI)
 - Tombol **Test Koneksi** + daftar model
-- Chat floating window (drag, minimize, history persist)
+- Chat floating window (drag mouse + touch, minimize, clear history)
 - Temperature + max tokens di Settings
+- Reason AI ikut bahasa UI (Indonesia / English)
 
 ### UI / UX
-- Dark mode (default) + Light mode (GitHub-style)
-- Bahasa **Indonesia / English**
+- Dark mode (default) + Light mode — toggle di Settings
+- Bahasa **Indonesia / English** — semua label, deskripsi, reason ikut berubah
+- Statistik sidebar: total / safe / risky / kritis / unknown
 - Progress bar scan (persen + status)
-- Toast notification + log drawer
+- Toast notification + log drawer (auto-scroll, export `.txt`)
 - Error message manusiawi (bukan cuma kode teknis)
+- CSP aktif untuk keamanan WebView
 
 ### Utils
 - Info device: model, Android, battery, storage, RAM
-- Local SQLite cache (`~/.config/adb-uninstaller/cache.db`)
+- Local SQLite cache WAL mode (`~/.config/adb-uninstaller/cache.db`)
 - Export preset debloat (JSON)
 - Debloat presets bawaan
 
@@ -60,10 +66,10 @@ sudo apt install -y android-tools-adb
 ### Bundle siap pakai
 ```bash
 # .deb
-sudo dpkg -i "ADB Uninstaller_2.0.0_amd64.deb"
+sudo dpkg -i "ADB Uninstaller_2.1.0_amd64.deb"
 # atau AppImage
-chmod +x "ADB Uninstaller_2.0.0_amd64.AppImage"
-./"ADB Uninstaller_2.0.0_amd64.AppImage"
+chmod +x "ADB Uninstaller_2.1.0_amd64.AppImage"
+./"ADB Uninstaller_2.1.0_amd64.AppImage"
 ```
 
 Build lokal menghasilkan:
@@ -116,9 +122,10 @@ Settings tersimpan di:
 
 1. Colok HP → aktifkan **USB debugging**
 2. Buka app → pilih device (auto-select kalau cuma 1)
-3. Tunggu list apps + auto AI untuk package `unknown`
+3. Tunggu list apps + auto AI untuk package `unknown` (semua diproses, bukan hanya 50)
 4. Centang package → Uninstall / Disable / Stop / Clear / Export
-5. Pakai **AI Chat** untuk tanya debloat (floating, bisa digeser)
+5. Pakai **AI Chat** untuk tanya debloat (floating, bisa digeser mouse/touch)
+6. Ganti bahasa di Settings → semua label + deskripsi package ikut berubah
 
 ---
 
@@ -134,9 +141,9 @@ adb-uninstaller/
 │   └── errorMessages.ts
 ├── src-tauri/
 │   └── src/
-│       ├── adb.rs          # ADB commands
-│       ├── ai.rs           # AI client
-│       ├── db.rs           # SQLite cache
+│       ├── adb.rs          # ADB commands + timeout
+│       ├── ai.rs           # AI client + i18n prompt
+│       ├── db.rs           # SQLite cache WAL
 │       └── lib.rs          # Tauri commands
 └── package.json
 ```
@@ -155,6 +162,7 @@ Lihat [CHANGELOG.md](./CHANGELOG.md).
 - Disable lebih aman daripada uninstall untuk bloat OEM
 - Cache AI mempercepat device kedua / scan ulang
 - Export JSON bisa dibagikan ke teknisi lain sebagai preset debloat
+- Ganti bahasa di Settings → reason package langsung berubah tanpa scan ulang
 
 ---
 
