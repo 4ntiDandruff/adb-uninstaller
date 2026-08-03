@@ -8,6 +8,32 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "v2.1.1",
+    date: "2026-08-03",
+    items: [
+      "🐛 adb.rs: list_apps pakai db_path() langsung — fix init_db ganda yang buka koneksi SQLite baru setiap scan",
+      "🐛 adb.rs: force_stop_package cek exit code saja — stderr check dihapus (beberapa HP kirim stderr walau sukses)",
+      "🐛 safety-tags.ts: com.android.* catch-all sekarang cek tags dict dulu — package yang sudah di-map tidak di-override",
+      "🐛 App.tsx: useEffect lang change hanya update static tags — AI re-translate dihapus (penyebab infinite loop)",
+      "🐛 vite.config.ts: base './' — fix CSS/JS tidak load di Tauri production build (absolute path tidak resolve)",
+      "🐛 db.rs: hapus dead code update_safety + fix lifetime warning — Rust 0 warnings",
+      "✨ AppTable: tombol Scan Device di empty state — user tidak perlu cari refresh icon di sidebar",
+      "✨ ConfirmDialog: custom confirm dialog menggantikan window.confirm() — sesuai design system",
+      "✨ Sidebar: placeholder text saat belum ada device — bukan kosong melompong",
+      "✨ AI Chat: default position bottom-right — tidak lagi menutupi sidebar",
+      "✨ AI Chat: max-height 380px pada messages — scroll proper di chat panjang",
+      "🌐 i18n: semua label hardcoded sekarang pakai t() — search placeholder, filter, counter, log, sidebar hint",
+      "🌐 i18n: 'tampil/dipilih' → 'shown/selected' saat lang=EN",
+      "🌐 Sidebar: fix duplikasi model name 'Infinix Infinix X6788' → 'Infinix X6788'",
+      "🎨 CSS: table-layout auto — kolom SAFETY/TIPE/STATUS/UKURAN tidak lagi terpotong ellipsis",
+      "🎨 CSS: light theme contrast boost — text-dim, text-faint, btn-ghost, sidebar, scrollbar semua lebih readable",
+      "🎨 CSS: dark theme text-faint dinaikkan ke #6b7d9e — sidebar placeholder text lebih jelas",
+      "🎨 Toaster dipindah bottom-right — tidak overlap topbar buttons",
+      "🎨 SearchBar: onChange masuk useEffect deps — fix stale closure pada debounce",
+      "🔒 tauri.conf.json: CSP null — CSP ketat memblokir CSS di Tauri WebView production",
+    ],
+  },
+  {
     version: "v2.1.0",
     date: "2026-08-03",
     items: [
@@ -33,7 +59,7 @@ const CHANGELOG: ChangelogEntry[] = [
       "🌐 safety-tags.ts: semua reason static tags punya versi Bahasa Indonesia",
       "🌐 ai.rs: prompt AI batch kirim instruksi bahasa dari settings",
       "🌐 App.tsx: ganti bahasa → reason package langsung berubah otomatis",
-      "🔒 tauri.conf.json: Content Security Policy aktif (sebelumnya null)",
+      "🔒 tauri.conf.json: CSP dinonaktifkan — CSP ketat memblokir CSS di Tauri WebView",
       "🗄️ db.rs: WAL mode aktif untuk performa SQLite lebih baik",
     ],
   },

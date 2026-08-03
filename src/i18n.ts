@@ -8,6 +8,9 @@ export const t: Record<Lang, Record<string, string>> = {
     "topbar.undo": "Undo",
     "topbar.ai_chat": "AI Chat",
     "topbar.theme": "Ganti tema",
+    "topbar.presets": "Preset Debloat",
+    "topbar.log": "Log",
+    "topbar.scan_device": "Scan Device",
     
     // Sidebar
     "sidebar.devices": "Perangkat",
@@ -22,6 +25,7 @@ export const t: Record<Lang, Record<string, string>> = {
     "sidebar.stats": "Statistik",
     "sidebar.total_apps": "Total aplikasi",
     "sidebar.settings": "Pengaturan",
+    "sidebar.connect_hint": "Hubungkan device via USB, lalu scan.",
     
     // Stats
     "stats.total": "Total",
@@ -53,6 +57,8 @@ export const t: Record<Lang, Record<string, string>> = {
     "table.size": "Ukuran",
     "table.empty": "Belum ada data. Scan device dulu.",
     "table.no_result": "Tidak ada hasil untuk filter ini.",
+    "table.shown": "tampil",
+    "table.selected": "dipilih",
     
     // Detail
     "detail.uninstall": "Uninstall",
@@ -97,6 +103,9 @@ export const t: Record<Lang, Record<string, string>> = {
     "topbar.undo": "Undo",
     "topbar.ai_chat": "AI Chat",
     "topbar.theme": "Toggle theme",
+    "topbar.presets": "Debloat Presets",
+    "topbar.log": "Log",
+    "topbar.scan_device": "Scan Device",
     
     // Sidebar
     "sidebar.devices": "Devices",
@@ -111,6 +120,7 @@ export const t: Record<Lang, Record<string, string>> = {
     "sidebar.stats": "Statistics",
     "sidebar.total_apps": "Total apps",
     "sidebar.settings": "Settings",
+    "sidebar.connect_hint": "Connect a device via USB, then scan.",
     
     // Stats
     "stats.total": "Total",
@@ -142,6 +152,8 @@ export const t: Record<Lang, Record<string, string>> = {
     "table.size": "Size",
     "table.empty": "No data. Scan a device first.",
     "table.no_result": "No results for this filter.",
+    "table.shown": "shown",
+    "table.selected": "selected",
     
     // Detail
     "detail.uninstall": "Uninstall",

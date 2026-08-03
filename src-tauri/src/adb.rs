@@ -289,7 +289,9 @@ pub async fn list_apps(device_id: String) -> Result<Vec<AppInfo>, String> {
     apps.sort_by(|a, b| a.package_name.cmp(&b.package_name));
 
     // Merge safety/label dari cache lama biar AI result tidak hilang
-    if let Ok(conn) = crate::db::init_db() {
+    // ponytail: pakai db_path + open langsung, bukan init_db yang CREATE TABLE ulang setiap scan
+    if let Ok(path) = crate::db::db_path() {
+    if let Ok(conn) = rusqlite::Connection::open(path) {
         if let Ok(cached) = crate::db::load_apps(&conn, &device_id) {
             let map: std::collections::HashMap<String, crate::db::CachedApp> = cached
                 .into_iter()
@@ -317,7 +319,7 @@ pub async fn list_apps(device_id: String) -> Result<Vec<AppInfo>, String> {
             }
         }
         let _ = crate::db::save_apps(&conn, &device_id, &apps);
-    }
+    }}
 
     Ok(apps)
 }
@@ -495,7 +497,8 @@ pub async fn force_stop_package(device_id: String, package: String) -> CommandRe
     let start = Instant::now();
     match run_adb_device(&device_id, &["shell", "am", "force-stop", &package]).await {
         Ok((out, err, code)) => {
-            let success = code == 0 && err.trim().is_empty();
+            // ponytail: force-stop returns stderr on some devices even on success — check exit code only
+            let success = code == 0;
             timed_result(
                 start,
                 success,

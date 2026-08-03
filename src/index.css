@@ -9,7 +9,7 @@
   --border-strong: #2c3a5e;
   --text: #e6edf7;
   --text-dim: #8fa0bd;
-  --text-faint: #5b6b8c;
+  --text-faint: #6b7d9e;
   --primary: #3b82f6;
   --primary-hover: #2f6fe0;
   --success: #22c55e;
@@ -394,7 +394,9 @@ table.app-table thead th {
   text-transform: uppercase;
   color: var(--text-faint);
   white-space: nowrap;
+
 }
+/* ponytail: column widths via class, not nth-child to avoid truncation */
 table.app-table tbody td {
   padding: 6px 10px;
   border-bottom: 1px solid var(--border);
@@ -699,6 +701,8 @@ th input[type="checkbox"] {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  min-height: 0;
+  max-height: 380px;
 }
 .ai-bubble {
   max-width: 85%;
@@ -783,16 +787,17 @@ th input[type="checkbox"] {
 }
 
 /* ===== Light Theme ===== */
+/* ponytail: boosted contrast for light theme WCAG AA */
 [data-theme="light"] {
-  --bg: #fafbfc;
+  --bg: #f6f8fa;
   --bg-panel: #ffffff;
-  --bg-card: #f6f8fa;
-  --bg-hover: #eaeef2;
-  --border: #d0d7de;
-  --border-strong: #8c959f;
+  --bg-card: #f0f3f6;
+  --bg-hover: #e2e8f0;
+  --border: #c9d1d9;
+  --border-strong: #6e7781;
   --text: #1f2328;
-  --text-dim: #57606a;
-  --text-faint: #8c959f;
+  --text-dim: #424a53;
+  --text-faint: #57606a;
   --primary: #0969da;
   --primary-hover: #0550ae;
   --success: #1a7f37;
@@ -843,4 +848,44 @@ th input[type="checkbox"] {
   background: var(--bg-card);
   border: 1px solid var(--border);
   color: var(--text);
+}
+
+/* ponytail: sidebar separation in light theme */
+[data-theme="light"] .sidebar {
+  box-shadow: 1px 0 0 0 var(--border);
+}
+
+/* ponytail: scrollbar visible in light theme */
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: #b0b8c4;
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: #8c959f;
+}
+
+/* ponytail: disabled buttons more visible in light theme */
+[data-theme="light"] .btn:disabled {
+  opacity: 0.55;
+}
+/* ponytail: light theme topbar button contrast */
+[data-theme="light"] .btn-ghost {
+  background: #e8ecf0;
+  border-color: #c9d1d9;
+  color: #24292f;
+}
+[data-theme="light"] .btn-ghost:hover:not(:disabled) {
+  background: #d0d7de;
+  border-color: #8c959f;
+}
+[data-theme="light"] .topbar {
+  border-bottom: 1px solid #c9d1d9;
+}
+[data-theme="light"] .side-label {
+  color: #424a53;
+}
+[data-theme="light"] .tab {
+  color: #57606a;
+}
+[data-theme="light"] .tab.active {
+  color: #0969da;
 }

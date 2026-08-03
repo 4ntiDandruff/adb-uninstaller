@@ -16,7 +16,7 @@ export function SearchBar({ value, onChange, onClear, placeholder }: Props) {
   useEffect(() => {
     const t = setTimeout(() => onChange(local), 200);
     return () => clearTimeout(t);
-  }, [local]);
+  }, [local, onChange]);
 
   return (
     <div className="search-wrap">

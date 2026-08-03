@@ -1,4 +1,4 @@
-# ADB Uninstaller v2
+# ADB Uninstaller v2.1
 
 **By Teknisi Megapass Sidoarjo**
 
@@ -6,7 +6,7 @@ Desktop app Linux untuk manage aplikasi Android via ADB: scan device, list packa
 
 ![Platform](https://img.shields.io/badge/platform-Linux-blue)
 ![Stack](https://img.shields.io/badge/stack-Tauri%20v2%20%7C%20React%20%7C%20Rust-orange)
-![Version](https://img.shields.io/badge/version-2.1.0-green)
+![Version](https://img.shields.io/badge/version-2.1.1-green)
 ![License](https://img.shields.io/badge/license-Private-lightgrey)
 
 ---
@@ -39,13 +39,16 @@ Desktop app Linux untuk manage aplikasi Android via ADB: scan device, list packa
 - Reason AI ikut bahasa UI (Indonesia / English)
 
 ### UI / UX
+- Custom confirmation dialog (bukan `window.confirm` browser)
+- Empty state: tombol Scan Device langsung di tabel
 - Dark mode (default) + Light mode — toggle di Settings
 - Bahasa **Indonesia / English** — semua label, deskripsi, reason ikut berubah
+- i18n konsisten: search, filter, counter, log, sidebar hint semua ikut bahasa aktif
 - Statistik sidebar: total / safe / risky / kritis / unknown
 - Progress bar scan (persen + status)
 - Toast notification + log drawer (auto-scroll, export `.txt`)
 - Error message manusiawi (bukan cuma kode teknis)
-- CSP aktif untuk keamanan WebView
+- CSP dinonaktifkan (CSP ketat memblokir CSS di Tauri WebView production)
 
 ### Utils
 - Info device: model, Android, battery, storage, RAM
@@ -66,10 +69,10 @@ sudo apt install -y android-tools-adb
 ### Bundle siap pakai
 ```bash
 # .deb
-sudo dpkg -i "ADB Uninstaller_2.1.0_amd64.deb"
+sudo dpkg -i "ADB Uninstaller_2.1.1_amd64.deb"
 # atau AppImage
-chmod +x "ADB Uninstaller_2.1.0_amd64.AppImage"
-./"ADB Uninstaller_2.1.0_amd64.AppImage"
+chmod +x "ADB Uninstaller_2.1.1_amd64.AppImage"
+./"ADB Uninstaller_2.1.1_amd64.AppImage"
 ```
 
 Build lokal menghasilkan:

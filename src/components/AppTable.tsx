@@ -42,13 +42,14 @@ interface Props {
   onToggleAll: (visible: AppInfo[]) => void;
   onOpenDetail: (app: AppInfo) => void;
   activeApp: string | null;
+  onScan?: () => void;
   onTabChange?: (tab: TabKey) => void;
   t: (key: string) => string;
 }
 
 export function AppTable({
   apps, loading, query, levelFilter, selected,
-  onToggleSelect, onToggleAll, onOpenDetail, activeApp, onTabChange, t,
+  onToggleSelect, onToggleAll, onOpenDetail, activeApp, onScan, onTabChange, t,
 }: Props) {
   const [tab, setTab] = useState<TabKey>("all");
   const [sortKey, setSortKey] = useState<SortKey>("label");
@@ -115,7 +116,7 @@ export function AppTable({
           </button>
         ))}
         <div className="ml-auto flex items-center pb-1 text-xs text-dim">
-          {filtered.length} tampil · {selected.size} dipilih
+          {filtered.length} {t("table.shown")} · {selected.size} {t("table.selected")}
         </div>
       </div>
 
@@ -165,6 +166,11 @@ export function AppTable({
                     <div className="text-sm">
                       {apps.length === 0 ? t("table.empty") : t("table.no_result")}
                     </div>
+                    {apps.length === 0 && onScan && (
+                      <button className="btn btn-primary btn-sm mt-2" onClick={onScan}>
+                        {t("topbar.scan_device")}
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -183,7 +189,7 @@ export function AppTable({
                       onChange={() => onToggleSelect(a.package_name)}
                     />
                   </td>
-                  <td className="max-w-[280px]">
+                  <td>
                     <div className="font-medium truncate">{a.label || a.package_name}</div>
                     <div className="mono text-xs text-faint truncate">{a.package_name}</div>
                   </td>

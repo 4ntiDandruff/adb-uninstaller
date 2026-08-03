@@ -96,16 +96,18 @@ export function classifyPackage(packageName: string, lang = "id"): SafetyTag {
   if (tag) {
     return lang === "id" ? tag : { ...tag, reason: tag.reasonEn };
   }
+  // ponytail: hanya flag critical kalau BUKAN package yang sudah di-map di tags dict
   if (
-    packageName.startsWith("com.android.") ||
-    packageName.startsWith("android.") ||
-    packageName === "com.google.android.gms" ||
-    packageName === "com.google.android.gsf"
+    (packageName.startsWith("com.android.") ||
+     packageName.startsWith("android.") ||
+     packageName === "com.google.android.gms" ||
+     packageName === "com.google.android.gsf") &&
+    !tags[packageName]
   ) {
     return {
-      level: "critical",
-      reason: lang === "id" ? "Awalan inti Android/Google" : "Android/Google core prefix",
-      reasonEn: "Android/Google core prefix",
+      level: "risky",
+      reason: lang === "id" ? "Awalan Android/Google — cek manual" : "Android/Google prefix — check manually",
+      reasonEn: "Android/Google prefix — check manually",
     };
   }
   if (

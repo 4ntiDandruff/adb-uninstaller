@@ -31,7 +31,7 @@ export function Sidebar({
         <div className="brand-logo">A</div>
         <div className="min-w-0">
           <div className="brand-name">ADB Uninstaller</div>
-          <div className="brand-sub">Megapass Sidoarjo · v2.1.0</div>
+          <div className="brand-sub">Megapass Sidoarjo · v2.1.1</div>
         </div>
       </div>
 
@@ -75,7 +75,7 @@ export function Sidebar({
         <div className="side-section">
           <div className="side-label">{t("sidebar.device_info")}</div>
           <div className="space-y-1.5 text-xs">
-            <InfoRow k={t("sidebar.model")} v={`${deviceInfo.manufacturer} ${deviceInfo.model}`} />
+            <InfoRow k={t("sidebar.model")} v={deviceInfo.model.toLowerCase().startsWith(deviceInfo.manufacturer.toLowerCase()) ? deviceInfo.model : `${deviceInfo.manufacturer} ${deviceInfo.model}`} />
             <InfoRow k={t("sidebar.android")} v={`${deviceInfo.android_version} (SDK ${deviceInfo.sdk_level})`} />
             <InfoRow k={t("sidebar.battery")} v={deviceInfo.battery_level >= 0 ? `${deviceInfo.battery_level}%` : "?"} />
             <InfoRow k={t("sidebar.storage")} v={`${deviceInfo.storage_free} / ${deviceInfo.storage_total}`} />
@@ -84,7 +84,7 @@ export function Sidebar({
         </div>
       )}
 
-      {apps.length > 0 && (
+      {apps.length > 0 ? (
         <div className="side-section">
           <div className="side-label">{t("sidebar.stats")}</div>
           <div className="text-xs font-medium mb-2">{stats.total} {t("sidebar.total_apps").toLowerCase()}</div>
@@ -93,6 +93,13 @@ export function Sidebar({
             <StatBar label={t("stats.risky")} count={stats.risky} total={stats.total} color="var(--warning)" />
             <StatBar label={t("stats.critical")} count={stats.critical} total={stats.total} color="var(--danger)" />
             <StatBar label={t("stats.unknown")} count={stats.unknown} total={stats.total} color="var(--text-faint)" />
+          </div>
+        </div>
+      ) : (
+        <div className="side-section">
+          <div className="side-label">{t("sidebar.stats")}</div>
+          <div className="text-xs text-faint" style={{ padding: "8px 0" }}>
+            {t("sidebar.connect_hint")}
           </div>
         </div>
       )}

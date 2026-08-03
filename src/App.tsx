@@ -18,6 +18,7 @@ import { SettingsDialog } from "./components/SettingsDialog";
 import { ChangelogDialog } from "./components/ChangelogDialog";
 import { AIChat, type Msg } from "./components/AIChat";
 import { DebloatPresets } from "./components/DebloatPresets";
+import { ConfirmDialog } from "./components/ConfirmDialog";
 import { enrichApps, classifyPackage } from "./lib/safety-tags";
 import { translate, type Lang } from "./i18n";
 import { humanizeError } from "./errorMessages";
@@ -52,8 +53,10 @@ export default function App() {
   const [analyzing, setAnalyzing] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMinimized, setChatMinimized] = useState(false);
-  const [chatPos, setChatPos] = useState({ x: 100, y: 100 });
+  // ponytail: default bottom-right, not top-left over sidebar
+  const [chatPos, setChatPos] = useState({ x: Math.max(window.innerWidth - 420, 100), y: Math.max(window.innerHeight - 560, 60) });
   const [chatMsgs, setChatMsgs] = useState<Msg[]>([]);
+  const [confirm, setConfirm] = useState<{ title: string; message: string; detail?: string; danger?: boolean; onOk: () => void } | null>(null);
 
   const t = useCallback((key: string) => translate(lang, key), [lang]);
 
@@ -250,27 +253,16 @@ export default function App() {
     if (deviceId) loadApps(deviceId);
   }, [deviceId, loadApps]);
 
-  // Re-enrich saat lang berubah
+  // Re-enrich saat lang berubah — static tags only, no AI re-call to prevent loops
+  // ponytail: removed AI re-translate to prevent infinite loop (setApps -> re-render -> re-trigger)
   useEffect(() => {
     if (apps.length === 0) return;
-    // 1. Update static tag reasons sesuai lang
     setApps((prev) => prev.map((a) => {
       const tag = classifyPackage(a.package_name, lang);
       if (tag.level !== 'unknown') return { ...a, safety_reason: tag.reason };
       return a;
     }));
-    // 2. Re-analyze package yang reason-nya masih English
-    if (lang === 'id') {
-      const isEnglish = (r: string) => {
-        if (!r || r.length < 3) return false;
-        const idWords = ['adalah','klien','kustom','berpotensi','melanggar','layanan','sistem','inti','penyedia','tumpukan','peluncur','bawaan','manajer','toko','analitik','telemetri','belum','aman','berisiko','kritis','daemon','agen','pembaruan','cadangan','sinkron','pemantau'];
-        const lower = r.toLowerCase();
-        if (idWords.some((w) => lower.includes(w))) return false;
-        return /(is|are|the|a |an |for |of |with |client|custom|potential|violation|service|system|core|provider|stack|launcher|keyboard|manager|store|browser|analytics|telemetry|classified|bloat|adware|tracker|utility|framework|daemon|agent|helper|installer|updater|backup|sync|cloud|monitor|tos|app )/i.test(r);
-      };
-      const needsRetranslate = apps.filter((a) => isEnglish(a.safety_reason)).map((a) => a.package_name);
-      if (needsRetranslate.length > 0) void autoAnalyzeUnknown(needsRetranslate);
-    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lang]);
 
 
@@ -323,29 +315,36 @@ export default function App() {
         log({ level: "warn", source: "ui", message: `Blokir op critical: ${label} ${pkg}` });
         return;
       }
-      const ok = window.confirm(`Yakin mau ${label}?\n\n${pkg}\n\nSafety: ${app?.safety_level ?? "unknown"}`);
-      if (!ok) return;
-      setBusy(true);
-      log({ level: "info", source: "adb", message: `Exec: ${label} ${pkg}` });
-      try {
-        const res = await api[
-          kind === "force_stop" ? "forceStop" : kind === "clear_data" ? "clearData" : kind
-        ](deviceId, pkg);
-        if (res.success) {
-          toast.success(`${label} OK`);
-          log({ level: "success", source: "adb", message: `${label} sukses: ${pkg}`, detail: res.output, duration_ms: res.duration_ms });
-          if (kind === "uninstall" || kind === "disable") setUndoStack((u) => [...u, pkg]);
-          if (deviceId) loadApps(deviceId);
-        } else {
-          toast.error(`${label} gagal`);
-          log({ level: "error", source: "adb", message: `${label} gagal: ${pkg}`, detail: res.error ?? res.output, duration_ms: res.duration_ms });
-        }
-      } catch (e) {
-        toast.error(`${label} error`);
-        log({ level: "error", source: "adb", message: `${label} exception: ${pkg}`, detail: humanizeError(String(e)) });
-      } finally {
-        setBusy(false);
-      }
+      setConfirm({
+        title: `${label.charAt(0).toUpperCase() + label.slice(1)}?`,
+        message: pkg,
+        detail: `Safety: ${app?.safety_level ?? "unknown"}`,
+        danger: kind === "uninstall" || kind === "clear_data",
+        onOk: async () => {
+          setConfirm(null);
+          setBusy(true);
+          log({ level: "info", source: "adb", message: `Exec: ${label} ${pkg}` });
+          try {
+            const res = await api[
+              kind === "force_stop" ? "forceStop" : kind === "clear_data" ? "clearData" : kind
+            ](deviceId, pkg);
+            if (res.success) {
+              toast.success(`${label} OK`);
+              log({ level: "success", source: "adb", message: `${label} sukses: ${pkg}`, detail: res.output, duration_ms: res.duration_ms });
+              if (kind === "uninstall" || kind === "disable") setUndoStack((u) => [...u, pkg]);
+              if (deviceId) loadApps(deviceId);
+            } else {
+              toast.error(`${label} gagal`);
+              log({ level: "error", source: "adb", message: `${label} gagal: ${pkg}`, detail: res.error ?? res.output, duration_ms: res.duration_ms });
+            }
+          } catch (e) {
+            toast.error(`${label} error`);
+            log({ level: "error", source: "adb", message: `${label} exception: ${pkg}`, detail: humanizeError(String(e)) });
+          } finally {
+            setBusy(false);
+          }
+        },
+      });
     },
     [deviceId, apps, loadApps, log],
   );
@@ -353,41 +352,43 @@ export default function App() {
   const runBatch = useCallback(
     async (packages: string[]) => {
       if (!deviceId || packages.length === 0) return;
-      const ok = window.confirm(
-        `UNINSTALL batch ${packages.length} package?\n\n${packages.slice(0, 8).join("\n")}${
-          packages.length > 8 ? `\n… +${packages.length - 8} lagi` : ""
-        }`,
-      );
-      if (!ok) return;
-      setBusy(true);
-      let success = 0;
-      let fail = 0;
-      for (const pkg of packages) {
-        const app = apps.find((a) => a.package_name === pkg);
-        if (app?.safety_level === "critical") {
-          log({ level: "warn", source: "adb", message: `Skip critical: ${pkg}` });
-          fail++;
-          continue;
-        }
-        try {
-          const res = await api.uninstall(deviceId, pkg);
-          if (res.success) {
-            success++;
-            setUndoStack((u) => [...u, pkg]);
-            log({ level: "success", source: "adb", message: `uninstall OK: ${pkg}`, duration_ms: res.duration_ms });
-          } else {
-            fail++;
-            log({ level: "error", source: "adb", message: `uninstall gagal: ${pkg}`, detail: humanizeError(res.error ?? res.output) });
+      setConfirm({
+        title: `Uninstall ${packages.length} package?`,
+        message: packages.slice(0, 8).join("\n") + (packages.length > 8 ? `\n\u2026 +${packages.length - 8} lagi` : ""),
+        danger: true,
+        onOk: async () => {
+          setConfirm(null);
+          setBusy(true);
+          let success = 0;
+          let fail = 0;
+          for (const pkg of packages) {
+            const app = apps.find((a) => a.package_name === pkg);
+            if (app?.safety_level === "critical") {
+              log({ level: "warn", source: "adb", message: `Skip critical: ${pkg}` });
+              fail++;
+              continue;
+            }
+            try {
+              const res = await api.uninstall(deviceId, pkg);
+              if (res.success) {
+                success++;
+                setUndoStack((u) => [...u, pkg]);
+                log({ level: "success", source: "adb", message: `uninstall OK: ${pkg}`, duration_ms: res.duration_ms });
+              } else {
+                fail++;
+                log({ level: "error", source: "adb", message: `uninstall gagal: ${pkg}`, detail: humanizeError(res.error ?? res.output) });
+              }
+            } catch (e) {
+              fail++;
+              log({ level: "error", source: "adb", message: `uninstall exception: ${pkg}`, detail: humanizeError(String(e)) });
+            }
           }
-        } catch (e) {
-          fail++;
-          log({ level: "error", source: "adb", message: `uninstall exception: ${pkg}`, detail: humanizeError(String(e)) });
-        }
-      }
-      toast.success(`Batch: ${success} OK, ${fail} gagal`);
-      setSelected(new Set());
-      if (deviceId) await loadApps(deviceId);
-      setBusy(false);
+          toast.success(`Batch: ${success} OK, ${fail} gagal`);
+          setSelected(new Set());
+          if (deviceId) await loadApps(deviceId);
+          setBusy(false);
+        },
+      });
     },
     [deviceId, apps, loadApps, log],
   );
@@ -396,38 +397,44 @@ export default function App() {
     async (kind: OpKind, packages: string[]) => {
       if (!deviceId || packages.length === 0) return;
       const label = kind.replace("_", " ");
-      const ok = window.confirm(`Yakin mau ${label} batch ${packages.length} package?\n\n${packages.slice(0, 8).join("\n")}${packages.length > 8 ? `\n… +${packages.length - 8} lagi` : ""}`);
-      if (!ok) return;
-      setBusy(true);
-      let success = 0;
-      let fail = 0;
-      for (const pkg of packages) {
-        const app = apps.find((a) => a.package_name === pkg);
-        if (app?.safety_level === "critical") {
-          log({ level: "warn", source: "adb", message: `Skip critical: ${pkg}` });
-          fail++;
-          continue;
-        }
-        try {
-          const res = await api[
-            kind === "force_stop" ? "forceStop" : kind === "clear_data" ? "clearData" : kind
-          ](deviceId, pkg);
-          if (res.success) {
-            success++;
-            log({ level: "success", source: "adb", message: `${label} OK: ${pkg}`, duration_ms: res.duration_ms });
-          } else {
-            fail++;
-            log({ level: "error", source: "adb", message: `${label} gagal: ${pkg}`, detail: humanizeError(res.error ?? res.output) });
+      setConfirm({
+        title: `${label.charAt(0).toUpperCase() + label.slice(1)} ${packages.length} package?`,
+        message: packages.slice(0, 8).join("\n") + (packages.length > 8 ? `\n\u2026 +${packages.length - 8} lagi` : ""),
+        danger: kind === "uninstall" || kind === "clear_data",
+        onOk: async () => {
+          setConfirm(null);
+          setBusy(true);
+          let success = 0;
+          let fail = 0;
+          for (const pkg of packages) {
+            const app = apps.find((a) => a.package_name === pkg);
+            if (app?.safety_level === "critical") {
+              log({ level: "warn", source: "adb", message: `Skip critical: ${pkg}` });
+              fail++;
+              continue;
+            }
+            try {
+              const res = await api[
+                kind === "force_stop" ? "forceStop" : kind === "clear_data" ? "clearData" : kind
+              ](deviceId, pkg);
+              if (res.success) {
+                success++;
+                log({ level: "success", source: "adb", message: `${label} OK: ${pkg}`, duration_ms: res.duration_ms });
+              } else {
+                fail++;
+                log({ level: "error", source: "adb", message: `${label} gagal: ${pkg}`, detail: humanizeError(res.error ?? res.output) });
+              }
+            } catch (e) {
+              fail++;
+              log({ level: "error", source: "adb", message: `${label} exception: ${pkg}`, detail: humanizeError(String(e)) });
+            }
           }
-        } catch (e) {
-          fail++;
-          log({ level: "error", source: "adb", message: `${label} exception: ${pkg}`, detail: humanizeError(String(e)) });
-        }
-      }
-      toast.success(`Batch ${label}: ${success} OK, ${fail} gagal`);
-      setSelected(new Set());
-      if (deviceId) loadApps(deviceId);
-      setBusy(false);
+          toast.success(`Batch ${label}: ${success} OK, ${fail} gagal`);
+          setSelected(new Set());
+          if (deviceId) loadApps(deviceId);
+          setBusy(false);
+        },
+      });
     },
     [deviceId, apps, loadApps, log],
   );
@@ -534,7 +541,7 @@ export default function App() {
           <div className="topbar-spacer" />
 
           <div className="topbar-group">
-            <button className="btn btn-ghost btn-sm" onClick={() => setPresetsOpen(true)} title="Debloat Presets">🧹 Presets</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => setPresetsOpen(true)} title={t("topbar.presets")}>🧹 {t("topbar.presets")}</button>
             <button className="btn btn-ghost btn-sm" onClick={analyzeUnknown} disabled={analyzing || stats.unknown === 0} title="AI analisis package unknown">
               {analyzing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} AI ({stats.unknown})
             </button>
@@ -599,14 +606,14 @@ export default function App() {
         <div className="workbench">
           <div className="content">
             <div className="toolbar">
-              <SearchBar value={query} onChange={setQuery} onClear={() => setQuery("")} />
+              <SearchBar value={query} onChange={setQuery} onClear={() => setQuery("")} placeholder={t("toolbar.search")} />
               <select
                 className="select-dark"
                 style={{ width: 150 }}
                 value={levelFilter}
                 onChange={(e) => setLevelFilter(e.target.value as SafetyLevel | "all")}
               >
-                <option value="all">Semua level</option>
+                <option value="all">{t("toolbar.all_levels")}</option>
                 <option value="safe">Safe</option>
                 <option value="risky">Risky</option>
                 <option value="critical">Critical</option>
@@ -682,6 +689,7 @@ export default function App() {
               onToggleAll={toggleAll}
               onOpenDetail={openDetail}
               activeApp={detail?.package_name ?? null}
+              onScan={scanDevices}
               t={t}
             />
 
@@ -728,6 +736,15 @@ export default function App() {
       )}
       <ChangelogDialog open={changelogOpen} onClose={() => setChangelogOpen(false)} />
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} onSaved={setSettings} />
+      <ConfirmDialog
+        open={confirm !== null}
+        title={confirm?.title ?? ""}
+        message={confirm?.message ?? ""}
+        detail={confirm?.detail}
+        danger={confirm?.danger}
+        onConfirm={() => confirm?.onOk()}
+        onCancel={() => setConfirm(null)}
+      />
     </div>
   );
 }

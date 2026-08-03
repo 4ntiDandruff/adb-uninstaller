@@ -59,7 +59,7 @@ export function LogDrawer({ logs, onClear }: Props) {
             value={levelFilter}
             onChange={(e) => setLevelFilter(e.target.value as typeof levelFilter)}
           >
-            <option value="all">Semua</option>
+            <option value="all">All</option>
             <option value="info">Info</option>
             <option value="success">Success</option>
             <option value="warn">Warn</option>

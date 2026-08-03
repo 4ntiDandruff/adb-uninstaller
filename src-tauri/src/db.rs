@@ -19,7 +19,7 @@ pub struct CachedApp {
 
 pub struct DbState(pub Mutex<Option<Connection>>);
 
-fn db_path() -> Result<PathBuf, String> {
+pub fn db_path() -> Result<PathBuf, String> {
     let dir = dirs::config_dir()
         .ok_or_else(|| "[DB-001] Config dir tidak ditemukan".to_string())?
         .join("adb-uninstaller");
@@ -61,7 +61,7 @@ pub fn init_db() -> Result<Connection, String> {
     Ok(conn)
 }
 
-pub fn get_conn(state: &DbState) -> Result<std::sync::MutexGuard<Option<Connection>>, String> {
+pub fn get_conn(state: &DbState) -> Result<std::sync::MutexGuard<'_, Option<Connection>>, String> {
     state.0.lock().map_err(|e| format!("[DB-006] Lock poisoned: {e}"))
 }
 
@@ -137,19 +137,6 @@ pub fn save_apps(conn: &Connection, device_id: &str, apps: &[crate::adb::AppInfo
         count += 1;
     }
     Ok(count)
-}
-
-pub fn update_safety(
-    conn: &Connection,
-    package_name: &str,
-    safety_level: &str,
-    safety_reason: &str,
-    device_id: &str,
-) -> SqlResult<usize> {
-    conn.execute(
-        "UPDATE app_cache SET safety_level = ?1, safety_reason = ?2 WHERE package_name = ?3 AND device_id = ?4",
-        rusqlite::params![safety_level, safety_reason, package_name, device_id],
-    )
 }
 
 pub fn load_apps(conn: &Connection, device_id: &str) -> SqlResult<Vec<CachedApp>> {

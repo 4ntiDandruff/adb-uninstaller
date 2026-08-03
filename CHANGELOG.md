@@ -4,6 +4,43 @@ Semua perubahan penting dicatat di file ini.
 
 Format mirip [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.1.1] — 2026-08-03
+
+Patch: deep audit bug fix + UI/UX overhaul + i18n consistency + build fix.
+
+### Fixed (Backend)
+- `adb.rs` — `list_apps` pakai `db_path()` langsung, bukan `init_db()` yang buka koneksi SQLite baru + CREATE TABLE ulang setiap scan (race condition potential)
+- `adb.rs` — `force_stop_package` cek exit code saja, stderr check dihapus (beberapa HP kirim stderr walau sukses)
+- `db.rs` — hapus dead code `update_safety()` + fix lifetime warning → Rust 0 warnings
+- `safety-tags.ts` — `com.android.*` catch-all sekarang cek tags dict dulu, package yang sudah di-map tidak di-override ke critical
+- `App.tsx` — `useEffect` lang change hanya update static tags, AI re-translate dihapus (penyebab infinite loop `setApps → render → re-trigger`)
+- `SearchBar.tsx` — `onChange` masuk deps array useEffect (fix stale closure pada debounce)
+
+### Fixed (Build / Critical)
+- `vite.config.ts` — tambah `base: "./"` — fix CSS/JS tidak load di Tauri production build (absolute path `/assets/` tidak resolve di `tauri://localhost/`)
+- `tauri.conf.json` — CSP set `null` — CSP ketat (`style-src self`) memblokir Tailwind CSS di WebView production
+
+### Added (UI/UX)
+- `ConfirmDialog` — custom confirmation dialog menggantikan `window.confirm()` bawaan browser, sesuai design system app
+- `AppTable` — tombol **Scan Device** di empty state, user tidak perlu cari refresh icon di sidebar
+- `Sidebar` — placeholder text saat belum ada device ("Hubungkan device via USB, lalu scan.")
+- AI Chat default position **bottom-right** (sebelumnya top-left, menutupi sidebar)
+- AI Chat messages `max-height: 380px` — scroll proper di chat panjang
+- Toaster dipindah `bottom-right` — tidak overlap topbar buttons
+
+### Changed (i18n)
+- Semua label hardcoded sekarang pakai `t()`: search placeholder, level filter, counter (`shown/selected`), log filter, sidebar hint
+- `Sidebar` — fix duplikasi model name (`Infinix Infinix X6788` → `Infinix X6788`)
+- `ChangelogDialog` — CSP entry dikoreksi dari "aktif" ke "dinonaktifkan"
+
+### Changed (Styling)
+- Table: `table-layout: auto` (bukan `fixed`) — kolom SAFETY/TIPE/STATUS/UKURAN tidak lagi terpotong ellipsis
+- Light theme: contrast boost — `--text-dim` #424a53, `--text-faint` #57606a, btn-ghost, sidebar shadow, scrollbar thumb
+- Dark theme: `--text-faint` dinaikkan ke `#6b7d9e` — sidebar text lebih readable
+- Light theme: `.btn-ghost` background `#e8ecf0`, `.side-label` color `#424a53`, `.tab` color `#57606a`
+
+---
+
 ## [2.1.0] — 2026-08-03
 
 Patch besar: bug fixes kritis + UI/UX overhaul + dukungan penuh Bahasa Indonesia.
@@ -37,7 +74,7 @@ Patch besar: bug fixes kritis + UI/UX overhaul + dukungan penuh Bahasa Indonesia
 
 ### Changed
 - `App.css` — hapus scaffold Tauri default yang tidak terpakai
-- `tauri.conf.json` — Content Security Policy aktif (sebelumnya `null`)
+- `tauri.conf.json` — Content Security Policy (lihat v2.1.1 untuk update)
 - `db.rs` — WAL mode aktif (`PRAGMA journal_mode=WAL`) untuk performa SQLite lebih baik
 
 ### Internasionalisasi (i18n)
