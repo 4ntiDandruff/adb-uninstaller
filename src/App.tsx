@@ -19,6 +19,7 @@ import { AppTable } from "./components/AppTable";
 import { DetailPanel } from "./components/DetailPanel";
 import { LogDrawer } from "./components/LogDrawer";
 import { SettingsDialog } from "./components/SettingsDialog";
+import { ChangelogDialog } from "./components/ChangelogDialog";
 import { AIChat, type Msg } from "./components/AIChat";
 import { DebloatPresets } from "./components/DebloatPresets";
 import { enrichApps, classifyPackage } from "./lib/safety-tags";
@@ -47,6 +48,7 @@ export default function App() {
   const [rightOpen, setRightOpen] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [changelogOpen, setChangelogOpen] = useState(false);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [lang, setLang] = useState<Lang>("id");
   const [undoStack, setUndoStack] = useState<string[]>([]);
@@ -533,6 +535,7 @@ export default function App() {
         <div className="topbar">
           <div className="topbar-title">{t("topbar.title")}</div>
           <div className="topbar-spacer" />
+          <button className="btn btn-ghost btn-sm" onClick={() => setChangelogOpen(true)} title="Catatan Rilis">📜 Changelog</button>
           <button
             className="btn btn-ghost btn-sm"
             onClick={analyzeUnknown}
@@ -747,6 +750,7 @@ export default function App() {
         />
       )}
 
+      <ChangelogDialog open={changelogOpen} onClose={() => setChangelogOpen(false)} />
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} onSaved={setSettings} />
     </div>
   );
