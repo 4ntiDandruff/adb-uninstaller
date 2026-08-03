@@ -90,15 +90,16 @@ const CHANGELOG: ChangelogEntry[] = [
 interface Props {
   open: boolean;
   onClose: () => void;
+  lang?: string;
 }
 
-export function ChangelogDialog({ open, onClose }: Props) {
+export function ChangelogDialog({ open, onClose, lang = "id" }: Props) {
   if (!open) return null;
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" style={{ maxWidth: 560 }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
-          <div className="modal-title">📜 Catatan Rilis</div>
+          <div className="modal-title">📜 {lang === "en" ? "Release Notes" : "Catatan Rilis"}</div>
           <button className="btn btn-ghost btn-icon btn-sm" onClick={onClose}>
             <X size={16} />
           </button>
@@ -123,7 +124,7 @@ export function ChangelogDialog({ open, onClose }: Props) {
           ))}
         </div>
         <div className="modal-foot">
-          <button className="btn btn-primary" onClick={onClose}>Tutup</button>
+          <button className="btn btn-primary" onClick={onClose}>{lang === "en" ? "Close" : "Tutup"}</button>
         </div>
       </div>
     </div>

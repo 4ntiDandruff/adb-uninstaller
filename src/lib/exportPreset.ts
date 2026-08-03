@@ -27,7 +27,7 @@ export async function exportPreset(apps: AppInfo[], selected: Set<string>, devic
   });
 
   const preset: PresetExport = {
-    name: `Preset ${new Date().toLocaleDateString("id-ID")}`,
+    name: `Preset ${new Date().toLocaleDateString()}`,
     description: `Debloat preset dari ADB Uninstaller`,
     created_at: new Date().toISOString(),
     device_model: deviceModel,

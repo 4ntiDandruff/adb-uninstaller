@@ -3,6 +3,7 @@ import { X, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import type { AppSettings, ConnectionTest } from "../types";
 import { api, toast } from "./api";
+import { translate, type Lang } from "../i18n";
 
 interface Props {
   open: boolean;
@@ -13,6 +14,7 @@ interface Props {
 export function SettingsDialog({ open, onClose, onSaved }: Props) {
   const [s, setS] = useState<AppSettings | null>(null);
   const [testing, setTesting] = useState(false);
+  const t = (key: string) => translate((s?.language as Lang) || "id", key);
   const [testResult, setTestResult] = useState<ConnectionTest | null>(null);
 
   useEffect(() => {
@@ -52,11 +54,11 @@ export function SettingsDialog({ open, onClose, onSaved }: Props) {
       // Apply theme immediately
       if (s.theme === "light") document.documentElement.setAttribute("data-theme", "light");
       else document.documentElement.removeAttribute("data-theme");
-      toast.success("Pengaturan tersimpan");
+      toast.success(t("settings.saved"));
       onSaved(s);
       onClose();
     } catch (e) {
-      toast.error(`Simpan gagal: ${e}`);
+      toast.error(`${t("settings.save_fail")}: ${e}`);
     }
   }
 
@@ -64,7 +66,7 @@ export function SettingsDialog({ open, onClose, onSaved }: Props) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
-          <div className="modal-title">Pengaturan</div>
+          <div className="modal-title">{t("settings.title")}</div>
           <button className="btn btn-ghost btn-icon btn-sm" onClick={onClose}>
             <X size={16} />
           </button>
@@ -139,10 +141,10 @@ export function SettingsDialog({ open, onClose, onSaved }: Props) {
         <div className="modal-foot">
           <button className="btn btn-ghost" onClick={testConnection} disabled={testing}>
             {testing ? <Loader2 size={14} className="animate-spin" /> : null}
-            Test Koneksi
+            {t("settings.test")}
           </button>
           <button className="btn btn-primary" onClick={save}>
-            Simpan
+            {t("settings.save")}
           </button>
         </div>
       </div>

@@ -730,11 +730,11 @@ export default function App() {
       {presetsOpen && (
         <div className="modal-overlay" onClick={() => setPresetsOpen(false)}>
           <div className="modal" style={{ maxWidth: 640 }} onClick={(e) => e.stopPropagation()}>
-            <DebloatPresets installedApps={apps} onExecute={(pkgs) => { setPresetsOpen(false); runBatch(pkgs); }} busy={busy} />
+            <DebloatPresets installedApps={apps} onExecute={(pkgs) => { setPresetsOpen(false); runBatch(pkgs); }} busy={busy} t={t} />
           </div>
         </div>
       )}
-      <ChangelogDialog open={changelogOpen} onClose={() => setChangelogOpen(false)} />
+      <ChangelogDialog open={changelogOpen} onClose={() => setChangelogOpen(false)} lang={lang} />
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} onSaved={setSettings} />
       <ConfirmDialog
         open={confirm !== null}

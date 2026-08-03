@@ -6,9 +6,10 @@ interface Props {
   installedApps: AppInfo[];
   onExecute: (packages: string[]) => void;
   busy: boolean;
+  t: (key: string) => string;
 }
 
-export function DebloatPresets({ installedApps, onExecute, busy }: Props) {
+export function DebloatPresets({ installedApps, onExecute, busy, t }: Props) {
   const [brand, setBrand] = useState(0);
   const [checked, setChecked] = useState<Set<string>>(new Set());
 
@@ -34,7 +35,7 @@ export function DebloatPresets({ installedApps, onExecute, busy }: Props) {
   return (
     <div className="flex flex-col gap-2 p-3" style={{ borderTop: "1px solid var(--border)" }}>
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-semibold">Debloat Presets</span>
+        <span className="text-sm font-semibold">{t("presets.title")}</span>
         <select className="select-dark" style={{ width: 220 }} value={brand} onChange={(e) => setBrand(parseInt(e.target.value))}>
           {DEBLOAT_PRESETS.map((p, i) => (
             <option key={p.brand} value={i}>
@@ -43,14 +44,14 @@ export function DebloatPresets({ installedApps, onExecute, busy }: Props) {
           ))}
         </select>
         <button className="btn btn-ghost btn-sm" onClick={selectInstalled}>
-          Pilih terinstall (aman)
+          {t("presets.select_safe")}
         </button>
         <button
           className="btn btn-danger btn-sm ml-auto"
           disabled={busy || chosen.length === 0}
           onClick={() => onExecute(chosen)}
         >
-          Eksekusi {chosen.length}
+          {t("presets.execute")} {chosen.length}
         </button>
       </div>
       <div className="grid grid-cols-2 gap-x-3 overflow-auto" style={{ maxHeight: 280 }}>

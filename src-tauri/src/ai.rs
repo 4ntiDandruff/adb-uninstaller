@@ -71,19 +71,58 @@ pub fn save_settings(settings: AppSettings) -> Result<(), String> {
 
 
 fn strip_sse(text: &str) -> String {
-    // ZevaiRouter kadang return SSE: "data: {...}data: [DONE]"
-    // Ambil payload JSON pertama yang utuh.
+    // ZevaiRouter kadang return SSE: "data: {...}\ndata: {...}\ndata: [DONE]"
+    // Concat semua JSON payload, bukan cuma ambil yang pertama.
+    let mut parts: Vec<String> = Vec::new();
+    let mut is_sse = false;
     for line in text.lines() {
         let l = line.trim();
         if l.starts_with("data:") {
+            is_sse = true;
             let payload = l.trim_start_matches("data:").trim();
-            if payload != "[DONE]" && payload.starts_with("{") {
-                return payload.to_string();
+            if payload != "[DONE]" && !payload.is_empty() {
+                parts.push(payload.to_string());
             }
         }
     }
-    // Bukan SSE: return apa adanya (trim)
-    text.trim().to_string()
+    if !is_sse {
+        return text.trim().to_string();
+    }
+    if parts.len() == 1 {
+        return parts[0].clone();
+    }
+    // Multiple SSE chunks: merge content from each delta
+    let mut merged_content = String::new();
+    let mut base_obj = String::new();
+    for (i, part) in parts.iter().enumerate() {
+        if let Ok(v) = serde_json::from_str::<serde_json::Value>(part) {
+            if i == 0 {
+                base_obj = part.clone();
+            }
+            if let Some(c) = v["choices"][0]["delta"]["content"].as_str() {
+                merged_content.push_str(c);
+            } else if let Some(c) = v["choices"][0]["message"]["content"].as_str() {
+                merged_content.push_str(c);
+            }
+        }
+    }
+    if !merged_content.is_empty() {
+        if let Ok(mut base) = serde_json::from_str::<serde_json::Value>(&base_obj) {
+            if let Some(msg) = base.get_mut("choices")
+                .and_then(|c| c.get_mut(0))
+                .and_then(|c| c.get_mut("message"))
+            {
+                msg["content"] = serde_json::Value::String(merged_content);
+            } else if let Some(choices) = base.get_mut("choices").and_then(|c| c.as_array_mut()) {
+                if let Some(first) = choices.first_mut() {
+                    first["message"] = serde_json::json!({"role": "assistant", "content": merged_content});
+                    first.as_object_mut().map(|o| o.remove("delta"));
+                }
+            }
+            return base.to_string();
+        }
+    }
+    parts.first().cloned().unwrap_or_else(|| text.trim().to_string())
 }
 
 fn normalize_base_url(base: &str) -> String {

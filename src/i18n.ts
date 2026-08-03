@@ -89,6 +89,15 @@ export const t: Record<Lang, Record<string, string>> = {
     "settings.light": "Terang",
     "settings.save": "Simpan",
     "settings.cancel": "Batal",
+    "presets.title": "Preset Debloat",
+    "presets.select_safe": "Pilih terinstall (aman)",
+    "presets.execute": "Eksekusi",
+    "settings.test": "Test Koneksi",
+    "settings.saved": "Pengaturan tersimpan",
+    "settings.save_fail": "Simpan gagal",
+    "settings.close": "Tutup",
+    "changelog.title": "Catatan Rilis",
+    "changelog.close": "Tutup",
     
     // Safety
     "safety.safe": "aman",
@@ -184,6 +193,15 @@ export const t: Record<Lang, Record<string, string>> = {
     "settings.light": "Light",
     "settings.save": "Save",
     "settings.cancel": "Cancel",
+    "presets.title": "Debloat Presets",
+    "presets.select_safe": "Select installed (safe)",
+    "presets.execute": "Execute",
+    "settings.test": "Test Connection",
+    "settings.saved": "Settings saved",
+    "settings.save_fail": "Save failed",
+    "settings.close": "Close",
+    "changelog.title": "Release Notes",
+    "changelog.close": "Close",
     
     // Safety
     "safety.safe": "safe",
