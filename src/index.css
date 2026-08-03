@@ -96,7 +96,7 @@ body,
 
 /* ===== Sidebar sections ===== */
 .side-section {
-  padding: 14px 14px 10px;
+  padding: 10px 12px 8px;
   border-bottom: 1px solid var(--border);
 }
 .side-label {
@@ -111,7 +111,7 @@ body,
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 16px 14px;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--border);
 }
 .brand-logo {
@@ -140,8 +140,8 @@ body,
 .topbar {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
+  gap: 8px;
+  padding: 7px 12px;
   background: var(--bg-panel);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
@@ -155,50 +155,32 @@ body,
 }
 
 /* ===== Stat cards ===== */
-.stat-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  padding: 12px 16px;
+.stat-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  font-size: 12px;
 }
-.stat-card {
+.stat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
   background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 10px 12px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-.stat-icon {
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.stat-label {
-  font-size: 11px;
-  color: var(--text-dim);
-}
-.stat-value {
-  font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* ===== Toolbar ===== */
 .toolbar {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 16px 12px;
+  gap: 8px;
+  padding: 8px 12px;
   flex-shrink: 0;
   flex-wrap: wrap;
 }
@@ -336,8 +318,8 @@ body,
   flex-shrink: 0;
 }
 .tab {
-  padding: 8px 14px;
-  font-size: 13px;
+  padding: 6px 12px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--text-dim);
   background: transparent;
@@ -382,23 +364,25 @@ table.app-table thead th {
   top: 0;
   z-index: 5;
   background: var(--bg-panel);
-  border-bottom: 1px solid var(--border-strong);
+  border-bottom: 1px solid var(--border);
   text-align: left;
-  padding: 9px 14px;
+  padding: 6px 10px;
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-weight: 500;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: var(--text-dim);
+  color: var(--text-faint);
   white-space: nowrap;
 }
 table.app-table tbody td {
-  padding: 8px 14px;
+  padding: 5px 10px;
   border-bottom: 1px solid var(--border);
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  vertical-align: middle;
+  height: 36px;
 }
 table.app-table tbody tr {
   cursor: pointer;
@@ -419,11 +403,11 @@ table.app-table tbody tr.selected {
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  border-radius: 999px;
-  padding: 2px 9px;
+  gap: 3px;
+  border-radius: 6px;
+  padding: 1px 7px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   white-space: nowrap;
 }
 .badge-safe {
@@ -471,7 +455,7 @@ table.app-table tbody tr.selected {
   background: var(--bg-card);
 }
 .log-body {
-  max-height: 180px;
+  max-height: 140px;
   overflow: auto;
   padding: 4px 16px 10px;
   font-family: ui-monospace, Menlo, monospace;
@@ -520,22 +504,20 @@ table.app-table tbody tr.selected {
   word-break: break-all;
 }
 .detail-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  padding: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 12px;
 }
 
 /* ===== Checkbox ===== */
 input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   accent-color: var(--primary);
   cursor: pointer;
   margin: 0;
   vertical-align: middle;
-  position: relative;
-  top: -1px;
 }
 
 /* Wrapper untuk centering di table cell */
@@ -578,7 +560,8 @@ th input[type="checkbox"] {
   position: fixed;
   inset: 0;
   z-index: 60;
-  background: rgba(4, 8, 18, 0.7);
+  background: rgba(4, 8, 18, 0.65);
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -652,7 +635,7 @@ th input[type="checkbox"] {
   background: var(--bg-panel);
   border: 1px solid var(--border-strong);
   border-radius: 12px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
   display: flex;
   flex-direction: column;
   overflow: hidden;

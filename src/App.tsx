@@ -49,6 +49,7 @@ export default function App() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [changelogOpen, setChangelogOpen] = useState(false);
+  const [presetsOpen, setPresetsOpen] = useState(false);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [lang, setLang] = useState<Lang>("id");
   const [undoStack, setUndoStack] = useState<string[]>([]);
@@ -536,6 +537,7 @@ export default function App() {
           <div className="topbar-title">{t("topbar.title")}</div>
           <div className="topbar-spacer" />
           <button className="btn btn-ghost btn-sm" onClick={() => setChangelogOpen(true)} title="Catatan Rilis">📜 Changelog</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => setPresetsOpen(true)} title="Debloat Presets">🧹 Presets</button>
           <button
             className="btn btn-ghost btn-sm"
             onClick={analyzeUnknown}
@@ -616,12 +618,12 @@ export default function App() {
           </div>
         )}
 
-        {/* Stat cards */}
-        <div className="stat-grid">
-          <StatCard icon={<Package size={17} />} color="var(--primary)" label="Total" value={String(apps.length)} />
-          <StatCard icon={<ShieldCheck size={17} />} color="var(--success)" label="Safe" value={String(stats.safe)} />
-          <StatCard icon={<ShieldAlert size={17} />} color="var(--warning)" label="Risky+Critical" value={String(stats.risky + stats.critical)} />
-          <StatCard icon={<HelpCircle size={17} />} color="var(--text-dim)" label="Unknown" value={String(stats.unknown)} />
+        {/* Stat bar */}
+        <div className="stat-bar">
+          <span className="stat-pill"><Package size={13} /> {apps.length} total</span>
+          <span className="stat-pill text-success"><ShieldCheck size={13} /> {stats.safe} safe</span>
+          <span className="stat-pill text-warning"><ShieldAlert size={13} /> {stats.risky + stats.critical} risky</span>
+          <span className="stat-pill text-dim"><HelpCircle size={13} /> {stats.unknown} unknown</span>
         </div>
 
         {/* Workbench */}
@@ -714,7 +716,7 @@ export default function App() {
               t={t}
             />
 
-            <DebloatPresets installedApps={apps} onExecute={runBatch} busy={busy} />
+
             <LogDrawer logs={logs} onClear={() => setLogs([])} />
           </div>
 
@@ -748,22 +750,17 @@ export default function App() {
         />
       )}
 
+      {presetsOpen && (
+        <div className="modal-overlay" onClick={() => setPresetsOpen(false)}>
+          <div className="modal" style={{ maxWidth: 640 }} onClick={(e) => e.stopPropagation()}>
+            <DebloatPresets installedApps={apps} onExecute={(pkgs) => { setPresetsOpen(false); runBatch(pkgs); }} busy={busy} />
+          </div>
+        </div>
+      )}
       <ChangelogDialog open={changelogOpen} onClose={() => setChangelogOpen(false)} />
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} onSaved={setSettings} />
     </div>
   );
 }
 
-function StatCard({ icon, color, label, value }: { icon: React.ReactNode; color: string; label: string; value: string }) {
-  return (
-    <div className="stat-card">
-      <div className="stat-icon" style={{ background: `color-mix(in srgb, ${color} 18%, transparent)`, color }}>
-        {icon}
-      </div>
-      <div className="min-w-0">
-        <div className="stat-label">{label}</div>
-        <div className="stat-value">{value}</div>
-      </div>
-    </div>
-  );
-}
+
