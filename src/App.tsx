@@ -720,7 +720,6 @@ export default function App() {
 
           {/* Right panel: detail atau AI */}
           {rightOpen && (
-            <div className="detail-panel">
               <DetailPanel
                 app={detail}
                 onClose={() => setRightOpen(false)}
@@ -732,7 +731,6 @@ export default function App() {
                 busy={busy}
                 t={t}
               />
-            </div>
           )}
         </div>
       </div>
