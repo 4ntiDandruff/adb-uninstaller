@@ -46,6 +46,8 @@ export const api = {
     invoke<string | null>("get_last_scan_time", { deviceId }),
   clearDeviceCache: (deviceId: string) =>
     invoke<number>("clear_device_cache", { deviceId }),
+  saveAiResults: (deviceId: string, results: { package_name: string; level: string; reason: string }[]) =>
+    invoke<number>("save_ai_results", { deviceId, results }),
   loadSettings: () => invoke<AppSettings>("load_settings"),
   saveSettings: (settings: AppSettings) =>
     invoke<void>("save_settings", { settings }),

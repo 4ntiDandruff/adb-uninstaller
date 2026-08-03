@@ -118,6 +118,30 @@ async fn clear_device_cache(state: tauri::State<'_, db::DbState>, device_id: Str
     db::clear_device_cache(conn, &device_id).map_err(|e| format!("[DB-010] Clear cache gagal: {e}"))
 }
 
+
+#[derive(serde::Deserialize)]
+struct AiResult {
+    package_name: String,
+    level: String,
+    reason: String,
+}
+
+#[tauri::command]
+async fn save_ai_results(
+    state: tauri::State<'_, db::DbState>,
+    device_id: String,
+    results: Vec<AiResult>,
+) -> Result<usize, String> {
+    let guard = db::get_conn(&state)?;
+    let conn = guard.as_ref().ok_or("[DB-007] Database tidak terinit")?;
+    let updates: Vec<(String, String, String)> = results
+        .into_iter()
+        .map(|r| (r.package_name, r.level, r.reason))
+        .collect();
+    db::batch_update_safety(conn, &device_id, &updates)
+        .map_err(|e| format!("[DB-011] Save AI results gagal: {e}"))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let db_conn = db::init_db().expect("Gagal init database");
@@ -149,6 +173,7 @@ pub fn run() {
             get_cached_apps,
             get_last_scan_time,
             clear_device_cache,
+            save_ai_results,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

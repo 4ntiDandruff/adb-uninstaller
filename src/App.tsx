@@ -167,6 +167,14 @@ export default function App() {
             return r ? { ...a, safety_level: r.level as AppInfo["safety_level"], safety_reason: r.reason } : a;
           }),
         );
+        // ponytail: persist AI results to SQLite so next load is instant
+        if (deviceId && results.length > 0) {
+          api.saveAiResults(deviceId, results.map((r) => ({
+            package_name: r.package_name,
+            level: r.level,
+            reason: r.reason,
+          }))).catch((e) => log({ level: "warn", source: "cache", message: `Save AI cache gagal: ${e}` }));
+        }
         totalDone += results.length;
       }
       log({ level: "success", source: "ai", message: `Auto AI selesai: ${totalDone} package`, duration_ms: Math.round(performance.now() - t0) });
@@ -477,6 +485,14 @@ export default function App() {
           return r ? { ...a, safety_level: r.level as AppInfo["safety_level"], safety_reason: r.reason } : a;
         }),
       );
+      // ponytail: persist manual AI results too
+      if (deviceId && results.length > 0) {
+        api.saveAiResults(deviceId, results.map((r) => ({
+          package_name: r.package_name,
+          level: r.level,
+          reason: r.reason,
+        }))).catch(() => {});
+      }
       toast.success(`AI analysis: ${results.length} package`);
       log({ level: "success", source: "ai", message: `AI batch ${results.length} package`, duration_ms: Math.round(performance.now() - t0) });
     } catch (e) {
