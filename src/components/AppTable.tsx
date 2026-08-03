@@ -192,7 +192,7 @@ export function AppTable({
                       {t(`safety.${a.safety_level}`)}
                     </span>
                     {a.safety_reason && (
-                      <div className="text-xs text-faint mt-0.5">{a.safety_reason}</div>
+                      <div className="text-xs text-faint mt-0.5 truncate max-w-[180px]" title={a.safety_reason}>{a.safety_reason}</div>
                     )}
                   </td>
                   <td>

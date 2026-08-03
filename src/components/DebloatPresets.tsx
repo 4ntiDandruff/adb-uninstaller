@@ -53,7 +53,7 @@ export function DebloatPresets({ installedApps, onExecute, busy }: Props) {
           Eksekusi {chosen.length}
         </button>
       </div>
-      <div className="grid grid-cols-2 gap-x-3 overflow-auto" style={{ maxHeight: 120 }}>
+      <div className="grid grid-cols-2 gap-x-3 overflow-auto" style={{ maxHeight: 280 }}>
         {rows.map((r) => (
           <label key={r.name} className={`preset-item ${r.installed ? "" : "disabled"}`}>
             <input type="checkbox" disabled={!r.installed} checked={checked.has(r.name)} onChange={() => toggle(r.name)} />

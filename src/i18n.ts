@@ -27,6 +27,7 @@ export const t: Record<Lang, Record<string, string>> = {
     "stats.total": "Total",
     "stats.safe": "Aman",
     "stats.risky": "Berisiko",
+    "stats.critical": "Kritis",
     "stats.unknown": "Tidak diketahui",
     
     // Toolbar
@@ -115,6 +116,7 @@ export const t: Record<Lang, Record<string, string>> = {
     "stats.total": "Total",
     "stats.safe": "Safe",
     "stats.risky": "Risky",
+    "stats.critical": "Critical",
     "stats.unknown": "Unknown",
     
     // Toolbar

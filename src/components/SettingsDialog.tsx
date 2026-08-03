@@ -102,32 +102,9 @@ export function SettingsDialog({ open, onClose, onSaved }: Props) {
               placeholder="sk-..."
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="field">
-              <label className="field-label">Model</label>
-              <input className="input" value={s.ai_model} onChange={(e) => set("ai_model", e.target.value)} />
-            </div>
-            <div className="field">
-              <label className="field-label">Temperature</label>
-              <input
-                className="input"
-                type="number"
-                step="0.1"
-                min="0"
-                max="2"
-                value={s.temperature}
-                onChange={(e) => set("temperature", parseFloat(e.target.value) || 0)}
-              />
-            </div>
-          </div>
           <div className="field">
-            <label className="field-label">Max Tokens</label>
-            <input
-              className="input"
-              type="number"
-              value={s.max_tokens}
-              onChange={(e) => set("max_tokens", parseInt(e.target.value) || 0)}
-            />
+            <label className="field-label">Model</label>
+            <input className="input" value={s.ai_model} onChange={(e) => set("ai_model", e.target.value)} />
           </div>
           <div className="field">
             <label className="field-label">System Prompt</label>

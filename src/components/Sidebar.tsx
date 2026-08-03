@@ -86,12 +86,12 @@ export function Sidebar({
 
       {apps.length > 0 && (
         <div className="side-section">
-          <div className="side-label">Statistik</div>
+          <div className="side-label">{t("sidebar.stats")}</div>
           <div className="space-y-1.5 text-xs">
             <InfoRow k={t("sidebar.total_apps")} v={String(stats.total)} />
             <InfoRow k={t("stats.safe")} v={String(stats.safe)} color="text-success" />
             <InfoRow k={t("stats.risky")} v={String(stats.risky)} color="text-warning" />
-            <InfoRow k="Kritis" v={String(stats.critical)} color="text-danger" />
+            <InfoRow k={t("stats.critical")} v={String(stats.critical)} color="text-danger" />
             <InfoRow k={t("stats.unknown")} v={String(stats.unknown)} color="text-dim" />
           </div>
         </div>

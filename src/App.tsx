@@ -5,10 +5,6 @@ import {
   RotateCcw,
   Loader2,
   AlertTriangle,
-  Package,
-  ShieldCheck,
-  ShieldAlert,
-  HelpCircle,
   MessageSquare,
 } from "lucide-react";
 import type { AppInfo, AppSettings, Device, DeviceInfo, LogEntry, SafetyLevel } from "./types";
@@ -536,8 +532,9 @@ export default function App() {
         <div className="topbar">
           <div className="topbar-title">{t("topbar.title")}</div>
           <div className="topbar-spacer" />
-          <button className="btn btn-ghost btn-sm" onClick={() => setChangelogOpen(true)} title="Catatan Rilis">📜 Changelog</button>
-          <button className="btn btn-ghost btn-sm" onClick={() => setPresetsOpen(true)} title="Debloat Presets">🧹 Presets</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => setChangelogOpen(true)} title="Catatan Rilis">📜</button>
+          <div className="topbar-group">
+            <button className="btn btn-ghost btn-sm" onClick={() => setPresetsOpen(true)} title="Debloat Presets">🧹 Presets</button>
           <button
             className="btn btn-ghost btn-sm"
             onClick={analyzeUnknown}
@@ -556,6 +553,9 @@ export default function App() {
             <RotateCcw size={14} />
             Undo ({undoStack.length})
           </button>
+          </div>
+          <div className="topbar-sep" />
+          <div className="topbar-group">
           <button
             className="btn btn-ghost btn-sm"
             onClick={() => {
@@ -567,7 +567,10 @@ export default function App() {
             <MessageSquare size={14} />
             AI Chat
           </button>
-          <button
+          </div>
+          <div className="topbar-sep" />
+          <div className="topbar-group">
+<button
             className="btn btn-ghost btn-sm"
             onClick={() => {
               const next = settings?.theme === "light" ? "dark" : "light";
@@ -603,6 +606,7 @@ export default function App() {
             <option value="id">ID</option>
             <option value="en">EN</option>
           </select>
+                  </div>
         </div>
 
         {/* Progress bar */}
@@ -617,14 +621,6 @@ export default function App() {
             </div>
           </div>
         )}
-
-        {/* Stat bar */}
-        <div className="stat-bar">
-          <span className="stat-pill"><Package size={13} /> {apps.length} total</span>
-          <span className="stat-pill text-success"><ShieldCheck size={13} /> {stats.safe} safe</span>
-          <span className="stat-pill text-warning"><ShieldAlert size={13} /> {stats.risky + stats.critical} risky</span>
-          <span className="stat-pill text-dim"><HelpCircle size={13} /> {stats.unknown} unknown</span>
-        </div>
 
         {/* Workbench */}
         <div className="workbench">
@@ -655,7 +651,7 @@ export default function App() {
                 </button>
               )}
               {selected.size > 0 && (
-                <div className="ml-auto flex items-center gap-1.5">
+                <div className="ml-auto flex items-center gap-1.5 pl-3" style={{borderLeft: "1px solid var(--border)"}}>
                   <button className="btn btn-danger btn-sm" disabled={busy} onClick={() => runBatch([...selected])}>
                     {t("toolbar.uninstall")} {selected.size}
                   </button>
