@@ -251,16 +251,27 @@ export default function App() {
     if (deviceId) loadApps(deviceId);
   }, [deviceId, loadApps]);
 
-  // Re-enrich static safety reasons saat lang berubah
+  // Re-enrich saat lang berubah
   useEffect(() => {
     if (apps.length === 0) return;
+    // 1. Update static tag reasons sesuai lang
     setApps((prev) => prev.map((a) => {
       const tag = classifyPackage(a.package_name, lang);
-      // Hanya update kalau reason masih dari static tags (bukan AI)
-      if (tag.level === "unknown" && a.safety_level !== "unknown") return a;
-      if (a.safety_level !== tag.level && a.safety_level !== "unknown") return a;
-      return { ...a, safety_reason: tag.reason };
+      if (tag.level !== 'unknown') return { ...a, safety_reason: tag.reason };
+      return a;
     }));
+    // 2. Re-analyze package yang reason-nya masih English
+    if (lang === 'id') {
+      const isEnglish = (r: string) => {
+        if (!r || r.length < 3) return false;
+        const idWords = ['adalah','klien','kustom','berpotensi','melanggar','layanan','sistem','inti','penyedia','tumpukan','peluncur','bawaan','manajer','toko','analitik','telemetri','belum','aman','berisiko','kritis','daemon','agen','pembaruan','cadangan','sinkron','pemantau'];
+        const lower = r.toLowerCase();
+        if (idWords.some((w) => lower.includes(w))) return false;
+        return /(is|are|the|a |an |for |of |with |client|custom|potential|violation|service|system|core|provider|stack|launcher|keyboard|manager|store|browser|analytics|telemetry|classified|bloat|adware|tracker|utility|framework|daemon|agent|helper|installer|updater|backup|sync|cloud|monitor|tos|app )/i.test(r);
+      };
+      const needsRetranslate = apps.filter((a) => isEnglish(a.safety_reason)).map((a) => a.package_name);
+      if (needsRetranslate.length > 0) void autoAnalyzeUnknown(needsRetranslate);
+    }
   }, [lang]);
 
 
