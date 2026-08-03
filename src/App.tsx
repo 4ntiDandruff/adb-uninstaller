@@ -532,81 +532,54 @@ export default function App() {
         <div className="topbar">
           <div className="topbar-title">{t("topbar.title")}</div>
           <div className="topbar-spacer" />
-          <button className="btn btn-ghost btn-sm" onClick={() => setChangelogOpen(true)} title="Catatan Rilis">📜</button>
+
           <div className="topbar-group">
             <button className="btn btn-ghost btn-sm" onClick={() => setPresetsOpen(true)} title="Debloat Presets">🧹 Presets</button>
-          <button
-            className="btn btn-ghost btn-sm"
-            onClick={analyzeUnknown}
-            disabled={analyzing || stats.unknown === 0}
-            title="AI analisis package unknown"
-          >
-            {analyzing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-            AI ({stats.unknown})
-          </button>
-          <button
-            className="btn btn-ghost btn-sm"
-            onClick={undoLast}
-            disabled={busy || undoStack.length === 0}
-            title="Undo uninstall terakhir"
-          >
-            <RotateCcw size={14} />
-            Undo ({undoStack.length})
-          </button>
+            <button className="btn btn-ghost btn-sm" onClick={analyzeUnknown} disabled={analyzing || stats.unknown === 0} title="AI analisis package unknown">
+              {analyzing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} AI ({stats.unknown})
+            </button>
+            <button className="btn btn-ghost btn-sm" onClick={undoLast} disabled={busy || undoStack.length === 0} title="Undo uninstall terakhir">
+              <RotateCcw size={14} /> Undo ({undoStack.length})
+            </button>
           </div>
+
           <div className="topbar-sep" />
+
           <div className="topbar-group">
-          <button
-            className="btn btn-ghost btn-sm"
-            onClick={() => {
-              setChatOpen((o) => !o);
-              setChatMinimized(false);
-            }}
-            title={t("chat.title")}
-          >
-            <MessageSquare size={14} />
-            AI Chat
-          </button>
+            <button className="btn btn-ghost btn-sm" onClick={() => { setChatOpen((o) => !o); setChatMinimized(false); }} title={t("chat.title")}>
+              <MessageSquare size={14} /> AI Chat
+            </button>
+            <button className="btn btn-ghost btn-sm" onClick={() => setChangelogOpen(true)} title="Catatan Rilis">📜</button>
           </div>
+
           <div className="topbar-sep" />
+
           <div className="topbar-group">
-<button
-            className="btn btn-ghost btn-sm"
-            onClick={() => {
-              const next = settings?.theme === "light" ? "dark" : "light";
-              if (next === "light") {
-                document.documentElement.setAttribute("data-theme", "light");
-              } else {
-                document.documentElement.removeAttribute("data-theme");
-              }
-              if (settings) {
-                const updated = { ...settings, theme: next };
-                setSettings(updated);
-                api.saveSettings(updated).catch((e) => log({ level: "warn", source: "system", message: `Simpan theme gagal: ${e}` }));
-              }
-            }}
-            title={t("topbar.theme")}
-          >
-            {settings?.theme === "light" ? "🌙" : "☀️"}
-          </button>
-          <select
-            className="select-dark btn-sm"
-            style={{ width: 70 }}
-            value={lang}
-            onChange={(e) => {
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => {
+                const next = settings?.theme === "light" ? "dark" : "light";
+                if (next === "light") { document.documentElement.setAttribute("data-theme", "light"); }
+                else { document.documentElement.removeAttribute("data-theme"); }
+                if (settings) {
+                  const updated = { ...settings, theme: next };
+                  setSettings(updated);
+                  api.saveSettings(updated).catch((e) => log({ level: "warn", source: "system", message: 'Simpan theme gagal: ' + e }));
+                }
+              }}
+              title={t("topbar.theme")}
+            >
+              {settings?.theme === "light" ? "🌙" : "☀️"}
+            </button>
+            <select className="select-dark btn-sm" style={{ width: 70 }} value={lang} onChange={(e) => {
               const next = e.target.value as Lang;
               setLang(next);
-              if (settings) {
-                const updated = { ...settings, language: next };
-                setSettings(updated);
-                api.saveSettings(updated).catch(() => {});
-              }
-            }}
-          >
-            <option value="id">ID</option>
-            <option value="en">EN</option>
-          </select>
-                  </div>
+              if (settings) { const updated = { ...settings, language: next }; setSettings(updated); api.saveSettings(updated).catch(() => {}); }
+            }}>
+              <option value="id">ID</option>
+              <option value="en">EN</option>
+            </select>
+          </div>
         </div>
 
         {/* Progress bar */}

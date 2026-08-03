@@ -159,6 +159,13 @@ body,
   align-items: center;
   gap: 4px;
 }
+
+/* ===== Stat bars (sidebar) ===== */
+.stat-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
 .topbar-sep {
   width: 1px;
   height: 20px;
@@ -196,6 +203,7 @@ body,
   padding: 8px 12px;
   flex-shrink: 0;
   flex-wrap: wrap;
+  min-height: 44px;
 }
 
 /* ===== Buttons ===== */
@@ -388,14 +396,11 @@ table.app-table thead th {
   white-space: nowrap;
 }
 table.app-table tbody td {
-  padding: 5px 10px;
+  padding: 6px 10px;
   border-bottom: 1px solid var(--border);
   color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   vertical-align: middle;
-  height: 36px;
+  height: 44px;
 }
 table.app-table tbody tr {
   cursor: pointer;

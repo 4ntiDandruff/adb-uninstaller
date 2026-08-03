@@ -87,12 +87,12 @@ export function Sidebar({
       {apps.length > 0 && (
         <div className="side-section">
           <div className="side-label">{t("sidebar.stats")}</div>
-          <div className="space-y-1.5 text-xs">
-            <InfoRow k={t("sidebar.total_apps")} v={String(stats.total)} />
-            <InfoRow k={t("stats.safe")} v={String(stats.safe)} color="text-success" />
-            <InfoRow k={t("stats.risky")} v={String(stats.risky)} color="text-warning" />
-            <InfoRow k={t("stats.critical")} v={String(stats.critical)} color="text-danger" />
-            <InfoRow k={t("stats.unknown")} v={String(stats.unknown)} color="text-dim" />
+          <div className="text-xs font-medium mb-2">{stats.total} {t("sidebar.total_apps").toLowerCase()}</div>
+          <div className="stat-bars">
+            <StatBar label={t("stats.safe")} count={stats.safe} total={stats.total} color="var(--success)" />
+            <StatBar label={t("stats.risky")} count={stats.risky} total={stats.total} color="var(--warning)" />
+            <StatBar label={t("stats.critical")} count={stats.critical} total={stats.total} color="var(--danger)" />
+            <StatBar label={t("stats.unknown")} count={stats.unknown} total={stats.total} color="var(--text-faint)" />
           </div>
         </div>
       )}
@@ -104,6 +104,19 @@ export function Sidebar({
         </button>
       </div>
     </aside>
+  );
+}
+
+function StatBar({ label, count, total, color }: { label: string; count: number; total: number; color: string }) {
+  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+  return (
+    <div className="flex items-center gap-2 py-0.5">
+      <span className="w-12 text-faint text-xs">{label}</span>
+      <div className="flex-1 h-1.5 rounded-full" style={{ background: "var(--bg-card)" }}>
+        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color, minWidth: count > 0 ? 4 : 0 }} />
+      </div>
+      <span className="w-8 text-right text-xs font-mono" style={{ color }}>{count}</span>
+    </div>
   );
 }
 

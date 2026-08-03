@@ -183,17 +183,14 @@ export function AppTable({
                       onChange={() => onToggleSelect(a.package_name)}
                     />
                   </td>
-                  <td>
-                    <div className="font-medium">{a.label || a.package_name}</div>
-                    <div className="mono text-xs text-faint">{a.package_name}</div>
+                  <td className="max-w-[280px]">
+                    <div className="font-medium truncate">{a.label || a.package_name}</div>
+                    <div className="mono text-xs text-faint truncate">{a.package_name}</div>
                   </td>
                   <td>
                     <span className={LEVEL_BADGE[a.safety_level] ?? LEVEL_BADGE.unknown}>
                       {t(`safety.${a.safety_level}`)}
                     </span>
-                    {a.safety_reason && (
-                      <div className="text-xs text-faint mt-0.5 truncate max-w-[180px]" title={a.safety_reason}>{a.safety_reason}</div>
-                    )}
                   </td>
                   <td>
                     <span className={a.is_system ? "badge badge-system" : "badge badge-user"}>
