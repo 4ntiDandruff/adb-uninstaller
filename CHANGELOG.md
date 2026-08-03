@@ -4,6 +4,31 @@ Semua perubahan penting dicatat di file ini.
 
 Format mirip [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.1.2] — 2026-08-03
+
+Patch: AI result persistence + deep audit cleanup.
+
+### Fixed (Performance — AI Loading)
+- `db.rs` — tambah `batch_update_safety()` untuk bulk write hasil AI ke SQLite
+- `lib.rs` — tambah command `save_ai_results` (Tauri → DB)
+- `App.tsx` — `autoAnalyzeUnknown` dan `analyzeUnknown` sekarang simpan hasil AI ke DB setelah batch selesai
+- Device reconnect sekarang **load instant dari cache**, AI cuma dipanggil untuk package yang benar-benar baru
+
+### Fixed (Deep Audit Cleanup)
+- Hapus 4 dead npm deps: `@tanstack/react-table`, `class-variance-authority`, `clsx`, `tailwind-merge`
+- Hapus dead file `lib/utils.ts` (`cn()` tidak pernah dipanggil)
+- `ai.rs` — `strip_sse` sekarang handle multi-line SSE (concat semua delta chunks, bukan cuma ambil pertama)
+- `exportPreset.ts` — hapus hardcoded locale `id-ID`
+
+### Changed (i18n)
+- `DebloatPresets` — semua label (`title`, `select_safe`, `execute`) sekarang pakai `t()`
+- `SettingsDialog` — semua label (`title`, `test`, `save`, toast messages) sekarang pakai `t()`
+- `ChangelogDialog` — title + close button ikut `lang` prop
+- `i18n.ts` — tambah keys: `presets.*`, `settings.test/saved/save_fail/close`, `changelog.*`
+- Fix duplicate `settings.save` i18n key
+
+---
+
 ## [2.1.1] — 2026-08-03
 
 Patch: deep audit bug fix + UI/UX overhaul + i18n consistency + build fix.

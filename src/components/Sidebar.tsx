@@ -31,7 +31,7 @@ export function Sidebar({
         <div className="brand-logo">A</div>
         <div className="min-w-0">
           <div className="brand-name">ADB Uninstaller</div>
-          <div className="brand-sub">Megapass Sidoarjo · v2.1.1</div>
+          <div className="brand-sub">Megapass Sidoarjo · v2.1.2</div>
         </div>
       </div>
 

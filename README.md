@@ -6,7 +6,7 @@ Desktop app Linux untuk manage aplikasi Android via ADB: scan device, list packa
 
 ![Platform](https://img.shields.io/badge/platform-Linux-blue)
 ![Stack](https://img.shields.io/badge/stack-Tauri%20v2%20%7C%20React%20%7C%20Rust-orange)
-![Version](https://img.shields.io/badge/version-2.1.1-green)
+![Version](https://img.shields.io/badge/version-2.1.2-green)
 ![License](https://img.shields.io/badge/license-Private-lightgrey)
 
 ---
@@ -29,6 +29,7 @@ Desktop app Linux untuk manage aplikasi Android via ADB: scan device, list packa
 - Static offline tags (Android/Google/Xiaomi/Samsung/OPPO/Vivo bloat)
 - **Unknown otomatis dianalisis AI** — semua package, bukan hanya 50 pertama
 - Hasil AI disimpan ke SQLite cache (tidak hilang setelah restart)
+- AI cache persist: reconnect device → load instant dari DB, AI cuma proses package baru
 - Critical package diblokir dari uninstall/disable
 
 ### AI
@@ -69,10 +70,10 @@ sudo apt install -y android-tools-adb
 ### Bundle siap pakai
 ```bash
 # .deb
-sudo dpkg -i "ADB Uninstaller_2.1.1_amd64.deb"
+sudo dpkg -i "ADB Uninstaller_2.1.2_amd64.deb"
 # atau AppImage
-chmod +x "ADB Uninstaller_2.1.1_amd64.AppImage"
-./"ADB Uninstaller_2.1.1_amd64.AppImage"
+chmod +x "ADB Uninstaller_2.1.2_amd64.AppImage"
+./"ADB Uninstaller_2.1.2_amd64.AppImage"
 ```
 
 Build lokal menghasilkan:

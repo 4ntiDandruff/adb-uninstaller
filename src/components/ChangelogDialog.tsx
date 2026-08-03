@@ -8,6 +8,19 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "v2.1.2",
+    date: "2026-08-03",
+    items: [
+      "⚡ AI results sekarang disimpan ke SQLite — reconnect device load instant, AI cuma proses package baru",
+      "🧹 Hapus 4 dead npm deps (@tanstack/react-table, class-variance-authority, clsx, tailwind-merge)",
+      "🧹 Hapus dead file lib/utils.ts",
+      "🐛 ai.rs: strip_sse handle multi-line SSE (concat semua delta chunks)",
+      "🌐 DebloatPresets, SettingsDialog, ChangelogDialog — semua label ikut bahasa aktif",
+      "🌐 Fix duplicate i18n key settings.save",
+      "🐛 exportPreset: hapus hardcoded locale id-ID",
+    ],
+  },
+  {
     version: "v2.1.1",
     date: "2026-08-03",
     items: [
