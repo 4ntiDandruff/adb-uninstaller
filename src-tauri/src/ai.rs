@@ -288,9 +288,30 @@ pub async fn analyze_apps_batch(packages: Vec<String>) -> Result<Vec<SafetyAnaly
         cleaned
     };
 
-    let parsed: Vec<SafetyAnalysis> = serde_json::from_str(json_slice).map_err(|e| {
+    let mut parsed: Vec<SafetyAnalysis> = serde_json::from_str(json_slice).map_err(|e| {
         format!("[ADB-4008] AI JSON invalid: {e} | content={cleaned}")
     })?;
+
+    // Package yang dikirim tapi TAK dibalas AI: isi eksplisit biar tak nyangkut unknown selamanya
+    // (kalau dibiarkan, package itu dikirim ulang tiap scan dan dilewatkan AI terus)
+    let returned: std::collections::HashSet<&str> =
+        parsed.iter().map(|x| x.package_name.as_str()).collect();
+    let missing_note = if settings.language == "id" {
+        "AI tak mengembalikan hasil"
+    } else {
+        "AI returned no result"
+    };
+    let missing: Vec<SafetyAnalysis> = packages
+        .iter()
+        .filter(|pkg| !returned.contains(pkg.as_str()))
+        .map(|pkg| SafetyAnalysis {
+            package_name: pkg.clone(),
+            level: "unknown".into(),
+            reason: missing_note.into(),
+            can_remove: false,
+        })
+        .collect();
+    parsed.extend(missing);
 
     Ok(parsed)
 }

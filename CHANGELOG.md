@@ -23,6 +23,9 @@ Fitur baru: atur waktu layar mati (lockscreen) via ADB + fix audit.
 - `index.css` / `AppTable.tsx` — checkbox diperbesar (15px → 18px, sel tabel 20px) + seluruh sel checkbox jadi area tekan (bukan cuma kotak kecil) — lebih gampang diklik
 
 ### Fixed
+- `ai.rs` — **package yang dilewatkan AI tak lagi nyangkut unknown selamanya**: kalau AI membalas array tanpa menyertakan sebagian package yang dikirim, package itu kini diisi eksplisit (`unknown` + reason "AI tak mengembalikan hasil") sehingga tercatat sudah dicoba, tidak silent, dan kelihatan di log — bukan dikirim-ulang lalu dilewatkan lagi tiap scan
+
+### Fixed
 - `App.tsx` — undo "disable" sekarang pakai `pm enable`, bukan `install-existing` (yang tidak me-re-enable app) — undoStack simpan `{pkg, kind}`
 - `App.tsx` — ganti bahasa tidak lagi menimpa `safety_reason` hasil AI (hanya timpa bila level tag statis == level app)
 - `adb.rs` / `ai.rs` — 3 clippy lint: `.next_back()`, gabung `.replace()`, `split_once`
