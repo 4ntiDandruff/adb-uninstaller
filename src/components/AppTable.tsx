@@ -182,11 +182,15 @@ export function AppTable({
                   className={activeApp === a.package_name ? "selected" : ""}
                   onClick={() => onOpenDetail(a)}
                 >
-                  <td onClick={(e) => e.stopPropagation()}>
+                  <td
+                    className="cell-check"
+                    onClick={(e) => { e.stopPropagation(); onToggleSelect(a.package_name); }}
+                  >
                     <input
                       type="checkbox"
                       checked={selected.has(a.package_name)}
                       onChange={() => onToggleSelect(a.package_name)}
+                      onClick={(e) => e.stopPropagation()}
                     />
                   </td>
                   <td>

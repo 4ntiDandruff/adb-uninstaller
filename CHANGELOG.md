@@ -18,6 +18,10 @@ Fitur baru: atur waktu layar mati (lockscreen) via ADB + fix audit.
 - `db.rs` — **buku induk verdict AI lintas-device**: package yang sudah pernah dianalisa AI di HP manapun langsung diwarisi saat device baru terhubung (device baru tak mulai dari nol → loading jauh lebih cepat, hemat token AI)
 - `adb.rs` — re-merge hasil warisan ke data in-memory setelah save, biar frontend tidak analisa ulang package yang verdict-nya sudah ada
 
+### Changed / Performance
+- `db.rs` — `save_apps` (loop ratusan package tiap scan) kini dibungkus 1 transaction → dari ratusan tulis-ke-disk jadi 1 commit borongan (scan/reconnect device besar lebih cepat, hemat umur SSD)
+- `index.css` / `AppTable.tsx` — checkbox diperbesar (15px → 18px, sel tabel 20px) + seluruh sel checkbox jadi area tekan (bukan cuma kotak kecil) — lebih gampang diklik
+
 ### Fixed
 - `App.tsx` — undo "disable" sekarang pakai `pm enable`, bukan `install-existing` (yang tidak me-re-enable app) — undoStack simpan `{pkg, kind}`
 - `App.tsx` — ganti bahasa tidak lagi menimpa `safety_reason` hasil AI (hanya timpa bila level tag statis == level app)

@@ -68,10 +68,11 @@ pub fn get_conn(state: &DbState) -> Result<std::sync::MutexGuard<'_, Option<Conn
 pub fn save_apps(conn: &Connection, device_id: &str, apps: &[crate::adb::AppInfo]) -> SqlResult<usize> {
     let now = chrono::Local::now().to_rfc3339();
     let mut count = 0;
+    let tx = conn.unchecked_transaction()?;
 
     for app in apps {
         // Ambil data lama dulu biar safety/label AI tidak ter-overwrite jadi unknown
-        let existing: Option<(String, String, String, String, String)> = conn
+        let existing: Option<(String, String, String, String, String)> = tx
             .query_row(
                 "SELECT label, safety_level, safety_reason, size, version FROM app_cache WHERE package_name = ?1 AND device_id = ?2",
                 rusqlite::params![app.package_name, device_id],
@@ -119,7 +120,7 @@ pub fn save_apps(conn: &Connection, device_id: &str, apps: &[crate::adb::AppInfo
 
         // Buku induk: kalau device baru masih unknown, warisi verdict AI package sama dari device lain
         let (safety_level, safety_reason) = if safety_level == "unknown" {
-            conn.query_row(
+            tx.query_row(
                 "SELECT safety_level, safety_reason FROM app_cache                  WHERE package_name = ?1 AND safety_level NOT IN ('unknown', '')                  ORDER BY scanned_at DESC LIMIT 1",
                 rusqlite::params![app.package_name],
                 |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
@@ -129,7 +130,7 @@ pub fn save_apps(conn: &Connection, device_id: &str, apps: &[crate::adb::AppInfo
             (safety_level, safety_reason)
         };
 
-        conn.execute(
+        tx.execute(
             "INSERT OR REPLACE INTO app_cache 
              (package_name, label, is_system, is_disabled, safety_level, safety_reason, size, version, device_id, scanned_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
@@ -148,6 +149,7 @@ pub fn save_apps(conn: &Connection, device_id: &str, apps: &[crate::adb::AppInfo
         )?;
         count += 1;
     }
+    tx.commit()?;
     Ok(count)
 }
 

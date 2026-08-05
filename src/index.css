@@ -534,19 +534,25 @@ table.app-table tbody tr.selected {
 
 /* ===== Checkbox ===== */
 input[type="checkbox"] {
-  width: 15px;
-  height: 15px;
+  width: 18px;
+  height: 18px;
   accent-color: var(--primary);
   cursor: pointer;
   margin: 0;
   vertical-align: middle;
 }
 
-/* Wrapper untuk centering di table cell */
+/* Sel checkbox: seluruh area sel jadi tombol tekan (bukan cuma kotak kecil) */
 td input[type="checkbox"],
 th input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
   display: block;
   margin: 0 auto;
+}
+td.cell-check, th.cell-check {
+  cursor: pointer;
+  padding: 6px 10px;
 }
 
 /* ===== Skeleton ===== */
