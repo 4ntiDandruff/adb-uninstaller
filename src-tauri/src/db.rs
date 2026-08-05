@@ -117,6 +117,18 @@ pub fn save_apps(conn: &Connection, device_id: &str, apps: &[crate::adb::AppInfo
             old_version
         };
 
+        // Buku induk: kalau device baru masih unknown, warisi verdict AI package sama dari device lain
+        let (safety_level, safety_reason) = if safety_level == "unknown" {
+            conn.query_row(
+                "SELECT safety_level, safety_reason FROM app_cache                  WHERE package_name = ?1 AND safety_level NOT IN ('unknown', '')                  ORDER BY scanned_at DESC LIMIT 1",
+                rusqlite::params![app.package_name],
+                |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+            )
+            .unwrap_or((safety_level, safety_reason))
+        } else {
+            (safety_level, safety_reason)
+        };
+
         conn.execute(
             "INSERT OR REPLACE INTO app_cache 
              (package_name, label, is_system, is_disabled, safety_level, safety_reason, size, version, device_id, scanned_at)

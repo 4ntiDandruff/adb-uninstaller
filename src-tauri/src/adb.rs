@@ -350,6 +350,22 @@ pub async fn list_apps(device_id: String) -> Result<Vec<AppInfo>, String> {
             }
         }
         let _ = crate::db::save_apps(&conn, &device_id, &apps);
+
+        // save_apps mewarisi verdict lintas-device ke DB; tarik lagi biar frontend tak analisa ulang
+        if let Ok(fresh) = crate::db::load_apps(&conn, &device_id) {
+            let fmap: std::collections::HashMap<String, crate::db::CachedApp> =
+                fresh.into_iter().map(|c| (c.package_name.clone(), c)).collect();
+            for app in &mut apps {
+                if app.safety_level == "unknown" {
+                    if let Some(c) = fmap.get(&app.package_name) {
+                        if c.safety_level != "unknown" && !c.safety_level.is_empty() {
+                            app.safety_level = c.safety_level.clone();
+                            app.safety_reason = c.safety_reason.clone();
+                        }
+                    }
+                }
+            }
+        }
     }}
 
     Ok(apps)

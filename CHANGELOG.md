@@ -15,6 +15,8 @@ Fitur baru: atur waktu layar mati (lockscreen) via ADB + fix audit.
 - `adb.rs` — device info lengkap: baca `ro.product.marketname` (nama pasar, mis. Infinix Note 30 Pro bukan X678B), `model_code` mentah, `chipset` dari `ro.soc.model`/`ro.board.platform`
 - `ai.rs` — command `analyze_device` → brief teknisi format bullet (SPEK / ISU KHAS SERVIS / TIPS), maks 12 kata/poin
 - `Sidebar.tsx` — baris Kode + Chipset, tombol **✨ Analisa Device (AI)** + panel hasil
+- `db.rs` — **buku induk verdict AI lintas-device**: package yang sudah pernah dianalisa AI di HP manapun langsung diwarisi saat device baru terhubung (device baru tak mulai dari nol → loading jauh lebih cepat, hemat token AI)
+- `adb.rs` — re-merge hasil warisan ke data in-memory setelah save, biar frontend tidak analisa ulang package yang verdict-nya sudah ada
 
 ### Fixed
 - `App.tsx` — undo "disable" sekarang pakai `pm enable`, bukan `install-existing` (yang tidak me-re-enable app) — undoStack simpan `{pkg, kind}`
