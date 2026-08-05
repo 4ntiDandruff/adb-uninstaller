@@ -30,6 +30,9 @@ export interface CommandResult {
 
 export interface DeviceInfo {
   model: string;
+  market_name: string;
+  model_code: string;
+  chipset: string;
   manufacturer: string;
   android_version: string;
   sdk_level: number;

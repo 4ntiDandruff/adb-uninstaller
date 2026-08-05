@@ -34,6 +34,9 @@ pub struct CommandResult {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeviceInfo {
     pub model: String,
+    pub market_name: String,
+    pub model_code: String,
+    pub chipset: String,
     pub manufacturer: String,
     pub android_version: String,
     pub sdk_level: i32,
@@ -135,6 +138,30 @@ pub async fn get_device_info(device_id: String) -> Result<DeviceInfo, String> {
 
     let model = prop(&device_id, "ro.product.model").await;
     let manufacturer = prop(&device_id, "ro.product.manufacturer").await;
+    // Nama pasaran: prioritas marketname (Infinix Note 30 Pro) di atas model mentah (X678B)
+    let market_name = {
+        let candidates = [
+            "ro.product.marketname",
+            "ro.product.odm.marketname",
+            "ro.product.vendor.marketname",
+            "ro.config.marketing_name",
+        ];
+        let mut found = String::new();
+        for k in candidates {
+            let v = prop(&device_id, k).await;
+            if !v.is_empty() {
+                found = v;
+                break;
+            }
+        }
+        found
+    };
+    let model_code = model.clone(); // kode mentah (ro.product.model)
+    // Chipset: ro.soc.model (MT6789V/CD) atau fallback board platform (mt6789)
+    let chipset = {
+        let soc = prop(&device_id, "ro.soc.model").await;
+        if !soc.is_empty() { soc } else { prop(&device_id, "ro.board.platform").await }
+    };
     let android_version = prop(&device_id, "ro.build.version.release").await;
     let sdk_str = prop(&device_id, "ro.build.version.sdk").await;
     let sdk_level = sdk_str.parse().unwrap_or(0);
@@ -180,7 +207,11 @@ pub async fn get_device_info(device_id: String) -> Result<DeviceInfo, String> {
     };
 
     Ok(DeviceInfo {
-        model,
+        // model = nama tampil terbaik: marketname kalau ada, else kode mentah
+        model: if market_name.is_empty() { model.clone() } else { market_name.clone() },
+        market_name,
+        model_code,
+        chipset,
         manufacturer,
         android_version,
         sdk_level,

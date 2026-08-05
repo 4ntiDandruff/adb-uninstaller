@@ -1,4 +1,4 @@
-# ADB Uninstaller v2.1
+# ADB Uninstaller v2.2
 
 **By Teknisi Megapass Sidoarjo**
 
@@ -6,7 +6,7 @@ Desktop app Linux untuk manage aplikasi Android via ADB: scan device, list packa
 
 ![Platform](https://img.shields.io/badge/platform-Linux-blue)
 ![Stack](https://img.shields.io/badge/stack-Tauri%20v2%20%7C%20React%20%7C%20Rust-orange)
-![Version](https://img.shields.io/badge/version-2.1.3-green)
+![Version](https://img.shields.io/badge/version-2.2.0-green)
 ![License](https://img.shields.io/badge/license-Private-lightgrey)
 
 ---
@@ -23,6 +23,9 @@ Desktop app Linux untuk manage aplikasi Android via ADB: scan device, list packa
 - Detail panel per package + tombol copy package name
 - Batch actions: Uninstall, Disable, Enable, Force Stop, Clear Data
 - Undo restore (package yang di-uninstall/disable)
+- **Atur waktu layar mati** — dialog preset (1m/5m/10m/30m/60m/Selamanya), lewati batas 10 menit UI bawaan HP, via `settings put system screen_off_timeout`
+- **Device info lengkap** — nama pasar (Infinix Note 30 Pro, bukan kode X678B) + kode model + chipset
+- **Analisa Device (AI)** — brief teknisi 1-klik: spek, isu khas servis model itu, tips (format bullet)
 
 ### Keamanan
 - 4 level: **safe / risky / critical / unknown**

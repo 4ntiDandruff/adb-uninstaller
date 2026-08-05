@@ -44,6 +44,8 @@ export const api = {
     invoke<SafetyAnalysis[]>("analyze_apps_batch", { packages }),
   chat: (message: string, context: string) =>
     invoke<string>("chat_with_ai", { message, context }),
+  analyzeDevice: (model: string, chipset: string, android: string) =>
+    invoke<string>("analyze_device", { model, chipset, android }),
   getCachedApps: (deviceId: string) =>
     invoke<import("../types").CachedApp[]>("get_cached_apps", { deviceId }),
   getLastScanTime: (deviceId: string) =>

@@ -295,6 +295,72 @@ pub async fn analyze_apps_batch(packages: Vec<String>) -> Result<Vec<SafetyAnaly
     Ok(parsed)
 }
 
+pub async fn analyze_device(
+    model: String,
+    chipset: String,
+    android: String,
+) -> Result<String, String> {
+    let settings = load_settings()?;
+    if settings.ai_api_key.trim().is_empty() {
+        return Err("[ADB-4005] API key kosong — isi di Settings".into());
+    }
+    let base = normalize_base_url(&settings.ai_base_url);
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(60))
+        .build()
+        .map_err(|e| format!("[ADB-4001] HTTP client error: {e}"))?;
+
+    let lang_note = if settings.language == "id" {
+        "Jawab dalam Bahasa Indonesia."
+    } else {
+        "Answer in English."
+    };
+    let system = format!(
+        "You are a phone repair technician assistant. Output a compact brief in EXACTLY this bullet format, nothing else:\n\nSPEK\n• <chipset + kelas performa>\n• <RAM/layar kalau umum diketahui>\n\nISU KHAS SERVIS\n• <keluhan yang sering masuk servis untuk model ini>\n• <keluhan lain>\n\nTIPS\n• <tips singkat teknisi>\n\nRules: setiap poin diawali '• ', maksimal 12 kata per poin, maksimal 2 poin per section. JANGAN pakai markdown (tanpa **, tanpa #, tanpa nomor). {lang_note}"
+    );
+    let user = format!("Device: {model}\nChipset: {chipset}\nAndroid: {android}");
+
+    let body = serde_json::json!({
+        "model": settings.ai_model,
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user}
+        ],
+        "temperature": settings.temperature,
+        "max_tokens": settings.max_tokens,
+        "stream": false
+    });
+
+    let resp = client
+        .post(format!("{base}/chat/completions"))
+        .header("Authorization", format!("Bearer {}", settings.ai_api_key))
+        .header("Content-Type", "application/json")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("[ADB-4002] Koneksi AI gagal: {e}"))?;
+
+    let status = resp.status();
+    let text = resp.text().await.map_err(|e| format!("[ADB-4003] Baca response gagal: {e}"))?;
+    if !status.is_success() {
+        return Err(format!("[ADB-4004] HTTP {status}: {text}"));
+    }
+    let text = strip_sse(&text);
+    let v: Value = serde_json::from_str(&text)
+        .map_err(|e| format!("[ADB-4007] Parse response gagal: {e}"))?;
+    let msg = &v["choices"][0]["message"]["content"];
+    if let Some(s) = msg.as_str() {
+        return Ok(s.trim().to_string());
+    }
+    if let Some(arr) = msg.as_array() {
+        let joined: String = arr.iter()
+            .filter_map(|p| p.get("text").and_then(|t| t.as_str()))
+            .collect::<Vec<_>>().join("");
+        if !joined.is_empty() { return Ok(joined); }
+    }
+    Err("[ADB-4010] Struktur response device analysis tidak dikenal".into())
+}
+
 pub async fn chat_with_ai(message: String, context: String) -> Result<String, String> {
     let settings = load_settings()?;
     if settings.ai_api_key.trim().is_empty() {

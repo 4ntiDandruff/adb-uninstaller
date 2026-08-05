@@ -76,6 +76,9 @@ export default function App() {
   // Screen timeout (lockscreen) — nilai sekarang dalam ms, null = belum dibaca
   const [timeoutOpen, setTimeoutOpen] = useState(false);
   const [curTimeout, setCurTimeout] = useState<number | null>(null);
+  // AI analisa device — hasil brief teknisi
+  const [deviceAnalysis, setDeviceAnalysis] = useState<string | null>(null);
+  const [analyzingDevice, setAnalyzingDevice] = useState(false);
 
   const t = useCallback((key: string) => translate(lang, key), [lang]);
 
@@ -280,6 +283,9 @@ export default function App() {
   useEffect(() => {
     if (deviceId) loadApps(deviceId);
   }, [deviceId, loadApps]);
+
+  // Reset hasil analisa AI saat pindah device
+  useEffect(() => { setDeviceAnalysis(null); }, [deviceId]);
 
   // Re-enrich saat lang berubah — static tags only, no AI re-call to prevent loops
   // ponytail: removed AI re-translate to prevent infinite loop (setApps -> re-render -> re-trigger)
@@ -561,6 +567,26 @@ export default function App() {
     [deviceId, log],
   );
 
+  const analyzeDevice = useCallback(async () => {
+    if (!deviceInfo) return;
+    setAnalyzingDevice(true);
+    setDeviceAnalysis(null);
+    try {
+      const brief = await api.analyzeDevice(
+        deviceInfo.model,
+        deviceInfo.chipset || "unknown",
+        `${deviceInfo.android_version} (SDK ${deviceInfo.sdk_level})`,
+      );
+      setDeviceAnalysis(brief);
+      log({ level: "success", source: "ai", message: `Analisa device: ${deviceInfo.model}` });
+    } catch (e) {
+      toast.error("Analisa device gagal");
+      log({ level: "error", source: "ai", message: `Analisa device gagal`, detail: humanizeError(String(e)) });
+    } finally {
+      setAnalyzingDevice(false);
+    }
+  }, [deviceInfo, log]);
+
   const stats = useMemo(() => {
     const safe = apps.filter((a) => a.safety_level === "safe").length;
     const risky = apps.filter((a) => a.safety_level === "risky").length;
@@ -605,6 +631,9 @@ export default function App() {
         deviceInfo={deviceInfo}
         onOpenSettings={() => setSettingsOpen(true)}
         apps={apps}
+        onAnalyzeDevice={analyzeDevice}
+        deviceAnalysis={deviceAnalysis}
+        analyzingDevice={analyzingDevice}
         t={t}
       />
 

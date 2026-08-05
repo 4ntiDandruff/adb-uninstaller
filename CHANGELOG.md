@@ -12,6 +12,9 @@ Fitur baru: atur waktu layar mati (lockscreen) via ADB + fix audit.
 - `adb.rs` — command `get_screen_timeout` / `set_screen_timeout` (baca/tulis `system screen_off_timeout`), set langsung baca ulang sebagai bukti angka kepasang
 - `App.tsx` — tombol `⏱️ Layar` di topbar → dialog dropdown preset (1m/5m/10m/30m/60m/Selamanya), lewati batas 10 menit UI bawaan HP
 - Deteksi Device Admin: kalau angka ditolak sistem, nilai nyata ditampilkan (tidak klaim sukses palsu)
+- `adb.rs` — device info lengkap: baca `ro.product.marketname` (nama pasar, mis. Infinix Note 30 Pro bukan X678B), `model_code` mentah, `chipset` dari `ro.soc.model`/`ro.board.platform`
+- `ai.rs` — command `analyze_device` → brief teknisi format bullet (SPEK / ISU KHAS SERVIS / TIPS), maks 12 kata/poin
+- `Sidebar.tsx` — baris Kode + Chipset, tombol **✨ Analisa Device (AI)** + panel hasil
 
 ### Fixed
 - `App.tsx` — undo "disable" sekarang pakai `pm enable`, bukan `install-existing` (yang tidak me-re-enable app) — undoStack simpan `{pkg, kind}`

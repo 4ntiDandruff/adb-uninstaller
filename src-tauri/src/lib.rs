@@ -74,6 +74,11 @@ async fn chat_with_ai(message: String, context: String) -> Result<String, String
 }
 
 #[tauri::command]
+async fn analyze_device(model: String, chipset: String, android: String) -> Result<String, String> {
+    ai::analyze_device(model, chipset, android).await
+}
+
+#[tauri::command]
 async fn test_ai_connection(
     base_url: String,
     api_key: String,
@@ -189,6 +194,7 @@ pub fn run() {
             clear_app_data,
             analyze_apps_batch,
             chat_with_ai,
+            analyze_device,
             test_ai_connection,
             save_settings,
             load_settings,

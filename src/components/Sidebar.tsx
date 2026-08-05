@@ -1,4 +1,4 @@
-import { Smartphone, RefreshCw, Usb, Wifi, Settings as SettingsIcon } from "lucide-react";
+import { Smartphone, RefreshCw, Usb, Wifi, Settings as SettingsIcon, Cpu, Sparkles, Loader2 } from "lucide-react";
 import type { AppInfo, Device, DeviceInfo } from "../types";
 
 interface Props {
@@ -10,12 +10,16 @@ interface Props {
   deviceInfo: DeviceInfo | null;
   onOpenSettings: () => void;
   apps: AppInfo[];
+  onAnalyzeDevice: () => void;
+  deviceAnalysis: string | null;
+  analyzingDevice: boolean;
   t: (key: string) => string;
 }
 
 export function Sidebar({
   devices, deviceId, onSelectDevice, onRefresh, loadingDevices,
-  deviceInfo, onOpenSettings, apps, t,
+  deviceInfo, onOpenSettings, apps,
+  onAnalyzeDevice, deviceAnalysis, analyzingDevice, t,
 }: Props) {
   const stats = {
     total: apps.length,
@@ -31,7 +35,7 @@ export function Sidebar({
         <div className="brand-logo">A</div>
         <div className="min-w-0">
           <div className="brand-name">ADB Uninstaller</div>
-          <div className="brand-sub">Megapass Sidoarjo · v2.1.3</div>
+          <div className="brand-sub">Megapass Sidoarjo · v2.2.0</div>
         </div>
       </div>
 
@@ -76,11 +80,32 @@ export function Sidebar({
           <div className="side-label">{t("sidebar.device_info")}</div>
           <div className="space-y-1.5 text-xs">
             <InfoRow k={t("sidebar.model")} v={deviceInfo.model.toLowerCase().startsWith(deviceInfo.manufacturer.toLowerCase()) ? deviceInfo.model : `${deviceInfo.manufacturer} ${deviceInfo.model}`} />
+            {deviceInfo.market_name && deviceInfo.model_code && deviceInfo.market_name !== deviceInfo.model_code && (
+              <InfoRow k="Kode" v={deviceInfo.model_code} />
+            )}
+            {deviceInfo.chipset && <InfoRow k="Chipset" v={deviceInfo.chipset} />}
             <InfoRow k={t("sidebar.android")} v={`${deviceInfo.android_version} (SDK ${deviceInfo.sdk_level})`} />
             <InfoRow k={t("sidebar.battery")} v={deviceInfo.battery_level >= 0 ? `${deviceInfo.battery_level}%` : "?"} />
             <InfoRow k={t("sidebar.storage")} v={`${deviceInfo.storage_free} / ${deviceInfo.storage_total}`} />
             <InfoRow k={t("sidebar.ram")} v={deviceInfo.ram_total} />
           </div>
+          <button
+            className="btn btn-ghost btn-sm w-full mt-2"
+            onClick={onAnalyzeDevice}
+            disabled={analyzingDevice}
+            title="AI: brief spek + tips servis untuk device ini"
+          >
+            {analyzingDevice ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+            {analyzingDevice ? "Menganalisa..." : "Analisa Device (AI)"}
+          </button>
+          {deviceAnalysis && (
+            <div className="mt-2 text-xs" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 8, padding: "8px 10px", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
+              <div className="flex items-center gap-1.5 mb-1 text-primary" style={{ fontWeight: 600 }}>
+                <Cpu size={12} /> Brief Teknisi
+              </div>
+              {deviceAnalysis}
+            </div>
+          )}
         </div>
       )}
 
