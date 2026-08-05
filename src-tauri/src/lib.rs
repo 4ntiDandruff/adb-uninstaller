@@ -93,6 +93,16 @@ fn load_settings() -> Result<AppSettings, String> {
 }
 
 #[tauri::command]
+async fn get_screen_timeout(device_id: String) -> Result<i64, String> {
+    adb::get_screen_timeout(device_id).await
+}
+
+#[tauri::command]
+async fn set_screen_timeout(device_id: String, ms: i64) -> CommandResult {
+    adb::set_screen_timeout(device_id, ms).await
+}
+
+#[tauri::command]
 async fn check_adb_available() -> Result<bool, String> {
     adb::check_adb_available().await
 }
@@ -142,6 +152,19 @@ async fn save_ai_results(
         .map_err(|e| format!("[DB-011] Save AI results gagal: {e}"))
 }
 
+#[tauri::command]
+async fn save_app_size(
+    state: tauri::State<'_, db::DbState>,
+    device_id: String,
+    package: String,
+    size: String,
+) -> Result<usize, String> {
+    let guard = db::get_conn(&state)?;
+    let conn = guard.as_ref().ok_or("[DB-007] Database tidak terinit")?;
+    db::update_app_size(conn, &device_id, &package, &size)
+        .map_err(|e| format!("[DB-012] Save size gagal: {e}"))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let db_conn = db::init_db().expect("Gagal init database");
@@ -170,10 +193,13 @@ pub fn run() {
             save_settings,
             load_settings,
             check_adb_available,
+            get_screen_timeout,
+            set_screen_timeout,
             get_cached_apps,
             get_last_scan_time,
             clear_device_cache,
             save_ai_results,
+            save_app_size,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

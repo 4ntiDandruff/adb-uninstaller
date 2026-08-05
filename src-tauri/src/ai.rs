@@ -129,7 +129,7 @@ fn normalize_base_url(base: &str) -> String {
     let mut b = base.trim().trim_end_matches('/').to_string();
     // Jika user sudah isi path lengkap (misal http://host:8080/api/v1), jangan tambah /v1 lagi.
     // Hanya tambah /v1 kalau base URL masih polos (http://host:port saja).
-    let path_only = b.splitn(2, "://").nth(1).unwrap_or(&b);
+    let path_only = b.split_once("://").map(|x| x.1).unwrap_or(&b);
     let has_path = path_only.contains('/');
     if !has_path && !b.ends_with("/v1") {
         b.push_str("/v1");

@@ -193,8 +193,8 @@ pub async fn get_device_info(device_id: String) -> Result<DeviceInfo, String> {
 
 fn pretty_label(package: &str) -> String {
     // Format package name jadi lebih readable: com.example.my_app -> My App
-    let last = package.split('.').last().unwrap_or(package);
-    let spaced = last.replace('_', " ").replace('-', " ");
+    let last = package.split('.').next_back().unwrap_or(package);
+    let spaced = last.replace(['_', '-'], " ");
     let mut out = String::new();
     for (i, part) in spaced.split_whitespace().enumerate() {
         if i > 0 {
@@ -529,6 +529,48 @@ pub async fn clear_app_data(device_id: String, package: String) -> CommandResult
                     Some(format!("[ADB-3005] Clear data gagal: {err}"))
                 },
             )
+        }
+        Err(e) => timed_result(start, false, String::new(), Some(e)),
+    }
+}
+
+pub async fn get_screen_timeout(device_id: String) -> Result<i64, String> {
+    // screen_off_timeout satuannya milidetik. -1 = tak terbaca.
+    let (out, _, code) =
+        run_adb_device(&device_id, &["shell", "settings", "get", "system", "screen_off_timeout"]).await?;
+    if code != 0 {
+        return Err("[ADB-6001] Gagal baca screen timeout".into());
+    }
+    Ok(out.trim().parse::<i64>().unwrap_or(-1))
+}
+
+pub async fn set_screen_timeout(device_id: String, ms: i64) -> CommandResult {
+    let start = Instant::now();
+    let ms_str = ms.to_string();
+    match run_adb_device(
+        &device_id,
+        &["shell", "settings", "put", "system", "screen_off_timeout", &ms_str],
+    )
+    .await
+    {
+        Ok((_, err, code)) => {
+            if code != 0 {
+                return timed_result(start, false, String::new(), Some(format!("[ADB-6002] Set gagal: {err}")));
+            }
+            // Baca ulang = bukti nyata angka kepasang (deteksi Device Admin yang override)
+            match run_adb_device(&device_id, &["shell", "settings", "get", "system", "screen_off_timeout"]).await {
+                Ok((back, _, _)) => {
+                    let actual = back.trim().parse::<i64>().unwrap_or(-1);
+                    if actual == ms {
+                        timed_result(start, true, format!("{actual}"), None)
+                    } else {
+                        // Angka tak sama = kemungkinan dikunci Device Admin (max time to lock)
+                        timed_result(start, false, format!("{actual}"),
+                            Some(format!("[ADB-6003] Ditolak sistem: diminta {ms}ms, terpasang {actual}ms (kemungkinan Device Admin/kebijakan lock)")))
+                    }
+                }
+                Err(e) => timed_result(start, false, String::new(), Some(e)),
+            }
         }
         Err(e) => timed_result(start, false, String::new(), Some(e)),
     }

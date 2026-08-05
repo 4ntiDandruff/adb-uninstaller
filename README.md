@@ -6,7 +6,7 @@ Desktop app Linux untuk manage aplikasi Android via ADB: scan device, list packa
 
 ![Platform](https://img.shields.io/badge/platform-Linux-blue)
 ![Stack](https://img.shields.io/badge/stack-Tauri%20v2%20%7C%20React%20%7C%20Rust-orange)
-![Version](https://img.shields.io/badge/version-2.1.2-green)
+![Version](https://img.shields.io/badge/version-2.1.3-green)
 ![License](https://img.shields.io/badge/license-Private-lightgrey)
 
 ---
@@ -70,10 +70,10 @@ sudo apt install -y android-tools-adb
 ### Bundle siap pakai
 ```bash
 # .deb
-sudo dpkg -i "ADB Uninstaller_2.1.2_amd64.deb"
+sudo dpkg -i "ADB Uninstaller_2.1.3_amd64.deb"
 # atau AppImage
-chmod +x "ADB Uninstaller_2.1.2_amd64.AppImage"
-./"ADB Uninstaller_2.1.2_amd64.AppImage"
+chmod +x "ADB Uninstaller_2.1.3_amd64.AppImage"
+./"ADB Uninstaller_2.1.3_amd64.AppImage"
 ```
 
 Build lokal menghasilkan:

@@ -8,6 +8,28 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "v2.2.0",
+    date: "2026-08-05",
+    items: [
+      "✨ Tombol ⏱️ Layar: atur waktu layar mati via ADB — tembus batas 10 menit UI bawaan HP (1m/5m/10m/30m/60m/Selamanya)",
+      "✨ set_screen_timeout baca ulang angka sebagai bukti kepasang — deteksi Device Admin yang menolak",
+      "🐛 App.tsx: undo disable pakai pm enable (bukan install-existing yang tak re-enable app)",
+      "🐛 App.tsx: ganti bahasa tak lagi timpa alasan hasil AI",
+      "🧹 adb.rs/ai.rs: 3 clippy lint bersih (next_back, replace gabung, split_once)",
+    ],
+  },
+  {
+    version: "v2.1.3",
+    date: "2026-08-05",
+    items: [
+      "🐛 App.tsx: fix stale deviceId di AI save — deps autoAnalyze/analyzeUnknown",
+      "🐛 db.rs: batch_update_safety transaction + normalize level AI (Safe→safe)",
+      "🐛 App.tsx: normalizeSafety() saat apply AI result — badge/filter konsisten",
+      "⚡ save_app_size: ukuran APK di DetailPanel di-persist ke SQLite",
+      "⚡ Next open device: safety + size load instant dari cache",
+    ],
+  },
+  {
     version: "v2.1.2",
     date: "2026-08-03",
     items: [

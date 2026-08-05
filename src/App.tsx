@@ -6,6 +6,12 @@ import {
   Loader2,
   AlertTriangle,
   MessageSquare,
+  Clock,
+  Trash2,
+  ScrollText,
+  Sun,
+  Moon,
+  X,
 } from "lucide-react";
 import type { AppInfo, AppSettings, Device, DeviceInfo, LogEntry, SafetyLevel } from "./types";
 import { api, makeLog, toast } from "./components/api";
@@ -25,6 +31,16 @@ import { humanizeError } from "./errorMessages";
 import { exportPreset } from "./lib/exportPreset";
 
 type OpKind = "uninstall" | "disable" | "enable" | "force_stop" | "clear_data";
+
+// Normalize AI level casing so badges/filters work (Safe → safe)
+function normalizeSafety(level: string): AppInfo["safety_level"] {
+  const l = (level || "unknown").toLowerCase();
+  if (l === "safe" || l === "risky" || l === "critical" || l === "unknown") return l;
+  if (l.includes("crit")) return "critical";
+  if (l.includes("risk")) return "risky";
+  if (l.includes("safe") || l.includes("ok")) return "safe";
+  return "unknown";
+}
 
 
 export default function App() {
@@ -49,7 +65,7 @@ export default function App() {
   const [presetsOpen, setPresetsOpen] = useState(false);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [lang, setLang] = useState<Lang>("id");
-  const [undoStack, setUndoStack] = useState<string[]>([]);
+  const [undoStack, setUndoStack] = useState<{ pkg: string; kind: "uninstall" | "disable" }[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMinimized, setChatMinimized] = useState(false);
@@ -57,6 +73,9 @@ export default function App() {
   const [chatPos, setChatPos] = useState({ x: Math.max(window.innerWidth - 420, 100), y: Math.max(window.innerHeight - 560, 60) });
   const [chatMsgs, setChatMsgs] = useState<Msg[]>([]);
   const [confirm, setConfirm] = useState<{ title: string; message: string; detail?: string; danger?: boolean; onOk: () => void } | null>(null);
+  // Screen timeout (lockscreen) — nilai sekarang dalam ms, null = belum dibaca
+  const [timeoutOpen, setTimeoutOpen] = useState(false);
+  const [curTimeout, setCurTimeout] = useState<number | null>(null);
 
   const t = useCallback((key: string) => translate(lang, key), [lang]);
 
@@ -164,7 +183,7 @@ export default function App() {
         setApps((prev) =>
           prev.map((a) => {
             const r = map.get(a.package_name);
-            return r ? { ...a, safety_level: r.level as AppInfo["safety_level"], safety_reason: r.reason } : a;
+            return r ? { ...a, safety_level: normalizeSafety(r.level), safety_reason: r.reason } : a;
           }),
         );
         // ponytail: persist AI results to SQLite so next load is instant
@@ -184,7 +203,7 @@ export default function App() {
     } finally {
       setAnalyzing(false);
     }
-  }, [log]);
+  }, [log, deviceId]);
 
   const loadApps = useCallback(
     async (id: string) => {
@@ -254,6 +273,7 @@ export default function App() {
         setTimeout(() => setScanProgress(0), 1500);
       }
     },
+    // lang intentionally omitted — useEffect[lang] re-enriches static tags without full ADB rescan
     [log, autoAnalyzeUnknown],
   );
 
@@ -267,7 +287,7 @@ export default function App() {
     if (apps.length === 0) return;
     setApps((prev) => prev.map((a) => {
       const tag = classifyPackage(a.package_name, lang);
-      if (tag.level !== 'unknown') return { ...a, safety_reason: tag.reason };
+      if (tag.level !== 'unknown' && a.safety_level === tag.level) return { ...a, safety_reason: tag.reason };
       return a;
     }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -306,6 +326,10 @@ export default function App() {
               prev.map((x) => (x.package_name === app.package_name ? { ...x, size } : x)),
             );
             setDetail((d) => (d && d.package_name === app.package_name ? { ...d, size } : d));
+            // ponytail: persist size so next load no re-fetch
+            if (size && size !== "?") {
+              api.saveAppSize(deviceId, app.package_name, size).catch(() => {});
+            }
           })
           .catch(() => {});
       }
@@ -339,7 +363,7 @@ export default function App() {
             if (res.success) {
               toast.success(`${label} OK`);
               log({ level: "success", source: "adb", message: `${label} sukses: ${pkg}`, detail: res.output, duration_ms: res.duration_ms });
-              if (kind === "uninstall" || kind === "disable") setUndoStack((u) => [...u, pkg]);
+              if (kind === "uninstall" || kind === "disable") setUndoStack((u) => [...u, { pkg, kind }]);
               if (deviceId) loadApps(deviceId);
             } else {
               toast.error(`${label} gagal`);
@@ -380,7 +404,7 @@ export default function App() {
               const res = await api.uninstall(deviceId, pkg);
               if (res.success) {
                 success++;
-                setUndoStack((u) => [...u, pkg]);
+                setUndoStack((u) => [...u, { pkg, kind: "uninstall" }]);
                 log({ level: "success", source: "adb", message: `uninstall OK: ${pkg}`, duration_ms: res.duration_ms });
               } else {
                 fail++;
@@ -449,16 +473,17 @@ export default function App() {
 
   const undoLast = useCallback(async () => {
     if (!deviceId || undoStack.length === 0) return;
-    const pkg = undoStack[undoStack.length - 1];
+    const { pkg, kind } = undoStack[undoStack.length - 1];
     setBusy(true);
     try {
-      const res = await api.restore(deviceId, pkg);
+      // ponytail: undo disable pakai enable, bukan install-existing (yang tak re-enable app)
+      const res = kind === "disable" ? await api.enable(deviceId, pkg) : await api.restore(deviceId, pkg);
       if (!res.success) {
-        throw new Error(res.error ?? "Restore gagal");
+        throw new Error(res.error ?? "Undo gagal");
       }
       setUndoStack((u) => u.slice(0, -1));
       toast.success(`Undo: ${pkg} dikembalikan`);
-      log({ level: "success", source: "adb", message: `undo: restore ${pkg}` });
+      log({ level: "success", source: "adb", message: `undo ${kind}: ${pkg}` });
       loadApps(deviceId);
     } catch (e) {
       toast.error(`Undo gagal`);
@@ -482,7 +507,7 @@ export default function App() {
       setApps((prev) =>
         prev.map((a) => {
           const r = map.get(a.package_name);
-          return r ? { ...a, safety_level: r.level as AppInfo["safety_level"], safety_reason: r.reason } : a;
+          return r ? { ...a, safety_level: normalizeSafety(r.level), safety_reason: r.reason } : a;
         }),
       );
       // ponytail: persist manual AI results too
@@ -501,7 +526,40 @@ export default function App() {
     } finally {
       setAnalyzing(false);
     }
-  }, [apps, log]);
+  }, [apps, log, deviceId]);
+
+  const openTimeout = useCallback(() => {
+    setTimeoutOpen(true);
+    setCurTimeout(null);
+    if (deviceId) api.getScreenTimeout(deviceId).then(setCurTimeout).catch(() => setCurTimeout(-1));
+  }, [deviceId]);
+
+  const applyTimeout = useCallback(
+    async (ms: number) => {
+      if (!deviceId) return;
+      setBusy(true);
+      try {
+        const res = await api.setScreenTimeout(deviceId, ms);
+        if (res.success) {
+          const actual = Number(res.output);
+          setCurTimeout(actual);
+          const mins = actual >= 2147483647 ? "\u221e" : `${Math.round(actual / 60000)}m`;
+          toast.success(`Layar mati: ${mins}`);
+          log({ level: "success", source: "adb", message: `Screen timeout set ${actual}ms`, duration_ms: res.duration_ms });
+          setTimeoutOpen(false);
+        } else {
+          toast.error("Gagal set timeout");
+          log({ level: "error", source: "adb", message: `Set timeout gagal`, detail: res.error ?? res.output });
+        }
+      } catch (e) {
+        toast.error("Set timeout error");
+        log({ level: "error", source: "adb", message: `Set timeout exception`, detail: humanizeError(String(e)) });
+      } finally {
+        setBusy(false);
+      }
+    },
+    [deviceId, log],
+  );
 
   const stats = useMemo(() => {
     const safe = apps.filter((a) => a.safety_level === "safe").length;
@@ -557,7 +615,8 @@ export default function App() {
           <div className="topbar-spacer" />
 
           <div className="topbar-group">
-            <button className="btn btn-ghost btn-sm" onClick={() => setPresetsOpen(true)} title={t("topbar.presets")}>🧹 {t("topbar.presets")}</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => setPresetsOpen(true)} title={t("topbar.presets")}><Trash2 size={14} /> {t("topbar.presets")}</button>
+            <button className="btn btn-ghost btn-sm" onClick={openTimeout} disabled={!deviceId} title={deviceId ? "Perpanjang waktu layar mati (lockscreen)" : "Pilih device dulu"}><Clock size={14} /> Layar</button>
             <button className="btn btn-ghost btn-sm" onClick={analyzeUnknown} disabled={analyzing || stats.unknown === 0} title="AI analisis package unknown">
               {analyzing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} AI ({stats.unknown})
             </button>
@@ -572,7 +631,7 @@ export default function App() {
             <button className="btn btn-ghost btn-sm" onClick={() => { setChatOpen((o) => !o); setChatMinimized(false); }} title={t("chat.title")}>
               <MessageSquare size={14} /> AI Chat
             </button>
-            <button className="btn btn-ghost btn-sm" onClick={() => setChangelogOpen(true)} title="Catatan Rilis">📜</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => setChangelogOpen(true)} title="Catatan Rilis"><ScrollText size={14} /></button>
           </div>
 
           <div className="topbar-sep" />
@@ -592,7 +651,7 @@ export default function App() {
               }}
               title={t("topbar.theme")}
             >
-              {settings?.theme === "light" ? "🌙" : "☀️"}
+              {settings?.theme === "light" ? <Moon size={14} /> : <Sun size={14} />}
             </button>
             <select className="select-dark btn-sm" style={{ width: 70 }} value={lang} onChange={(e) => {
               const next = e.target.value as Lang;
@@ -747,6 +806,57 @@ export default function App() {
         <div className="modal-overlay" onClick={() => setPresetsOpen(false)}>
           <div className="modal" style={{ maxWidth: 640 }} onClick={(e) => e.stopPropagation()}>
             <DebloatPresets installedApps={apps} onExecute={(pkgs) => { setPresetsOpen(false); runBatch(pkgs); }} busy={busy} t={t} />
+          </div>
+        </div>
+      )}
+      {timeoutOpen && (
+        <div className="modal-overlay" onClick={() => setTimeoutOpen(false)}>
+          <div className="modal" style={{ maxWidth: 400 }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <div className="modal-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Clock size={16} /> Waktu Layar Mati
+              </div>
+              <button className="btn btn-ghost btn-icon" onClick={() => setTimeoutOpen(false)} title="Tutup">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="modal-body">
+            <p className="text-sm text-dim mb-3">
+              Saat ini:{" "}
+              <b>
+                {curTimeout === null
+                  ? "membaca\u2026"
+                  : curTimeout < 0
+                  ? "?"
+                  : curTimeout >= 2147483647
+                  ? "Selamanya"
+                  : `${Math.round(curTimeout / 60000)} menit`}
+              </b>
+            </p>
+            <div className="flex flex-col gap-1.5">
+              {[
+                { label: "1 menit", ms: 60000 },
+                { label: "5 menit", ms: 300000 },
+                { label: "10 menit", ms: 600000 },
+                { label: "30 menit", ms: 1800000 },
+                { label: "60 menit", ms: 3600000 },
+                { label: "Selamanya (layar tak mati)", ms: 2147483647 },
+              ].map((o) => (
+                <button
+                  key={o.ms}
+                  className={`btn btn-sm ${curTimeout === o.ms ? "btn-primary" : "btn-ghost"}`}
+                  disabled={busy || !deviceId}
+                  onClick={() => applyTimeout(o.ms)}
+                  style={{ justifyContent: "flex-start" }}
+                >
+                  {curTimeout === o.ms ? "✓ " : ""}{o.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-faint mt-3">
+              Kalau HP terpasang Device Admin (app kantor/keamanan), angka bisa ditolak sistem — hasil nyata ditampilkan di atas setelah set.
+            </p>
+            </div>
           </div>
         </div>
       )}

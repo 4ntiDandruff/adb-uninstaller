@@ -189,16 +189,23 @@ pub fn batch_update_safety(
     updates: &[(String, String, String)],  // (package_name, safety_level, safety_reason)
 ) -> SqlResult<usize> {
     let now = chrono::Local::now().to_rfc3339();
+    let tx = conn.unchecked_transaction()?;
     let mut count = 0;
     for (pkg, level, reason) in updates {
-        // Update existing row, or insert if somehow missing
-        let rows = conn.execute(
+        // Normalize AI level casing: "Safe" / "SAFE" → "safe"
+        let level = match level.to_lowercase().as_str() {
+            "safe" | "risky" | "critical" | "unknown" => level.to_lowercase(),
+            other if other.contains("crit") => "critical".into(),
+            other if other.contains("risk") => "risky".into(),
+            other if other.contains("safe") || other.contains("ok") => "safe".into(),
+            _ => "unknown".into(),
+        };
+        let rows = tx.execute(
             "UPDATE app_cache SET safety_level = ?1, safety_reason = ?2, scanned_at = ?3 WHERE package_name = ?4 AND device_id = ?5",
             rusqlite::params![level, reason, now, pkg, device_id],
         )?;
         if rows == 0 {
-            // Package not in cache yet — insert minimal row
-            conn.execute(
+            tx.execute(
                 "INSERT OR IGNORE INTO app_cache (package_name, label, is_system, is_disabled, safety_level, safety_reason, size, version, device_id, scanned_at)
                  VALUES (?1, ?2, 0, 0, ?3, ?4, '', '', ?5, ?6)",
                 rusqlite::params![pkg, pkg, level, reason, device_id, now],
@@ -206,5 +213,18 @@ pub fn batch_update_safety(
         }
         count += 1;
     }
+    tx.commit()?;
     Ok(count)
+}
+
+pub fn update_app_size(
+    conn: &Connection,
+    device_id: &str,
+    package_name: &str,
+    size: &str,
+) -> SqlResult<usize> {
+    conn.execute(
+        "UPDATE app_cache SET size = ?1 WHERE package_name = ?2 AND device_id = ?3",
+        rusqlite::params![size, package_name, device_id],
+    )
 }

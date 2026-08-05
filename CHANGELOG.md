@@ -4,6 +4,39 @@ Semua perubahan penting dicatat di file ini.
 
 Format mirip [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.2.0] — 2026-08-05
+
+Fitur baru: atur waktu layar mati (lockscreen) via ADB + fix audit.
+
+### Added
+- `adb.rs` — command `get_screen_timeout` / `set_screen_timeout` (baca/tulis `system screen_off_timeout`), set langsung baca ulang sebagai bukti angka kepasang
+- `App.tsx` — tombol `⏱️ Layar` di topbar → dialog dropdown preset (1m/5m/10m/30m/60m/Selamanya), lewati batas 10 menit UI bawaan HP
+- Deteksi Device Admin: kalau angka ditolak sistem, nilai nyata ditampilkan (tidak klaim sukses palsu)
+
+### Fixed
+- `App.tsx` — undo "disable" sekarang pakai `pm enable`, bukan `install-existing` (yang tidak me-re-enable app) — undoStack simpan `{pkg, kind}`
+- `App.tsx` — ganti bahasa tidak lagi menimpa `safety_reason` hasil AI (hanya timpa bila level tag statis == level app)
+- `adb.rs` / `ai.rs` — 3 clippy lint: `.next_back()`, gabung `.replace()`, `split_once`
+
+---
+
+## [2.1.3] — 2026-08-05
+
+Deep audit: stale closure + AI cache integrity + size persist.
+
+### Fixed
+- `App.tsx` — `autoAnalyzeUnknown` / `analyzeUnknown` missing `deviceId` di deps → AI result bisa gagal save ke device yang salah/null (stale closure)
+- `db.rs` — `batch_update_safety` sekarang pakai transaction + normalisasi level AI (`Safe`/`SAFE` → `safe`)
+- `App.tsx` — `normalizeSafety()` di frontend saat apply AI result (badge/filter konsisten)
+- `lib.rs` + `api.ts` — command `save_app_size` baru
+- `App.tsx` — ukuran APK yang di-fetch di DetailPanel sekarang di-persist ke SQLite (next open instant)
+
+### Notes
+- Device reconnect: AI cache + size cache sama-sama load dari DB
+- Hanya package unknown + size kosong yang butuh network/ADB work
+
+---
+
 ## [2.1.2] — 2026-08-03
 
 Patch: AI result persistence + deep audit cleanup.

@@ -18,6 +18,10 @@ export function makeLog(partial: Omit<LogEntry, "id" | "ts">): LogEntry {
 
 export const api = {
   checkAdb: () => invoke<boolean>("check_adb_available"),
+  getScreenTimeout: (deviceId: string) =>
+    invoke<number>("get_screen_timeout", { deviceId }),
+  setScreenTimeout: (deviceId: string, ms: number) =>
+    invoke<CommandResult>("set_screen_timeout", { deviceId, ms }),
   scanDevices: () => invoke<Device[]>("scan_devices"),
   getDeviceInfo: (deviceId: string) =>
     invoke<DeviceInfo>("get_device_info", { deviceId }),
@@ -48,6 +52,8 @@ export const api = {
     invoke<number>("clear_device_cache", { deviceId }),
   saveAiResults: (deviceId: string, results: { package_name: string; level: string; reason: string }[]) =>
     invoke<number>("save_ai_results", { deviceId, results }),
+  saveAppSize: (deviceId: string, pkg: string, size: string) =>
+    invoke<number>("save_app_size", { deviceId, package: pkg, size }),
   loadSettings: () => invoke<AppSettings>("load_settings"),
   saveSettings: (settings: AppSettings) =>
     invoke<void>("save_settings", { settings }),

@@ -145,6 +145,8 @@ body,
   background: var(--bg-panel);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  flex-wrap: wrap;      /* ponytail: tombol tidak kepotong di window sempit */
+  row-gap: 6px;
 }
 .topbar-title {
   font-size: 15px;
