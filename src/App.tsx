@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import {
   Sparkles,
@@ -79,6 +79,7 @@ export default function App() {
   // AI analisa device — hasil brief teknisi
   const [deviceAnalysis, setDeviceAnalysis] = useState<string | null>(null);
   const [analyzingDevice, setAnalyzingDevice] = useState(false);
+  const loadRequestRef = useRef(0);
 
   const t = useCallback((key: string) => translate(lang, key), [lang]);
 
@@ -140,14 +141,11 @@ export default function App() {
         detail: devs.map((d) => `${d.id} [${d.status}] ${d.model}`).join("\n"),
         duration_ms: Math.round(performance.now() - t0),
       });
-      // Reset selection kalau device yang dipilih sudah tidak ada
-      if (deviceId && !devs.some((d) => d.id === deviceId)) {
+      if (devs.length === 0) {
         setDeviceId(null);
         setApps([]);
         setDeviceInfo(null);
-      }
-      // Auto-select kalau belum ada yang dipilih
-      if (devs.length > 0) {
+      } else {
         setDeviceId((prev) => {
           if (prev && devs.some((d) => d.id === prev)) return prev;
           const online = devs.find((d) => d.status === "online") ?? devs[0];
@@ -164,7 +162,7 @@ export default function App() {
       setLoadingDevices(false);
       setTimeout(() => setScanProgress(0), 1000);
     }
-  }, [deviceId, log]);
+  }, [log]);
 
   useEffect(() => {
     if (adbOk === true) {
@@ -172,7 +170,11 @@ export default function App() {
     }
   }, [adbOk, scanDevices]);
 
-  const autoAnalyzeUnknown = useCallback(async (packages: string[]) => {
+  const autoAnalyzeUnknown = useCallback(async (
+    packages: string[],
+    targetDeviceId: string,
+    requestId: number,
+  ) => {
     if (packages.length === 0) return;
     setAnalyzing(true);
     const t0 = performance.now();
@@ -182,6 +184,7 @@ export default function App() {
         const batch = packages.slice(i, i + 50);
         log({ level: "info", source: "ai", message: `Auto AI: batch ${Math.floor(i/50)+1} (${batch.length} pkg)` });
         const results = await api.analyzeBatch(batch);
+        if (loadRequestRef.current !== requestId) return;
         const map = new Map(results.map((r) => [r.package_name, r]));
         setApps((prev) =>
           prev.map((a) => {
@@ -190,8 +193,8 @@ export default function App() {
           }),
         );
         // ponytail: persist AI results to SQLite so next load is instant
-        if (deviceId && results.length > 0) {
-          api.saveAiResults(deviceId, results.map((r) => ({
+        if (results.length > 0) {
+          api.saveAiResults(targetDeviceId, results.map((r) => ({
             package_name: r.package_name,
             level: r.level,
             reason: r.reason,
@@ -206,10 +209,11 @@ export default function App() {
     } finally {
       setAnalyzing(false);
     }
-  }, [log, deviceId]);
+  }, [log]);
 
   const loadApps = useCallback(
     async (id: string) => {
+      const requestId = ++loadRequestRef.current;
       setLoadingApps(true);
       setScanProgress(5);
       setScanMessage("Cek cache lokal...");
@@ -219,6 +223,7 @@ export default function App() {
         setScanProgress(15);
         setScanMessage("Query database lokal...");
         const cached = await api.getCachedApps(id);
+        if (loadRequestRef.current !== requestId) return;
         if (cached.length > 0) {
           setScanProgress(50);
           setScanMessage(`Load ${cached.length} app dari cache...`);
@@ -248,6 +253,7 @@ export default function App() {
         setScanProgress(60);
         setScanMessage("Scan device untuk update terbaru...");
         const raw = await api.listApps(id);
+        if (loadRequestRef.current !== requestId) return;
         setScanProgress(90);
         setScanMessage("Memproses hasil...");
         const enriched = enrichApps(raw, lang);
@@ -258,22 +264,32 @@ export default function App() {
           message: `List apps: ${raw.length} package (fresh scan)`,
           duration_ms: Math.round(performance.now() - t0),
         });
-        api.getDeviceInfo(id).then(setDeviceInfo).catch(() => setDeviceInfo(null));
+        api.getDeviceInfo(id)
+          .then((info) => {
+            if (loadRequestRef.current === requestId) setDeviceInfo(info);
+          })
+          .catch(() => {
+            if (loadRequestRef.current === requestId) setDeviceInfo(null);
+          });
         setScanProgress(100);
         setScanMessage("Selesai");
         // Auto AI untuk package unknown (spek v2: unknown LANGSUNG diproses AI)
         const unknowns = enriched.filter((a) => a.safety_level === "unknown").map((a) => a.package_name);
         if (unknowns.length > 0) {
           // fire-and-forget, tidak block UI
-          void autoAnalyzeUnknown(unknowns);
+          void autoAnalyzeUnknown(unknowns, id, requestId);
         }
       } catch (e) {
         log({ level: "error", source: "adb", message: `List apps gagal: ${humanizeError(String(e))}` });
         toast.error(`List apps gagal`);
         setScanMessage("Gagal");
       } finally {
-        setLoadingApps(false);
-        setTimeout(() => setScanProgress(0), 1500);
+        if (loadRequestRef.current === requestId) {
+          setLoadingApps(false);
+          setTimeout(() => {
+            if (loadRequestRef.current === requestId) setScanProgress(0);
+          }, 1500);
+        }
       }
     },
     // lang intentionally omitted — useEffect[lang] re-enriches static tags without full ADB rescan
@@ -903,5 +919,4 @@ export default function App() {
     </div>
   );
 }
-
 

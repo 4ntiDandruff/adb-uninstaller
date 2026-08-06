@@ -23,18 +23,16 @@ pub fn db_path() -> Result<PathBuf, String> {
     let dir = dirs::config_dir()
         .ok_or_else(|| "[DB-001] Config dir tidak ditemukan".to_string())?
         .join("adb-uninstaller");
-    std::fs::create_dir_all(&dir)
-        .map_err(|e| format!("[DB-002] Gagal buat config dir: {e}"))?;
+    std::fs::create_dir_all(&dir).map_err(|e| format!("[DB-002] Gagal buat config dir: {e}"))?;
     Ok(dir.join("cache.db"))
 }
 
 pub fn init_db() -> Result<Connection, String> {
     let path = db_path()?;
-    let conn = Connection::open(path)
-        .map_err(|e| format!("[DB-003] Gagal buka database: {e}"))?;
+    let conn = Connection::open(path).map_err(|e| format!("[DB-003] Gagal buka database: {e}"))?;
     conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;")
         .map_err(|e| format!("[DB-003b] WAL mode gagal: {e}"))?;
-    
+
     conn.execute(
         "CREATE TABLE IF NOT EXISTS app_cache (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -51,21 +49,30 @@ pub fn init_db() -> Result<Connection, String> {
             UNIQUE(package_name, device_id)
         )",
         [],
-    ).map_err(|e| format!("[DB-004] Gagal buat tabel: {e}"))?;
-    
+    )
+    .map_err(|e| format!("[DB-004] Gagal buat tabel: {e}"))?;
+
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_app_cache_device ON app_cache(device_id)",
         [],
-    ).map_err(|e| format!("[DB-005] Gagal buat index: {e}"))?;
-    
+    )
+    .map_err(|e| format!("[DB-005] Gagal buat index: {e}"))?;
+
     Ok(conn)
 }
 
 pub fn get_conn(state: &DbState) -> Result<std::sync::MutexGuard<'_, Option<Connection>>, String> {
-    state.0.lock().map_err(|e| format!("[DB-006] Lock poisoned: {e}"))
+    state
+        .0
+        .lock()
+        .map_err(|e| format!("[DB-006] Lock poisoned: {e}"))
 }
 
-pub fn save_apps(conn: &Connection, device_id: &str, apps: &[crate::adb::AppInfo]) -> SqlResult<usize> {
+pub fn save_apps(
+    conn: &Connection,
+    device_id: &str,
+    apps: &[crate::adb::AppInfo],
+) -> SqlResult<usize> {
     let now = chrono::Local::now().to_rfc3339();
     let mut count = 0;
     let tx = conn.unchecked_transaction()?;
@@ -80,7 +87,8 @@ pub fn save_apps(conn: &Connection, device_id: &str, apps: &[crate::adb::AppInfo
             )
             .ok();
 
-        let (old_label, old_level, old_reason, old_size, old_version) = existing.unwrap_or_default();
+        let (old_label, old_level, old_reason, old_size, old_version) =
+            existing.unwrap_or_default();
 
         let label = if !app.label.is_empty() && app.label != app.package_name {
             app.label.clone()
@@ -158,7 +166,7 @@ pub fn load_apps(conn: &Connection, device_id: &str) -> SqlResult<Vec<CachedApp>
         "SELECT package_name, label, is_system, is_disabled, safety_level, safety_reason, size, version, device_id, scanned_at
          FROM app_cache WHERE device_id = ?1 ORDER BY package_name"
     )?;
-    
+
     let rows = stmt.query_map([device_id], |row| {
         Ok(CachedApp {
             package_name: row.get(0)?,
@@ -173,7 +181,7 @@ pub fn load_apps(conn: &Connection, device_id: &str) -> SqlResult<Vec<CachedApp>
             scanned_at: row.get(9)?,
         })
     })?;
-    
+
     let mut apps = Vec::new();
     for row in rows {
         apps.push(row?);
@@ -187,7 +195,7 @@ pub fn clear_device_cache(conn: &Connection, device_id: &str) -> SqlResult<usize
 
 pub fn get_last_scan_time(conn: &Connection, device_id: &str) -> SqlResult<Option<String>> {
     let mut stmt = conn.prepare(
-        "SELECT scanned_at FROM app_cache WHERE device_id = ?1 ORDER BY scanned_at DESC LIMIT 1"
+        "SELECT scanned_at FROM app_cache WHERE device_id = ?1 ORDER BY scanned_at DESC LIMIT 1",
     )?;
     let mut rows = stmt.query([device_id])?;
     if let Some(row) = rows.next()? {
@@ -200,7 +208,7 @@ pub fn get_last_scan_time(conn: &Connection, device_id: &str) -> SqlResult<Optio
 pub fn batch_update_safety(
     conn: &Connection,
     device_id: &str,
-    updates: &[(String, String, String)],  // (package_name, safety_level, safety_reason)
+    updates: &[(String, String, String)], // (package_name, safety_level, safety_reason)
 ) -> SqlResult<usize> {
     let now = chrono::Local::now().to_rfc3339();
     let tx = conn.unchecked_transaction()?;

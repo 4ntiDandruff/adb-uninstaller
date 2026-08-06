@@ -9,9 +9,15 @@ use ai::{AppSettings, ConnectionTest, SafetyAnalysis};
 
 #[tauri::command]
 async fn scan_devices(window: tauri::Window) -> Result<Vec<Device>, String> {
-    let _ = window.emit("scan-progress", serde_json::json!({"pct": 10, "msg": "Menjalankan adb devices..."}));
+    let _ = window.emit(
+        "scan-progress",
+        serde_json::json!({"pct": 10, "msg": "Menjalankan adb devices..."}),
+    );
     let result = adb::scan_devices().await;
-    let _ = window.emit("scan-progress", serde_json::json!({"pct": 100, "msg": "Scan selesai"}));
+    let _ = window.emit(
+        "scan-progress",
+        serde_json::json!({"pct": 100, "msg": "Scan selesai"}),
+    );
     result
 }
 
@@ -22,9 +28,15 @@ async fn get_device_info(device_id: String) -> Result<DeviceInfo, String> {
 
 #[tauri::command]
 async fn list_apps(window: tauri::Window, device_id: String) -> Result<Vec<AppInfo>, String> {
-    let _ = window.emit("scan-progress", serde_json::json!({"pct": 20, "msg": "Membaca package manager..."}));
+    let _ = window.emit(
+        "scan-progress",
+        serde_json::json!({"pct": 20, "msg": "Membaca package manager..."}),
+    );
     let result = adb::list_apps(device_id).await;
-    let _ = window.emit("scan-progress", serde_json::json!({"pct": 100, "msg": "Selesai"}));
+    let _ = window.emit(
+        "scan-progress",
+        serde_json::json!({"pct": 100, "msg": "Selesai"}),
+    );
     result
 }
 
@@ -113,26 +125,35 @@ async fn check_adb_available() -> Result<bool, String> {
 }
 
 #[tauri::command]
-async fn get_cached_apps(state: tauri::State<'_, db::DbState>, device_id: String) -> Result<Vec<db::CachedApp>, String> {
+async fn get_cached_apps(
+    state: tauri::State<'_, db::DbState>,
+    device_id: String,
+) -> Result<Vec<db::CachedApp>, String> {
     let guard = db::get_conn(&state)?;
     let conn = guard.as_ref().ok_or("[DB-007] Database tidak terinit")?;
     db::load_apps(conn, &device_id).map_err(|e| format!("[DB-008] Load cache gagal: {e}"))
 }
 
 #[tauri::command]
-async fn get_last_scan_time(state: tauri::State<'_, db::DbState>, device_id: String) -> Result<Option<String>, String> {
+async fn get_last_scan_time(
+    state: tauri::State<'_, db::DbState>,
+    device_id: String,
+) -> Result<Option<String>, String> {
     let guard = db::get_conn(&state)?;
     let conn = guard.as_ref().ok_or("[DB-007] Database tidak terinit")?;
-    db::get_last_scan_time(conn, &device_id).map_err(|e| format!("[DB-009] Get scan time gagal: {e}"))
+    db::get_last_scan_time(conn, &device_id)
+        .map_err(|e| format!("[DB-009] Get scan time gagal: {e}"))
 }
 
 #[tauri::command]
-async fn clear_device_cache(state: tauri::State<'_, db::DbState>, device_id: String) -> Result<usize, String> {
+async fn clear_device_cache(
+    state: tauri::State<'_, db::DbState>,
+    device_id: String,
+) -> Result<usize, String> {
     let guard = db::get_conn(&state)?;
     let conn = guard.as_ref().ok_or("[DB-007] Database tidak terinit")?;
     db::clear_device_cache(conn, &device_id).map_err(|e| format!("[DB-010] Clear cache gagal: {e}"))
 }
-
 
 #[derive(serde::Deserialize)]
 struct AiResult {
@@ -174,7 +195,7 @@ async fn save_app_size(
 pub fn run() {
     let db_conn = db::init_db().expect("Gagal init database");
     let db_state = db::DbState(std::sync::Mutex::new(Some(db_conn)));
-    
+
     tauri::Builder::default()
         .manage(db_state)
         .plugin(tauri_plugin_opener::init())

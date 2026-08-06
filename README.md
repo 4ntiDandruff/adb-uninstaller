@@ -1,4 +1,4 @@
-# ADB Uninstaller v2.2
+# ADB Uninstaller v2.2.1
 
 **By Teknisi Megapass Sidoarjo**
 
@@ -6,7 +6,7 @@ Desktop app Linux untuk manage aplikasi Android via ADB: scan device, list packa
 
 ![Platform](https://img.shields.io/badge/platform-Linux-blue)
 ![Stack](https://img.shields.io/badge/stack-Tauri%20v2%20%7C%20React%20%7C%20Rust-orange)
-![Version](https://img.shields.io/badge/version-2.2.0-green)
+![Version](https://img.shields.io/badge/version-2.2.1-green)
 ![License](https://img.shields.io/badge/license-Private-lightgrey)
 
 ---
@@ -32,6 +32,7 @@ Desktop app Linux untuk manage aplikasi Android via ADB: scan device, list packa
 - Static offline tags (Android/Google/Xiaomi/Samsung/OPPO/Vivo bloat)
 - **Unknown otomatis dianalisis AI** — semua package, bukan hanya 50 pertama
 - Hasil AI disimpan ke SQLite cache (tidak hilang setelah restart)
+- Response AI disaring ketat: package halusinasi/duplikat tidak boleh masuk cache
 - AI cache persist: reconnect device → load instant dari DB, AI cuma proses package baru
 - Critical package diblokir dari uninstall/disable
 
@@ -73,10 +74,10 @@ sudo apt install -y android-tools-adb
 ### Bundle siap pakai
 ```bash
 # .deb
-sudo dpkg -i "ADB Uninstaller_2.1.3_amd64.deb"
+sudo dpkg -i "ADB Uninstaller_2.2.1_amd64.deb"
 # atau AppImage
-chmod +x "ADB Uninstaller_2.1.3_amd64.AppImage"
-./"ADB Uninstaller_2.1.3_amd64.AppImage"
+chmod +x "ADB Uninstaller_2.2.1_amd64.AppImage"
+./"ADB Uninstaller_2.2.1_amd64.AppImage"
 ```
 
 Build lokal menghasilkan:
@@ -122,6 +123,8 @@ Buka **Pengaturan** di app:
 
 Settings tersimpan di:
 `~/.config/adb-uninstaller/settings.json`
+
+File settings ditulis atomic dengan permission privat `0600` karena berisi API key.
 
 ---
 

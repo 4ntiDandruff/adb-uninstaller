@@ -4,6 +4,23 @@ Semua perubahan penting dicatat di file ini.
 
 Format mirip [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.2.1] — 2026-08-06
+
+Deep audit: perbaikan race condition device, integritas response AI, dan keamanan API key.
+
+### Fixed
+- `App.tsx` — memilih device tidak lagi memicu `scan_devices` ulang akibat dependency callback yang berubah
+- `App.tsx` — stale-request guard mencegah hasil scan/AI device lama menimpa tabel atau cache device baru
+- `ai.rs` — response AI difilter terhadap package yang benar-benar diminta, dideduplikasi, dan level dinormalisasi sebelum disimpan
+- `ai.rs` — `settings.json` kini ditulis melalui temporary file lalu atomic rename dengan permission privat `0600`
+- `exportPreset.ts` — hapus import `plugin-fs` ganda yang menghasilkan warning pada production bundle
+
+### Verified
+- TypeScript typecheck, Rust format, 2 unit test, Clippy `-D warnings`, Vite build, dan Tauri production bundle
+- Runtime release diverifikasi melalui window desktop dan screenshot `3840×1080`
+
+---
+
 ## [2.2.0] — 2026-08-05
 
 Fitur baru: atur waktu layar mati (lockscreen) via ADB + fix audit.

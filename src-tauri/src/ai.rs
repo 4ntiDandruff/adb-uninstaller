@@ -34,7 +34,8 @@ impl Default for AppSettings {
             ai_base_url: "http://43.163.100.241:1997/v1".into(),
             ai_api_key: String::new(),
             ai_model: "kr/claude-haiku-4.5".into(),
-            ai_system_prompt: "You are an Android package safety analyst for technicians. Be concise.".into(),
+            ai_system_prompt:
+                "You are an Android package safety analyst for technicians. Be concise.".into(),
             language: "id".into(),
             theme: "dark".into(),
             temperature: 0.3,
@@ -47,8 +48,7 @@ fn settings_path() -> Result<std::path::PathBuf, String> {
     let dir = dirs::config_dir()
         .ok_or_else(|| "[ADB-5001] Config dir tidak ditemukan".to_string())?
         .join("adb-uninstaller");
-    std::fs::create_dir_all(&dir)
-        .map_err(|e| format!("[ADB-5002] Gagal buat config dir: {e}"))?;
+    std::fs::create_dir_all(&dir).map_err(|e| format!("[ADB-5002] Gagal buat config dir: {e}"))?;
     Ok(dir.join("settings.json"))
 }
 
@@ -66,9 +66,18 @@ pub fn save_settings(settings: AppSettings) -> Result<(), String> {
     let path = settings_path()?;
     let raw = serde_json::to_string_pretty(&settings)
         .map_err(|e| format!("[ADB-5005] Serialize gagal: {e}"))?;
-    std::fs::write(&path, raw).map_err(|e| format!("[ADB-5006] Gagal tulis settings: {e}"))
+    let temp_path = path.with_extension("json.tmp");
+    std::fs::write(&temp_path, raw)
+        .map_err(|e| format!("[ADB-5006] Gagal tulis settings sementara: {e}"))?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&temp_path, std::fs::Permissions::from_mode(0o600))
+            .map_err(|e| format!("[ADB-5007] Gagal amankan permission settings: {e}"))?;
+    }
+    std::fs::rename(&temp_path, &path)
+        .map_err(|e| format!("[ADB-5008] Gagal pasang settings baru: {e}"))
 }
-
 
 fn strip_sse(text: &str) -> String {
     // ZevaiRouter kadang return SSE: "data: {...}\ndata: {...}\ndata: [DONE]"
@@ -108,21 +117,26 @@ fn strip_sse(text: &str) -> String {
     }
     if !merged_content.is_empty() {
         if let Ok(mut base) = serde_json::from_str::<serde_json::Value>(&base_obj) {
-            if let Some(msg) = base.get_mut("choices")
+            if let Some(msg) = base
+                .get_mut("choices")
                 .and_then(|c| c.get_mut(0))
                 .and_then(|c| c.get_mut("message"))
             {
                 msg["content"] = serde_json::Value::String(merged_content);
             } else if let Some(choices) = base.get_mut("choices").and_then(|c| c.as_array_mut()) {
                 if let Some(first) = choices.first_mut() {
-                    first["message"] = serde_json::json!({"role": "assistant", "content": merged_content});
+                    first["message"] =
+                        serde_json::json!({"role": "assistant", "content": merged_content});
                     first.as_object_mut().map(|o| o.remove("delta"));
                 }
             }
             return base.to_string();
         }
     }
-    parts.first().cloned().unwrap_or_else(|| text.trim().to_string())
+    parts
+        .first()
+        .cloned()
+        .unwrap_or_else(|| text.trim().to_string())
 }
 
 fn normalize_base_url(base: &str) -> String {
@@ -135,6 +149,47 @@ fn normalize_base_url(base: &str) -> String {
         b.push_str("/v1");
     }
     b
+}
+
+fn sanitize_analysis(
+    packages: &[String],
+    parsed: Vec<SafetyAnalysis>,
+    language: &str,
+) -> Vec<SafetyAnalysis> {
+    let mut by_package = std::collections::HashMap::new();
+    for mut result in parsed {
+        if packages.iter().any(|pkg| pkg == &result.package_name) {
+            result.level = match result.level.to_lowercase().as_str() {
+                "safe" => "safe",
+                "risky" => "risky",
+                "critical" => "critical",
+                _ => "unknown",
+            }
+            .into();
+            by_package
+                .entry(result.package_name.clone())
+                .or_insert(result);
+        }
+    }
+
+    let missing_note = if language == "id" {
+        "AI tak mengembalikan hasil"
+    } else {
+        "AI returned no result"
+    };
+    let mut seen = std::collections::HashSet::new();
+    packages
+        .iter()
+        .filter(|pkg| seen.insert((*pkg).clone()))
+        .map(|pkg| {
+            by_package.remove(pkg).unwrap_or_else(|| SafetyAnalysis {
+                package_name: pkg.clone(),
+                level: "unknown".into(),
+                reason: missing_note.into(),
+                can_remove: false,
+            })
+        })
+        .collect()
 }
 
 pub async fn test_ai_connection(
@@ -267,8 +322,8 @@ pub async fn analyze_apps_batch(packages: Vec<String>) -> Result<Vec<SafetyAnaly
     }
 
     let text = strip_sse(&text);
-    let v: Value = serde_json::from_str(&text)
-        .map_err(|e| format!("[ADB-4007] Parse response gagal: {e}"))?;
+    let v: Value =
+        serde_json::from_str(&text).map_err(|e| format!("[ADB-4007] Parse response gagal: {e}"))?;
     let content = v["choices"][0]["message"]["content"]
         .as_str()
         .unwrap_or("")
@@ -288,32 +343,9 @@ pub async fn analyze_apps_batch(packages: Vec<String>) -> Result<Vec<SafetyAnaly
         cleaned
     };
 
-    let mut parsed: Vec<SafetyAnalysis> = serde_json::from_str(json_slice).map_err(|e| {
-        format!("[ADB-4008] AI JSON invalid: {e} | content={cleaned}")
-    })?;
-
-    // Package yang dikirim tapi TAK dibalas AI: isi eksplisit biar tak nyangkut unknown selamanya
-    // (kalau dibiarkan, package itu dikirim ulang tiap scan dan dilewatkan AI terus)
-    let returned: std::collections::HashSet<&str> =
-        parsed.iter().map(|x| x.package_name.as_str()).collect();
-    let missing_note = if settings.language == "id" {
-        "AI tak mengembalikan hasil"
-    } else {
-        "AI returned no result"
-    };
-    let missing: Vec<SafetyAnalysis> = packages
-        .iter()
-        .filter(|pkg| !returned.contains(pkg.as_str()))
-        .map(|pkg| SafetyAnalysis {
-            package_name: pkg.clone(),
-            level: "unknown".into(),
-            reason: missing_note.into(),
-            can_remove: false,
-        })
-        .collect();
-    parsed.extend(missing);
-
-    Ok(parsed)
+    let parsed: Vec<SafetyAnalysis> = serde_json::from_str(json_slice)
+        .map_err(|e| format!("[ADB-4008] AI JSON invalid: {e} | content={cleaned}"))?;
+    Ok(sanitize_analysis(&packages, parsed, &settings.language))
 }
 
 pub async fn analyze_device(
@@ -362,22 +394,29 @@ pub async fn analyze_device(
         .map_err(|e| format!("[ADB-4002] Koneksi AI gagal: {e}"))?;
 
     let status = resp.status();
-    let text = resp.text().await.map_err(|e| format!("[ADB-4003] Baca response gagal: {e}"))?;
+    let text = resp
+        .text()
+        .await
+        .map_err(|e| format!("[ADB-4003] Baca response gagal: {e}"))?;
     if !status.is_success() {
         return Err(format!("[ADB-4004] HTTP {status}: {text}"));
     }
     let text = strip_sse(&text);
-    let v: Value = serde_json::from_str(&text)
-        .map_err(|e| format!("[ADB-4007] Parse response gagal: {e}"))?;
+    let v: Value =
+        serde_json::from_str(&text).map_err(|e| format!("[ADB-4007] Parse response gagal: {e}"))?;
     let msg = &v["choices"][0]["message"]["content"];
     if let Some(s) = msg.as_str() {
         return Ok(s.trim().to_string());
     }
     if let Some(arr) = msg.as_array() {
-        let joined: String = arr.iter()
+        let joined: String = arr
+            .iter()
             .filter_map(|p| p.get("text").and_then(|t| t.as_str()))
-            .collect::<Vec<_>>().join("");
-        if !joined.is_empty() { return Ok(joined); }
+            .collect::<Vec<_>>()
+            .join("");
+        if !joined.is_empty() {
+            return Ok(joined);
+        }
     }
     Err("[ADB-4010] Struktur response device analysis tidak dikenal".into())
 }
@@ -466,4 +505,54 @@ pub async fn chat_with_ai(message: String, context: String) -> Result<String, St
         "[ADB-4010] Struktur response tidak dikenal: {}",
         text.chars().take(200).collect::<String>()
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sanitize_analysis_filters_hallucinations_and_duplicates() {
+        let packages = vec!["com.real.one".into(), "com.real.two".into()];
+        let parsed = vec![
+            SafetyAnalysis {
+                package_name: "com.fake.app".into(),
+                level: "safe".into(),
+                reason: "fake".into(),
+                can_remove: true,
+            },
+            SafetyAnalysis {
+                package_name: "com.real.one".into(),
+                level: "SAFE".into(),
+                reason: "ok".into(),
+                can_remove: true,
+            },
+            SafetyAnalysis {
+                package_name: "com.real.one".into(),
+                level: "critical".into(),
+                reason: "duplicate".into(),
+                can_remove: false,
+            },
+        ];
+
+        let result = sanitize_analysis(&packages, parsed, "id");
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].package_name, "com.real.one");
+        assert_eq!(result[0].level, "safe");
+        assert_eq!(result[1].package_name, "com.real.two");
+        assert_eq!(result[1].level, "unknown");
+        assert!(!result[1].can_remove);
+    }
+
+    #[test]
+    fn normalize_base_url_preserves_existing_api_path() {
+        assert_eq!(
+            normalize_base_url("http://localhost:8080"),
+            "http://localhost:8080/v1"
+        );
+        assert_eq!(
+            normalize_base_url("https://example.test/api/v1/"),
+            "https://example.test/api/v1"
+        );
+    }
 }

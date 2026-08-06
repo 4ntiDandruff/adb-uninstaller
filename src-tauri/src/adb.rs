@@ -67,7 +67,12 @@ async fn run_adb_device(device_id: &str, args: &[&str]) -> Result<(String, Strin
     run_adb(&full).await
 }
 
-fn timed_result(start: Instant, success: bool, output: String, error: Option<String>) -> CommandResult {
+fn timed_result(
+    start: Instant,
+    success: bool,
+    output: String,
+    error: Option<String>,
+) -> CommandResult {
     CommandResult {
         success,
         output,
@@ -157,10 +162,14 @@ pub async fn get_device_info(device_id: String) -> Result<DeviceInfo, String> {
         found
     };
     let model_code = model.clone(); // kode mentah (ro.product.model)
-    // Chipset: ro.soc.model (MT6789V/CD) atau fallback board platform (mt6789)
+                                    // Chipset: ro.soc.model (MT6789V/CD) atau fallback board platform (mt6789)
     let chipset = {
         let soc = prop(&device_id, "ro.soc.model").await;
-        if !soc.is_empty() { soc } else { prop(&device_id, "ro.board.platform").await }
+        if !soc.is_empty() {
+            soc
+        } else {
+            prop(&device_id, "ro.board.platform").await
+        }
     };
     let android_version = prop(&device_id, "ro.build.version.release").await;
     let sdk_str = prop(&device_id, "ro.build.version.sdk").await;
@@ -208,7 +217,11 @@ pub async fn get_device_info(device_id: String) -> Result<DeviceInfo, String> {
 
     Ok(DeviceInfo {
         // model = nama tampil terbaik: marketname kalau ada, else kode mentah
-        model: if market_name.is_empty() { model.clone() } else { market_name.clone() },
+        model: if market_name.is_empty() {
+            model.clone()
+        } else {
+            market_name.clone()
+        },
         market_name,
         model_code,
         chipset,
@@ -237,7 +250,11 @@ fn pretty_label(package: &str) -> String {
             out.push_str(chars.as_str());
         }
     }
-    if out.is_empty() { package.to_string() } else { out }
+    if out.is_empty() {
+        package.to_string()
+    } else {
+        out
+    }
 }
 
 pub async fn list_apps(device_id: String) -> Result<Vec<AppInfo>, String> {
@@ -253,12 +270,10 @@ pub async fn list_apps(device_id: String) -> Result<Vec<AppInfo>, String> {
     let (dis_out, _, _) = run_adb_device(&device_id, &["shell", "pm", "list", "packages", "-d"])
         .await
         .unwrap_or_default();
-    let (run_out, _, _) = run_adb_device(
-        &device_id,
-        &["shell", "dumpsys", "activity", "processes"],
-    )
-    .await
-    .unwrap_or_default();
+    let (run_out, _, _) =
+        run_adb_device(&device_id, &["shell", "dumpsys", "activity", "processes"])
+            .await
+            .unwrap_or_default();
 
     let system_set: std::collections::HashSet<String> = sys_out
         .lines()
@@ -275,12 +290,7 @@ pub async fn list_apps(device_id: String) -> Result<Vec<AppInfo>, String> {
         let Some(rest) = line.strip_prefix("package:") else {
             continue;
         };
-        let package_name = rest
-            .rsplit('=')
-            .next()
-            .unwrap_or("")
-            .trim()
-            .to_string();
+        let package_name = rest.rsplit('=').next().unwrap_or("").trim().to_string();
         if package_name.is_empty() {
             continue;
         }
@@ -322,51 +332,56 @@ pub async fn list_apps(device_id: String) -> Result<Vec<AppInfo>, String> {
     // Merge safety/label dari cache lama biar AI result tidak hilang
     // ponytail: pakai db_path + open langsung, bukan init_db yang CREATE TABLE ulang setiap scan
     if let Ok(path) = crate::db::db_path() {
-    if let Ok(conn) = rusqlite::Connection::open(path) {
-        if let Ok(cached) = crate::db::load_apps(&conn, &device_id) {
-            let map: std::collections::HashMap<String, crate::db::CachedApp> = cached
-                .into_iter()
-                .map(|c| (c.package_name.clone(), c))
-                .collect();
-            for app in &mut apps {
-                if let Some(c) = map.get(&app.package_name) {
-                    if c.safety_level != "unknown" {
-                        app.safety_level = c.safety_level.clone();
-                        app.safety_reason = c.safety_reason.clone();
-                    }
-                    if !c.label.is_empty() && c.label != c.package_name {
-                        // Prefer label lama yang lebih bagus dari cache
-                        if app.label == pretty_label(&app.package_name) || app.label == app.package_name {
-                            app.label = c.label.clone();
-                        }
-                    }
-                    if !c.size.is_empty() && app.size.is_empty() {
-                        app.size = c.size.clone();
-                    }
-                    if !c.version.is_empty() && app.version.is_empty() {
-                        app.version = c.version.clone();
-                    }
-                }
-            }
-        }
-        let _ = crate::db::save_apps(&conn, &device_id, &apps);
-
-        // save_apps mewarisi verdict lintas-device ke DB; tarik lagi biar frontend tak analisa ulang
-        if let Ok(fresh) = crate::db::load_apps(&conn, &device_id) {
-            let fmap: std::collections::HashMap<String, crate::db::CachedApp> =
-                fresh.into_iter().map(|c| (c.package_name.clone(), c)).collect();
-            for app in &mut apps {
-                if app.safety_level == "unknown" {
-                    if let Some(c) = fmap.get(&app.package_name) {
-                        if c.safety_level != "unknown" && !c.safety_level.is_empty() {
+        if let Ok(conn) = rusqlite::Connection::open(path) {
+            if let Ok(cached) = crate::db::load_apps(&conn, &device_id) {
+                let map: std::collections::HashMap<String, crate::db::CachedApp> = cached
+                    .into_iter()
+                    .map(|c| (c.package_name.clone(), c))
+                    .collect();
+                for app in &mut apps {
+                    if let Some(c) = map.get(&app.package_name) {
+                        if c.safety_level != "unknown" {
                             app.safety_level = c.safety_level.clone();
                             app.safety_reason = c.safety_reason.clone();
                         }
+                        if !c.label.is_empty() && c.label != c.package_name {
+                            // Prefer label lama yang lebih bagus dari cache
+                            if app.label == pretty_label(&app.package_name)
+                                || app.label == app.package_name
+                            {
+                                app.label = c.label.clone();
+                            }
+                        }
+                        if !c.size.is_empty() && app.size.is_empty() {
+                            app.size = c.size.clone();
+                        }
+                        if !c.version.is_empty() && app.version.is_empty() {
+                            app.version = c.version.clone();
+                        }
+                    }
+                }
+            }
+            let _ = crate::db::save_apps(&conn, &device_id, &apps);
+
+            // save_apps mewarisi verdict lintas-device ke DB; tarik lagi biar frontend tak analisa ulang
+            if let Ok(fresh) = crate::db::load_apps(&conn, &device_id) {
+                let fmap: std::collections::HashMap<String, crate::db::CachedApp> = fresh
+                    .into_iter()
+                    .map(|c| (c.package_name.clone(), c))
+                    .collect();
+                for app in &mut apps {
+                    if app.safety_level == "unknown" {
+                        if let Some(c) = fmap.get(&app.package_name) {
+                            if c.safety_level != "unknown" && !c.safety_level.is_empty() {
+                                app.safety_level = c.safety_level.clone();
+                                app.safety_reason = c.safety_reason.clone();
+                            }
+                        }
                     }
                 }
             }
         }
-    }}
+    }
 
     Ok(apps)
 }
@@ -399,9 +414,7 @@ pub async fn get_app_size(device_id: String, package: String) -> Result<String, 
             }
         }
         if !size_done {
-            if let Ok((wc, _, 0)) =
-                run_adb_device(&device_id, &["shell", "wc", "-c", path]).await
-            {
+            if let Ok((wc, _, 0)) = run_adb_device(&device_id, &["shell", "wc", "-c", path]).await {
                 if let Some(num) = wc.split_whitespace().next() {
                     if let Ok(b) = num.parse::<u64>() {
                         total_bytes += b;
@@ -411,7 +424,8 @@ pub async fn get_app_size(device_id: String, package: String) -> Result<String, 
             }
         }
         if !size_done {
-            if let Ok((ll, _, 0)) = run_adb_device(&device_id, &["shell", "ls", "-la", path]).await {
+            if let Ok((ll, _, 0)) = run_adb_device(&device_id, &["shell", "ls", "-la", path]).await
+            {
                 // Ambil kolom ukuran (biasanya kolom ke-5), skip kolom nama file yang bisa ada spasi
                 let cols: Vec<&str> = ll.split_whitespace().collect();
                 if cols.len() >= 5 {
@@ -483,7 +497,8 @@ pub async fn disable_package(device_id: String, package: String) -> CommandResul
     .await
     {
         Ok((out, err, code)) => {
-            let success = code == 0 && (out.contains("disabled") || out.contains("new state: disabled"));
+            let success =
+                code == 0 && (out.contains("disabled") || out.contains("new state: disabled"));
             timed_result(
                 start,
                 success,
@@ -503,7 +518,8 @@ pub async fn enable_package(device_id: String, package: String) -> CommandResult
     let start = Instant::now();
     match run_adb_device(&device_id, &["shell", "pm", "enable", &package]).await {
         Ok((out, err, code)) => {
-            let success = code == 0 && (out.contains("enabled") || out.contains("new state: enabled"));
+            let success =
+                code == 0 && (out.contains("enabled") || out.contains("new state: enabled"));
             timed_result(
                 start,
                 success,
@@ -533,7 +549,11 @@ pub async fn restore_package(device_id: String, package: String) -> CommandResul
                 start,
                 success,
                 out,
-                if success { None } else { Some(format!("[ADB-3006] Restore gagal: {err}")) },
+                if success {
+                    None
+                } else {
+                    Some(format!("[ADB-3006] Restore gagal: {err}"))
+                },
             )
         }
         Err(e) => timed_result(start, false, String::new(), Some(e)),
@@ -583,8 +603,11 @@ pub async fn clear_app_data(device_id: String, package: String) -> CommandResult
 
 pub async fn get_screen_timeout(device_id: String) -> Result<i64, String> {
     // screen_off_timeout satuannya milidetik. -1 = tak terbaca.
-    let (out, _, code) =
-        run_adb_device(&device_id, &["shell", "settings", "get", "system", "screen_off_timeout"]).await?;
+    let (out, _, code) = run_adb_device(
+        &device_id,
+        &["shell", "settings", "get", "system", "screen_off_timeout"],
+    )
+    .await?;
     if code != 0 {
         return Err("[ADB-6001] Gagal baca screen timeout".into());
     }
@@ -596,16 +619,33 @@ pub async fn set_screen_timeout(device_id: String, ms: i64) -> CommandResult {
     let ms_str = ms.to_string();
     match run_adb_device(
         &device_id,
-        &["shell", "settings", "put", "system", "screen_off_timeout", &ms_str],
+        &[
+            "shell",
+            "settings",
+            "put",
+            "system",
+            "screen_off_timeout",
+            &ms_str,
+        ],
     )
     .await
     {
         Ok((_, err, code)) => {
             if code != 0 {
-                return timed_result(start, false, String::new(), Some(format!("[ADB-6002] Set gagal: {err}")));
+                return timed_result(
+                    start,
+                    false,
+                    String::new(),
+                    Some(format!("[ADB-6002] Set gagal: {err}")),
+                );
             }
             // Baca ulang = bukti nyata angka kepasang (deteksi Device Admin yang override)
-            match run_adb_device(&device_id, &["shell", "settings", "get", "system", "screen_off_timeout"]).await {
+            match run_adb_device(
+                &device_id,
+                &["shell", "settings", "get", "system", "screen_off_timeout"],
+            )
+            .await
+            {
                 Ok((back, _, _)) => {
                     let actual = back.trim().parse::<i64>().unwrap_or(-1);
                     if actual == ms {
