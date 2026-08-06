@@ -189,13 +189,14 @@ export default function App() {
         setApps((prev) =>
           prev.map((a) => {
             const r = map.get(a.package_name);
-            return r ? { ...a, safety_level: normalizeSafety(r.level), safety_reason: r.reason } : a;
+            return r ? { ...a, safety_level: normalizeSafety(r.level), safety_reason: r.reason, ...(r.app_name ? { label: r.app_name } : {}) } : a;
           }),
         );
         // ponytail: persist AI results to SQLite so next load is instant
         if (results.length > 0) {
           api.saveAiResults(targetDeviceId, results.map((r) => ({
             package_name: r.package_name,
+            app_name: r.app_name || "",
             level: r.level,
             reason: r.reason,
           }))).catch((e) => log({ level: "warn", source: "cache", message: `Save AI cache gagal: ${e}` }));
@@ -386,7 +387,7 @@ export default function App() {
               toast.success(`${label} OK`);
               log({ level: "success", source: "adb", message: `${label} sukses: ${pkg}`, detail: res.output, duration_ms: res.duration_ms });
               if (kind === "uninstall" || kind === "disable") setUndoStack((u) => [...u, { pkg, kind }]);
-              if (deviceId) loadApps(deviceId);
+              if (deviceId) await loadApps(deviceId);
             } else {
               toast.error(`${label} gagal`);
               log({ level: "error", source: "adb", message: `${label} gagal: ${pkg}`, detail: res.error ?? res.output, duration_ms: res.duration_ms });
@@ -485,7 +486,7 @@ export default function App() {
           }
           toast.success(`Batch ${label}: ${success} OK, ${fail} gagal`);
           setSelected(new Set());
-          if (deviceId) loadApps(deviceId);
+          if (deviceId) await loadApps(deviceId);
           setBusy(false);
         },
       });
@@ -506,7 +507,7 @@ export default function App() {
       setUndoStack((u) => u.slice(0, -1));
       toast.success(`Undo: ${pkg} dikembalikan`);
       log({ level: "success", source: "adb", message: `undo ${kind}: ${pkg}` });
-      loadApps(deviceId);
+      await loadApps(deviceId);
     } catch (e) {
       toast.error(`Undo gagal`);
       log({ level: "error", source: "adb", message: `undo gagal: ${pkg}`, detail: String(e) });
@@ -529,13 +530,14 @@ export default function App() {
       setApps((prev) =>
         prev.map((a) => {
           const r = map.get(a.package_name);
-          return r ? { ...a, safety_level: normalizeSafety(r.level), safety_reason: r.reason } : a;
+          return r ? { ...a, safety_level: normalizeSafety(r.level), safety_reason: r.reason, ...(r.app_name ? { label: r.app_name } : {}) } : a;
         }),
       );
       // ponytail: persist manual AI results too
       if (deviceId && results.length > 0) {
         api.saveAiResults(deviceId, results.map((r) => ({
           package_name: r.package_name,
+          app_name: r.app_name || "",
           level: r.level,
           reason: r.reason,
         }))).catch(() => {});

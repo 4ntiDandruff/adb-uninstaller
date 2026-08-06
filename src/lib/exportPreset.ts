@@ -1,5 +1,5 @@
 import { save } from "@tauri-apps/plugin-dialog";
-import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
+import { writeTextFile } from "@tauri-apps/plugin-fs";
 import type { AppInfo } from "../types";
 
 export interface PresetExport {
@@ -57,9 +57,4 @@ export async function exportPreset(apps: AppInfo[], selected: Set<string>, devic
   a.download = fileName;
   a.click();
   URL.revokeObjectURL(url);
-}
-
-export async function importPreset(filePath: string): Promise<PresetExport> {
-  const raw = await readTextFile(filePath);
-  return JSON.parse(raw) as PresetExport;
 }

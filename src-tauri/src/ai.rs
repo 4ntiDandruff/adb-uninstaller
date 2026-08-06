@@ -4,9 +4,16 @@ use serde_json::Value;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SafetyAnalysis {
     pub package_name: String,
+    pub app_name: String,
     pub level: String,
     pub reason: String,
     pub can_remove: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChatMessage {
+    pub role: String,
+    pub content: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,7 +42,7 @@ impl Default for AppSettings {
             ai_api_key: String::new(),
             ai_model: "kr/claude-haiku-4.5".into(),
             ai_system_prompt:
-                "You are an Android package safety analyst for technicians. Be concise.".into(),
+                "Kamu asisten ADB untuk teknisi servis HP Indonesia. Spesialisasi: debloat Android, analisa package, troubleshooting HP. Jawab dalam Bahasa Indonesia kecuali diminta bahasa lain. Singkat dan praktis.".into(),
             language: "id".into(),
             theme: "dark".into(),
             temperature: 0.3,
@@ -184,6 +191,7 @@ fn sanitize_analysis(
         .map(|pkg| {
             by_package.remove(pkg).unwrap_or_else(|| SafetyAnalysis {
                 package_name: pkg.clone(),
+                app_name: String::new(),
                 level: "unknown".into(),
                 reason: missing_note.into(),
                 can_remove: false,
@@ -287,7 +295,7 @@ pub async fn analyze_apps_batch(packages: Vec<String>) -> Result<Vec<SafetyAnaly
     } else {
         " Write the reason field in English, max 5 words."
     };
-    let system_str = format!("Analyze Android package names. For EACH package return JSON object with keys: package_name, level (safe|risky|critical|unknown), reason (short), can_remove (bool). Return ONLY a JSON array, no markdown.{}", lang_note);
+    let system_str = format!("Kamu analis keamanan paket Android untuk teknisi servis HP Indonesia.\nBrand umum: Xiaomi/Redmi, Samsung, OPPO, Vivo, Realme, Infinix.\n\nUntuk SETIAP package, kembalikan JSON object dengan keys:\n- package_name: nama package\n- app_name: nama yang tampil di HP (contoh: com.whatsapp → WhatsApp, com.miui.home → Launcher MIUI, com.android.vending → Play Store)\n- level: salah satu dari [safe, risky, critical, unknown]\n- reason: alasan singkat, maks 5 kata\n- can_remove: boolean\n\nDefinisi level:\n- critical: sistem crash/bootloop jika dihapus (launcher, settings, framework, telephony, packageinstaller, SystemUI)\n- risky: HP tetap jalan tapi fitur penting hilang (camera, keyboard, NFC, SIM manager, GMS core)\n- safe: bloatware/app pihak ketiga/game bawaan, aman dihapus (browser vendor, cleaner, themes, musik bawaan, app promo)\n- unknown: package tidak dikenali, jarang ditemui\n\nContoh output:\n[{{\"package_name\":\"com.miui.cleanmaster\",\"app_name\":\"Cleaner\",\"level\":\"safe\",\"reason\":\"Bloatware pembersih bawaan\",\"can_remove\":true}},{{\"package_name\":\"com.android.settings\",\"app_name\":\"Settings\",\"level\":\"critical\",\"reason\":\"Pengaturan sistem utama\",\"can_remove\":false}}]\n\nKembalikan HANYA JSON array valid, tanpa markdown, tanpa penjelasan tambahan.{}", lang_note);
     let system = system_str.as_str();
     let user = serde_json::to_string(&packages)
         .map_err(|e| format!("[ADB-4006] Serialize packages gagal: {e}"))?;
@@ -369,7 +377,7 @@ pub async fn analyze_device(
         "Answer in English."
     };
     let system = format!(
-        "You are a phone repair technician assistant. Output a compact brief in EXACTLY this bullet format, nothing else:\n\nSPEK\n• <chipset + kelas performa>\n• <RAM/layar kalau umum diketahui>\n\nISU KHAS SERVIS\n• <keluhan yang sering masuk servis untuk model ini>\n• <keluhan lain>\n\nTIPS\n• <tips singkat teknisi>\n\nRules: setiap poin diawali '• ', maksimal 12 kata per poin, maksimal 2 poin per section. JANGAN pakai markdown (tanpa **, tanpa #, tanpa nomor). {lang_note}"
+        "You are a phone repair technician assistant for Indonesian service shops.\nCommon brands: Xiaomi, Samsung, OPPO, Vivo, Realme, Infinix — mostly budget-midrange.\nOutput a compact brief in EXACTLY this bullet format, nothing else:\n\nSPEK\n• <chipset + kelas performa>\n• <RAM/layar kalau umum diketahui>\n\nISU KHAS SERVIS\n• <keluhan yang sering masuk servis untuk model ini>\n• <keluhan lain>\n\nTIPS\n• <tips singkat teknisi>\n\nRules: setiap poin diawali '• ', maksimal 12 kata per poin, maksimal 2 poin per section. JANGAN pakai markdown (tanpa **, tanpa #, tanpa nomor). {lang_note}"
     );
     let user = format!("Device: {model}\nChipset: {chipset}\nAndroid: {android}");
 
@@ -421,7 +429,7 @@ pub async fn analyze_device(
     Err("[ADB-4010] Struktur response device analysis tidak dikenal".into())
 }
 
-pub async fn chat_with_ai(message: String, context: String) -> Result<String, String> {
+pub async fn chat_with_ai(messages: Vec<ChatMessage>, context: String) -> Result<String, String> {
     let settings = load_settings()?;
     if settings.ai_api_key.trim().is_empty() {
         return Err("[ADB-4005] API key kosong — isi di Settings".into());
@@ -434,23 +442,22 @@ pub async fn chat_with_ai(message: String, context: String) -> Result<String, St
         .map_err(|e| format!("[ADB-4001] HTTP client error: {e}"))?;
 
     let system = if settings.ai_system_prompt.is_empty() {
-        "You are an Android ADB assistant for phone technicians. Answer in Bahasa Indonesia unless asked otherwise.".into()
+        "Kamu asisten ADB untuk teknisi servis HP Indonesia. Spesialisasi: debloat Android, analisa package, troubleshooting HP. Jawab dalam Bahasa Indonesia kecuali diminta bahasa lain. Singkat dan praktis.".to_string()
     } else {
         settings.ai_system_prompt.clone()
     };
 
-    let user = if context.is_empty() {
-        message
-    } else {
-        format!("Context:\n{context}\n\nUser:\n{message}")
-    };
+    let mut api_messages = vec![serde_json::json!({"role": "system", "content": system})];
+    if !context.is_empty() {
+        api_messages.push(serde_json::json!({"role": "user", "content": format!("Context:\n{context}")}));
+    }
+    for m in &messages {
+        api_messages.push(serde_json::json!({"role": m.role, "content": m.content}));
+    }
 
     let body = serde_json::json!({
         "model": settings.ai_model,
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": user}
-        ],
+        "messages": api_messages,
         "temperature": settings.temperature,
         "max_tokens": settings.max_tokens,
         "stream": false
@@ -517,18 +524,21 @@ mod tests {
         let parsed = vec![
             SafetyAnalysis {
                 package_name: "com.fake.app".into(),
+                app_name: "Fake".into(),
                 level: "safe".into(),
                 reason: "fake".into(),
                 can_remove: true,
             },
             SafetyAnalysis {
                 package_name: "com.real.one".into(),
+                app_name: "Real One".into(),
                 level: "SAFE".into(),
                 reason: "ok".into(),
                 can_remove: true,
             },
             SafetyAnalysis {
                 package_name: "com.real.one".into(),
+                app_name: "Real One Dup".into(),
                 level: "critical".into(),
                 reason: "duplicate".into(),
                 can_remove: false,

@@ -44,6 +44,7 @@ export interface DeviceInfo {
 
 export interface SafetyAnalysis {
   package_name: string;
+  app_name: string;
   level: SafetyLevel | string;
   reason: string;
   can_remove: boolean;

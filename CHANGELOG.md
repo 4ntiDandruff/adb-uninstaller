@@ -4,6 +4,87 @@ Semua perubahan penting dicatat di file ini.
 
 Format mirip [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.2.4] — 2026-08-06
+
+Stable release: optimasi prompt AI + bug fixes kumulatif dari v2.2.2.
+
+### Improved
+- `ai.rs` — prompt `analyze_apps_batch`: definisi level (safe/risky/critical/unknown) eksplisit + 2 few-shot example → konsistensi Haiku-class model naik drastis
+- `ai.rs` — prompt `analyze_device`: konteks brand HP Indonesia (Xiaomi, Samsung, OPPO, Vivo, Realme, Infinix budget-midrange)
+- `ai.rs` — unified default system prompt: fallback chat_with_ai = AppSettings::default, satu sumber kebenaran
+- `adb.rs` — `pretty_label()`: deteksi compound generic (globalbrowser→Mi, miniplayer→segment deskriptif)
+
+### Fixed
+- `App.tsx` — `runBatchOp`, `runOp`, `undoLast`: await `loadApps()` agar tabel refresh sinkron
+- `AIChat.tsx` — kirim conversation history lengkap ke backend (bukan cuma pesan terakhir)
+- `adb.rs` — `list_apps` tidak lagi bypass DbState mutex dengan Connection::open() terpisah
+
+### Added
+- `ai.rs` — field `app_name` di SafetyAnalysis + prompt minta nama asli app
+- `db.rs` — `batch_update_safety` persist `app_name` ke kolom `label` di cache
+- `adb.rs` — unit test `pretty_label_picks_descriptive_segment` (9 assertions)
+- `AIChat.tsx` — multi-message conversation history support
+
+### Removed
+- `exportPreset.ts` — dead code `importPreset()` + unused `readTextFile` import
+
+### Verified
+- `cargo check` — 0 error, 0 warning
+- `cargo test` — 3 passed, 0 failed
+- Frontend build — sukses
+
+---
+
+## [2.2.3] — 2026-08-06
+
+AI label: nama asli app dari package name.
+
+### Added
+- `ai.rs` — struct `SafetyAnalysis` tambah field `app_name`, prompt AI sekarang minta nama asli app (com.whatsapp→WhatsApp, com.miui.securitycenter→Security)
+- `App.tsx` — `autoAnalyzeUnknown` dan `analyzeUnknown` apply `app_name` ke label tabel
+- `api.ts` / `lib.rs` / `db.rs` — `saveAiResults` kirim + persist `app_name` ke kolom `label` di SQLite cache
+- `types.ts` — interface `SafetyAnalysis` tambah `app_name: string`
+
+### Changed
+- Label fallback `pretty_label()` tetap ada sebagai placeholder sebelum AI jalan
+- Next scan: label AI load instant dari cache DB
+
+### Verified
+- `tsc --noEmit` — 0 error
+- `npm run build` — sukses
+- `cargo check` — 0 error, 0 warning
+- `cargo test` — 2 passed
+
+---
+
+## [2.2.2] — 2026-08-06
+
+Bug fix sprint: race condition, AI chat history, SQLite double-open, dead code cleanup.
+
+### Fixed
+- `App.tsx` — `runBatchOp` sekarang `await loadApps()` sebelum `setBusy(false)` (race condition: busy spinner hilang sebelum tabel refresh)
+- `App.tsx` — `runOp` sekarang `await loadApps()` sebelum `finally` (race condition sama)
+- `App.tsx` — `undoLast` sekarang `await loadApps()` sebelum `finally` (race condition sama)
+- `adb.rs` — `list_apps` tidak lagi buka `Connection::open()` sendiri (bypass managed `DbState` mutex → potential SQLITE_BUSY). Cache merge dipindah ke fungsi sync `merge_and_save_cache()` yang dipanggil dari `lib.rs` dengan managed connection
+- `Sidebar.tsx` — fix versi hardcoded `v2.2.0` → `v2.2.2`
+
+### Added
+- `ai.rs` — struct `ChatMessage` + `chat_with_ai` sekarang terima `Vec<ChatMessage>` (conversation history)
+- `lib.rs` — command `chat_with_ai` diteruskan `Vec<ai::ChatMessage>`
+- `api.ts` — `api.chat()` kirim array messages
+- `AIChat.tsx` — bangun history manual dari state + pesan baru, kirim ke backend (follow-up AI tidak hilang konteks)
+- `ChangelogDialog.tsx` — entry v2.2.2
+
+### Removed
+- `exportPreset.ts` — hapus dead code `importPreset()` + unused import `readTextFile`
+
+### Verified
+- `tsc --noEmit` — 0 error
+- `npm run build` (tsc + vite) — sukses
+- `cargo check` — 0 error, 0 warning
+
+---
+
 ## [2.2.1] — 2026-08-06
 
 Deep audit: perbaikan race condition device, integritas response AI, dan keamanan API key.

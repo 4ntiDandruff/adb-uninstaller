@@ -80,7 +80,11 @@ export function AIChat({ context, msgs, setMsgs, pos, setPos, minimized, onClose
     setMsgs((m) => [...m, { role: "user", content: text }]);
     setBusy(true);
     try {
-      const reply = await api.chat(text, context);
+      const history = [...msgs, { role: "user" as const, content: text }];
+      const reply = await api.chat(
+        history.map(m => ({ role: m.role, content: m.content })),
+        context
+      );
       setMsgs((m) => [...m, { role: "assistant", content: reply }]);
     } catch (e) {
       toast.error(`Chat AI gagal`);

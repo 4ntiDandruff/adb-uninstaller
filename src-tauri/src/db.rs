@@ -208,12 +208,12 @@ pub fn get_last_scan_time(conn: &Connection, device_id: &str) -> SqlResult<Optio
 pub fn batch_update_safety(
     conn: &Connection,
     device_id: &str,
-    updates: &[(String, String, String)], // (package_name, safety_level, safety_reason)
+    updates: &[(String, String, String, String)], // (package_name, app_name, safety_level, safety_reason)
 ) -> SqlResult<usize> {
     let now = chrono::Local::now().to_rfc3339();
     let tx = conn.unchecked_transaction()?;
     let mut count = 0;
-    for (pkg, level, reason) in updates {
+    for (pkg, app_name, level, reason) in updates {
         // Normalize AI level casing: "Safe" / "SAFE" → "safe"
         let level = match level.to_lowercase().as_str() {
             "safe" | "risky" | "critical" | "unknown" => level.to_lowercase(),
@@ -222,15 +222,24 @@ pub fn batch_update_safety(
             other if other.contains("safe") || other.contains("ok") => "safe".into(),
             _ => "unknown".into(),
         };
-        let rows = tx.execute(
-            "UPDATE app_cache SET safety_level = ?1, safety_reason = ?2, scanned_at = ?3 WHERE package_name = ?4 AND device_id = ?5",
-            rusqlite::params![level, reason, now, pkg, device_id],
-        )?;
+        // Update safety + label (jika app_name tidak kosong)
+        let rows = if !app_name.is_empty() {
+            tx.execute(
+                "UPDATE app_cache SET label = ?1, safety_level = ?2, safety_reason = ?3, scanned_at = ?4 WHERE package_name = ?5 AND device_id = ?6",
+                rusqlite::params![app_name, level, reason, now, pkg, device_id],
+            )?
+        } else {
+            tx.execute(
+                "UPDATE app_cache SET safety_level = ?1, safety_reason = ?2, scanned_at = ?3 WHERE package_name = ?4 AND device_id = ?5",
+                rusqlite::params![level, reason, now, pkg, device_id],
+            )?
+        };
         if rows == 0 {
+            let label = if app_name.is_empty() { pkg } else { app_name };
             tx.execute(
                 "INSERT OR IGNORE INTO app_cache (package_name, label, is_system, is_disabled, safety_level, safety_reason, size, version, device_id, scanned_at)
                  VALUES (?1, ?2, 0, 0, ?3, ?4, '', '', ?5, ?6)",
-                rusqlite::params![pkg, pkg, level, reason, device_id, now],
+                rusqlite::params![pkg, label, level, reason, device_id, now],
             )?;
         }
         count += 1;

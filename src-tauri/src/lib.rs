@@ -27,17 +27,28 @@ async fn get_device_info(device_id: String) -> Result<DeviceInfo, String> {
 }
 
 #[tauri::command]
-async fn list_apps(window: tauri::Window, device_id: String) -> Result<Vec<AppInfo>, String> {
+async fn list_apps(
+    window: tauri::Window,
+    state: tauri::State<'_, db::DbState>,
+    device_id: String,
+) -> Result<Vec<AppInfo>, String> {
     let _ = window.emit(
         "scan-progress",
         serde_json::json!({"pct": 20, "msg": "Membaca package manager..."}),
     );
-    let result = adb::list_apps(device_id).await;
+    let mut apps = adb::list_apps(device_id.clone()).await?;
     let _ = window.emit(
         "scan-progress",
         serde_json::json!({"pct": 100, "msg": "Selesai"}),
     );
-    result
+
+    // Cache merge pakai managed connection — sync, no await
+    let guard = db::get_conn(&state)?;
+    if let Some(conn) = guard.as_ref() {
+        adb::merge_and_save_cache(conn, &device_id, &mut apps);
+    }
+
+    Ok(apps)
 }
 
 #[tauri::command]
@@ -81,8 +92,8 @@ async fn analyze_apps_batch(packages: Vec<String>) -> Result<Vec<SafetyAnalysis>
 }
 
 #[tauri::command]
-async fn chat_with_ai(message: String, context: String) -> Result<String, String> {
-    ai::chat_with_ai(message, context).await
+async fn chat_with_ai(messages: Vec<ai::ChatMessage>, context: String) -> Result<String, String> {
+    ai::chat_with_ai(messages, context).await
 }
 
 #[tauri::command]
@@ -158,6 +169,7 @@ async fn clear_device_cache(
 #[derive(serde::Deserialize)]
 struct AiResult {
     package_name: String,
+    app_name: String,
     level: String,
     reason: String,
 }
@@ -170,9 +182,9 @@ async fn save_ai_results(
 ) -> Result<usize, String> {
     let guard = db::get_conn(&state)?;
     let conn = guard.as_ref().ok_or("[DB-007] Database tidak terinit")?;
-    let updates: Vec<(String, String, String)> = results
+    let updates: Vec<(String, String, String, String)> = results
         .into_iter()
-        .map(|r| (r.package_name, r.level, r.reason))
+        .map(|r| (r.package_name, r.app_name, r.level, r.reason))
         .collect();
     db::batch_update_safety(conn, &device_id, &updates)
         .map_err(|e| format!("[DB-011] Save AI results gagal: {e}"))

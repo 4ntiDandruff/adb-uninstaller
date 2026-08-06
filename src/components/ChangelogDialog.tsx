@@ -8,6 +8,41 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "v2.2.4",
+    date: "2026-08-06",
+    items: [
+      "🧠 Optimasi prompt AI batch: definisi level eksplisit + few-shot example → konsistensi Haiku naik",
+      "🧠 Prompt analyze_device: konteks brand HP Indonesia (Xiaomi, Samsung, OPPO, Vivo, Realme, Infinix)",
+      "🧠 Unified default system prompt: satu sumber kebenaran untuk chat AI",
+      "🐛 pretty_label: deteksi compound generic word (globalbrowser, miniplayer)",
+      "🐛 Batch op/undo: await loadApps agar tabel refresh sinkron",
+      "💬 AI Chat: kirim history lengkap, bukan cuma pesan terakhir",
+      "🗑️ Hapus dead code: importPreset() + unused import",
+    ],
+  },
+  {
+    version: "v2.2.3",
+    date: "2026-08-06",
+    items: [
+      "✨ AI batch: minta app_name (nama asli app) — label tabel jauh lebih akurat",
+      "✨ Label AI di-persist ke SQLite — next scan load nama asli dari cache",
+      "🐛 pretty_label fallback tetap ada sebelum AI jalan",
+    ],
+  },
+  {
+    version: "v2.2.2",
+    date: "2026-08-06",
+    items: [
+      "🐛 App.tsx: runBatchOp await loadApps — fix race condition busy state",
+      "🐛 App.tsx: runOp await loadApps — fix race condition busy state",
+      "🐛 App.tsx: undoLast await loadApps — fix race condition busy state",
+      "✨ AI Chat: kirim conversation history — follow-up context tidak hilang",
+      "🐛 Sidebar: fix versi hardcoded v2.2.0 → v2.2.2",
+      "🐛 adb.rs: list_apps pakai managed DbState — hapus SQLite double-open",
+      "🧹 exportPreset.ts: hapus dead code importPreset + unused import readTextFile",
+    ],
+  },
+  {
     version: "v2.2.0",
     date: "2026-08-05",
     items: [

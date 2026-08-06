@@ -236,9 +236,42 @@ pub async fn get_device_info(device_id: String) -> Result<DeviceInfo, String> {
 }
 
 fn pretty_label(package: &str) -> String {
-    // Format package name jadi lebih readable: com.example.my_app -> My App
-    let last = package.split('.').next_back().unwrap_or(package);
-    let spaced = last.replace(['_', '-'], " ");
+    // Segment terakhir sering generic (browser, app, player, launcher, android).
+    // Strategi: ambil segment paling deskriptif dari 2 terakhir.
+    let segments: Vec<&str> = package.split('.').collect();
+    let generic_exact = [
+        "app", "android", "browser", "launcher", "player", "music", "video",
+        "service", "services", "provider", "system", "ui", "agent", "client",
+        "core", "module", "base", "main", "lite", "go", "global", "pro",
+    ];
+    // Substring patterns: "globalbrowser", "miniplayer" dll juga generic
+    let generic_contains = [
+        "browser", "launcher", "player", "provider", "service",
+    ];
+    let is_generic = |s: &str| -> bool {
+        let low = s.to_lowercase();
+        generic_exact.contains(&low.as_str())
+            || generic_contains.iter().any(|g| low.contains(g) && low != *g)
+            || generic_exact.contains(&low.as_str())
+    };
+    // Pilih segment: kalau terakhir generic dan ada segment sebelumnya, pakai sebelumnya
+    let chosen = if segments.len() >= 2 {
+        let last = segments[segments.len() - 1];
+        let prev = segments[segments.len() - 2];
+        if is_generic(last) && !prev.is_empty() {
+            // com.brave.browser → "brave", com.android.chrome → "chrome" (android juga generic)
+            if is_generic(prev) && segments.len() >= 3 {
+                segments[segments.len() - 3]
+            } else {
+                prev
+            }
+        } else {
+            last
+        }
+    } else {
+        segments.last().unwrap_or(&package)
+    };
+    let spaced = chosen.replace(['_', '-'], " ");
     let mut out = String::new();
     for (i, part) in spaced.split_whitespace().enumerate() {
         if i > 0 {
@@ -254,6 +287,57 @@ fn pretty_label(package: &str) -> String {
         package.to_string()
     } else {
         out
+    }
+}
+
+
+/// Merge cache + save apps — dipanggil SETELAH semua ADB async selesai
+pub fn merge_and_save_cache(conn: &rusqlite::Connection, device_id: &str, apps: &mut Vec<AppInfo>) {
+    if let Ok(cached) = crate::db::load_apps(conn, device_id) {
+        let map: std::collections::HashMap<String, crate::db::CachedApp> = cached
+            .into_iter()
+            .map(|c| (c.package_name.clone(), c))
+            .collect();
+        for app in apps.iter_mut() {
+            if let Some(c) = map.get(&app.package_name) {
+                if c.safety_level != "unknown" {
+                    app.safety_level = c.safety_level.clone();
+                    app.safety_reason = c.safety_reason.clone();
+                }
+                if !c.label.is_empty() && c.label != c.package_name {
+                    if app.label == pretty_label(&app.package_name)
+                        || app.label == app.package_name
+                    {
+                        app.label = c.label.clone();
+                    }
+                }
+                if !c.size.is_empty() && app.size.is_empty() {
+                    app.size = c.size.clone();
+                }
+                if !c.version.is_empty() && app.version.is_empty() {
+                    app.version = c.version.clone();
+                }
+            }
+        }
+    }
+    let _ = crate::db::save_apps(conn, device_id, apps);
+
+    // save_apps mewarisi verdict lintas-device ke DB; tarik lagi biar frontend tak analisa ulang
+    if let Ok(fresh) = crate::db::load_apps(conn, device_id) {
+        let fmap: std::collections::HashMap<String, crate::db::CachedApp> = fresh
+            .into_iter()
+            .map(|c| (c.package_name.clone(), c))
+            .collect();
+        for app in apps.iter_mut() {
+            if app.safety_level == "unknown" {
+                if let Some(c) = fmap.get(&app.package_name) {
+                    if c.safety_level != "unknown" && !c.safety_level.is_empty() {
+                        app.safety_level = c.safety_level.clone();
+                        app.safety_reason = c.safety_reason.clone();
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -328,60 +412,6 @@ pub async fn list_apps(device_id: String) -> Result<Vec<AppInfo>, String> {
     }
 
     apps.sort_by(|a, b| a.package_name.cmp(&b.package_name));
-
-    // Merge safety/label dari cache lama biar AI result tidak hilang
-    // ponytail: pakai db_path + open langsung, bukan init_db yang CREATE TABLE ulang setiap scan
-    if let Ok(path) = crate::db::db_path() {
-        if let Ok(conn) = rusqlite::Connection::open(path) {
-            if let Ok(cached) = crate::db::load_apps(&conn, &device_id) {
-                let map: std::collections::HashMap<String, crate::db::CachedApp> = cached
-                    .into_iter()
-                    .map(|c| (c.package_name.clone(), c))
-                    .collect();
-                for app in &mut apps {
-                    if let Some(c) = map.get(&app.package_name) {
-                        if c.safety_level != "unknown" {
-                            app.safety_level = c.safety_level.clone();
-                            app.safety_reason = c.safety_reason.clone();
-                        }
-                        if !c.label.is_empty() && c.label != c.package_name {
-                            // Prefer label lama yang lebih bagus dari cache
-                            if app.label == pretty_label(&app.package_name)
-                                || app.label == app.package_name
-                            {
-                                app.label = c.label.clone();
-                            }
-                        }
-                        if !c.size.is_empty() && app.size.is_empty() {
-                            app.size = c.size.clone();
-                        }
-                        if !c.version.is_empty() && app.version.is_empty() {
-                            app.version = c.version.clone();
-                        }
-                    }
-                }
-            }
-            let _ = crate::db::save_apps(&conn, &device_id, &apps);
-
-            // save_apps mewarisi verdict lintas-device ke DB; tarik lagi biar frontend tak analisa ulang
-            if let Ok(fresh) = crate::db::load_apps(&conn, &device_id) {
-                let fmap: std::collections::HashMap<String, crate::db::CachedApp> = fresh
-                    .into_iter()
-                    .map(|c| (c.package_name.clone(), c))
-                    .collect();
-                for app in &mut apps {
-                    if app.safety_level == "unknown" {
-                        if let Some(c) = fmap.get(&app.package_name) {
-                            if c.safety_level != "unknown" && !c.safety_level.is_empty() {
-                                app.safety_level = c.safety_level.clone();
-                                app.safety_reason = c.safety_reason.clone();
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 
     Ok(apps)
 }
@@ -667,5 +697,28 @@ pub async fn check_adb_available() -> Result<bool, String> {
     match Command::new("adb").arg("version").output().await {
         Ok(o) => Ok(o.status.success()),
         Err(_) => Ok(false),
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pretty_label_picks_descriptive_segment() {
+        // Generic terakhir → pakai segment sebelumnya
+        assert_eq!(pretty_label("com.brave.browser"), "Brave");
+        assert_eq!(pretty_label("com.opera.browser"), "Opera");
+        assert_eq!(pretty_label("com.mi.globalbrowser"), "Mi");
+        // Segment terakhir BUKAN generic → pakai apa adanya
+        assert_eq!(pretty_label("com.android.chrome"), "Chrome");
+        assert_eq!(pretty_label("com.whatsapp"), "Whatsapp");
+        assert_eq!(pretty_label("com.spotify.music"), "Spotify");
+        assert_eq!(pretty_label("com.google.android.youtube"), "Youtube");
+        // Underscore/dash → spasi + capitalize
+        assert_eq!(pretty_label("com.example.my_cool_app"), "My Cool App");
+        // Double generic → ambil segment ke-3 dari belakang
+        assert_eq!(pretty_label("com.vivo.browser.provider"), "Vivo");
     }
 }

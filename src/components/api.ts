@@ -42,8 +42,8 @@ export const api = {
     invoke<CommandResult>("clear_app_data", { deviceId, package: pkg }),
   analyzeBatch: (packages: string[]) =>
     invoke<SafetyAnalysis[]>("analyze_apps_batch", { packages }),
-  chat: (message: string, context: string) =>
-    invoke<string>("chat_with_ai", { message, context }),
+  chat: (messages: { role: string; content: string }[], context: string) =>
+    invoke<string>("chat_with_ai", { messages, context }),
   analyzeDevice: (model: string, chipset: string, android: string) =>
     invoke<string>("analyze_device", { model, chipset, android }),
   getCachedApps: (deviceId: string) =>
@@ -52,7 +52,7 @@ export const api = {
     invoke<string | null>("get_last_scan_time", { deviceId }),
   clearDeviceCache: (deviceId: string) =>
     invoke<number>("clear_device_cache", { deviceId }),
-  saveAiResults: (deviceId: string, results: { package_name: string; level: string; reason: string }[]) =>
+  saveAiResults: (deviceId: string, results: { package_name: string; app_name: string; level: string; reason: string }[]) =>
     invoke<number>("save_ai_results", { deviceId, results }),
   saveAppSize: (deviceId: string, pkg: string, size: string) =>
     invoke<number>("save_app_size", { deviceId, package: pkg, size }),
