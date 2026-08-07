@@ -4,6 +4,12 @@ Semua perubahan penting dicatat di file ini.
 
 Format mirip [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.2.4] — 2026-08-07
+
+### Packaging & System Integration
+- Terintegrasi & terinstall resmi ke sistem Linux via paket .deb.
+- Desktop launcher & Start Menu icon terdaftar otomatis di OS.
+
 ## [2.2.4] — 2026-08-06
 
 Stable release: optimasi prompt AI + bug fixes kumulatif dari v2.2.2.
