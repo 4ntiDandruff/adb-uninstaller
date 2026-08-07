@@ -1,4 +1,4 @@
-# ADB Uninstaller v2.2.5
+# ADB Uninstaller v2.2.5 (VERSI STABIL - SAFE ROLLBACK TARGET)
 
 **By Hizam Nahari (Megapass Intra Solusindo, Sidoarjo)**
 
