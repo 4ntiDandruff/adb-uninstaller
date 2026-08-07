@@ -11,6 +11,7 @@ export const t: Record<Lang, Record<string, string>> = {
     "topbar.presets": "Preset Debloat",
     "topbar.log": "Log",
     "topbar.scan_device": "Scan Device",
+    "topbar.about": "Tentang",
     
     // Sidebar
     "sidebar.devices": "Perangkat",
@@ -115,6 +116,7 @@ export const t: Record<Lang, Record<string, string>> = {
     "topbar.presets": "Debloat Presets",
     "topbar.log": "Log",
     "topbar.scan_device": "Scan Device",
+    "topbar.about": "About",
     
     // Sidebar
     "sidebar.devices": "Devices",

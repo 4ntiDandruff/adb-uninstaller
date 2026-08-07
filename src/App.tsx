@@ -22,6 +22,8 @@ import { DetailPanel } from "./components/DetailPanel";
 import { LogDrawer } from "./components/LogDrawer";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { ChangelogDialog } from "./components/ChangelogDialog";
+import { AboutDialog } from "./components/AboutDialog";
+import { Info } from "lucide-react";
 import { AIChat, type Msg } from "./components/AIChat";
 import { DebloatPresets } from "./components/DebloatPresets";
 import { ConfirmDialog } from "./components/ConfirmDialog";
@@ -62,6 +64,7 @@ export default function App() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [changelogOpen, setChangelogOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [presetsOpen, setPresetsOpen] = useState(false);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [lang, setLang] = useState<Lang>("id");
@@ -679,6 +682,7 @@ export default function App() {
               <MessageSquare size={14} /> AI Chat
             </button>
             <button className="btn btn-ghost btn-sm" onClick={() => setChangelogOpen(true)} title="Catatan Rilis"><ScrollText size={14} /></button>
+            <button className="btn btn-ghost btn-sm" onClick={() => setAboutOpen(true)} title={t("topbar.about")}><Info size={14} /></button>
           </div>
 
           <div className="topbar-sep" />
@@ -908,6 +912,7 @@ export default function App() {
         </div>
       )}
       <ChangelogDialog open={changelogOpen} onClose={() => setChangelogOpen(false)} lang={lang} />
+      <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} lang={lang} />
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} onSaved={setSettings} />
       <ConfirmDialog
         open={confirm !== null}
