@@ -8,7 +8,7 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
     {
-    version: "v2.2.4",
+    version: "v2.2.5",
     date: "2026-08-07",
     items: [
       "✨ Fitur About Me (Tentang): profil Hizam Nahari, Megapass Sidoarjo, link website & GitHub",

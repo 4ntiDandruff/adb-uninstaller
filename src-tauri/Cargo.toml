@@ -1,6 +1,6 @@
 [package]
 name = "adb-uninstaller"
-version = "2.2.4"
+version = "2.2.5"
 description = "ADB Uninstaller - By Teknisi Megapass Sidoarjo"
 authors = ["Teknisi Megapass Sidoarjo"]
 edition = "2021"

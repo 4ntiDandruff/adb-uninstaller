@@ -1,4 +1,4 @@
-# ADB Uninstaller v2.2.4
+# ADB Uninstaller v2.2.5
 
 **By Hizam Nahari (Megapass Intra Solusindo, Sidoarjo)**
 
@@ -6,7 +6,7 @@ Desktop app Linux untuk manage aplikasi Android via ADB: scan device, list packa
 
 ![Platform](https://img.shields.io/badge/platform-Linux-blue)
 ![Stack](https://img.shields.io/badge/stack-Tauri%20v2%20%7C%20React%20%7C%20Rust-orange)
-![Version](https://img.shields.io/badge/version-2.2.4-green)
+![Version](https://img.shields.io/badge/version-2.2.5-green)
 ![License](https://img.shields.io/badge/license-Private-lightgrey)
 
 ---
@@ -17,12 +17,12 @@ Aplikasi ini dipaketkan resmi dalam format **.deb** untuk Linux (Kubuntu, Ubuntu
 
 ### Lokasi File .deb (Hasil Build):
 ```
-/home/hizam/proyek/adb-uninstaller/src-tauri/target/release/bundle/deb/ADB Uninstaller_2.2.4_amd64.deb
+/home/hizam/proyek/adb-uninstaller/src-tauri/target/release/bundle/deb/ADB Uninstaller_2.2.5_amd64.deb
 ```
 
 ### Cara Install Paket .deb:
 ```bash
-sudo dpkg -i "src-tauri/target/release/bundle/deb/ADB Uninstaller_2.2.4_amd64.deb"
+sudo dpkg -i "src-tauri/target/release/bundle/deb/ADB Uninstaller_2.2.5_amd64.deb"
 ```
 *Atau double-click file .deb di Dolphin/Nemo File Manager.*
 
@@ -91,10 +91,10 @@ sudo apt install -y android-tools-adb
 ### Bundle siap pakai
 ```bash
 # .deb
-sudo dpkg -i "ADB Uninstaller_2.2.4_amd64.deb"
+sudo dpkg -i "ADB Uninstaller_2.2.5_amd64.deb"
 # atau AppImage
-chmod +x "ADB Uninstaller_2.2.4_amd64.AppImage"
-./"ADB Uninstaller_2.2.4_amd64.AppImage"
+chmod +x "ADB Uninstaller_2.2.5_amd64.AppImage"
+./"ADB Uninstaller_2.2.5_amd64.AppImage"
 ```
 
 Build lokal menghasilkan:

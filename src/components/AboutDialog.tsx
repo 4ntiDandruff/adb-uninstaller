@@ -46,7 +46,7 @@ export function AboutDialog({ open, onClose, onOpenChangelog, lang = "id" }: Pro
               A
             </div>
             <h3 className="text-lg font-bold" style={{ margin: 0 }}>ADB Uninstaller</h3>
-            <span className="text-xs text-faint font-mono mt-0.5">v2.2.4 · Tauri v2 + React</span>
+            <span className="text-xs text-faint font-mono mt-0.5">v2.2.5 · Tauri v2 + React</span>
           </div>
 
           <p className="text-xs text-dim leading-relaxed" style={{ margin: "12px 0 16px" }}>
