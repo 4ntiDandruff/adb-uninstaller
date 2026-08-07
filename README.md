@@ -1,6 +1,6 @@
 # ADB Uninstaller v2.2.4
 
-**By Teknisi Megapass Sidoarjo**
+**By Hizam Nahari (Megapass Intra Solusindo, Sidoarjo)**
 
 Desktop app Linux untuk manage aplikasi Android via ADB: scan device, list package, uninstall/disable/enable/force-stop/clear data, klasifikasi keamanan (static + AI batch), chat AI, cache lokal, export preset debloat.
 
@@ -31,7 +31,7 @@ sudo dpkg -i "src-tauri/target/release/bundle/deb/ADB Uninstaller_2.2.4_amd64.de
 ## Fitur
 
 ### Core ADB
-- Deteksi device USB / Wi‑Fi + auto-select
+- **Auto-Detect Device**: Deteksi instan via USB / Wi-Fi ADB + auto-select.
 - List apps: tab Semua / System / User / Disabled / Running
 - Kolom label app (nama readable) + package name
 - Sort ascending / descending (label, safety, size — numeric)
