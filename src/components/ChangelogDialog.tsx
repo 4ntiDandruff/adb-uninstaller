@@ -7,17 +7,18 @@ interface ChangelogEntry {
 }
 
 const CHANGELOG: ChangelogEntry[] = [
-  {
+    {
     version: "v2.2.4",
-    date: "2026-08-06",
+    date: "2026-08-07",
     items: [
+      "✨ Fitur About Me (Tentang): profil Hizam Nahari, Megapass Sidoarjo, link website & GitHub",
+      "✨ Integrasi Catatan Rilis ke dalam modal Tentang agar UI Topbar lebih rapi",
+      "🎨 Generate icon desktop baru: rounded square biru modern + huruf A putih di tengah",
       "🧠 Optimasi prompt AI batch: definisi level eksplisit + few-shot example → konsistensi Haiku naik",
       "🧠 Prompt analyze_device: konteks brand HP Indonesia (Xiaomi, Samsung, OPPO, Vivo, Realme, Infinix)",
-      "🧠 Unified default system prompt: satu sumber kebenaran untuk chat AI",
       "🐛 pretty_label: deteksi compound generic word (globalbrowser, miniplayer)",
       "🐛 Batch op/undo: await loadApps agar tabel refresh sinkron",
       "💬 AI Chat: kirim history lengkap, bukan cuma pesan terakhir",
-      "🗑️ Hapus dead code: importPreset() + unused import",
     ],
   },
   {
