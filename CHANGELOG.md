@@ -1,0 +1,322 @@
+# Changelog
+
+Semua perubahan penting dicatat di file ini.
+
+Format mirip [Keep a Changelog](https://keepachangelog.com/).
+
+## [2.2.4] — 2026-08-06
+
+Stable release: optimasi prompt AI + bug fixes kumulatif dari v2.2.2.
+
+### Improved
+- `ai.rs` — prompt `analyze_apps_batch`: definisi level (safe/risky/critical/unknown) eksplisit + 2 few-shot example → konsistensi Haiku-class model naik drastis
+- `ai.rs` — prompt `analyze_device`: konteks brand HP Indonesia (Xiaomi, Samsung, OPPO, Vivo, Realme, Infinix budget-midrange)
+- `ai.rs` — unified default system prompt: fallback chat_with_ai = AppSettings::default, satu sumber kebenaran
+- `adb.rs` — `pretty_label()`: deteksi compound generic (globalbrowser→Mi, miniplayer→segment deskriptif)
+
+### Fixed
+- `App.tsx` — `runBatchOp`, `runOp`, `undoLast`: await `loadApps()` agar tabel refresh sinkron
+- `AIChat.tsx` — kirim conversation history lengkap ke backend (bukan cuma pesan terakhir)
+- `adb.rs` — `list_apps` tidak lagi bypass DbState mutex dengan Connection::open() terpisah
+
+### Added
+- `ai.rs` — field `app_name` di SafetyAnalysis + prompt minta nama asli app
+- `db.rs` — `batch_update_safety` persist `app_name` ke kolom `label` di cache
+- `adb.rs` — unit test `pretty_label_picks_descriptive_segment` (9 assertions)
+- `AIChat.tsx` — multi-message conversation history support
+
+### Removed
+- `exportPreset.ts` — dead code `importPreset()` + unused `readTextFile` import
+
+### Verified
+- `cargo check` — 0 error, 0 warning
+- `cargo test` — 3 passed, 0 failed
+- Frontend build — sukses
+
+---
+
+## [2.2.3] — 2026-08-06
+
+AI label: nama asli app dari package name.
+
+### Added
+- `ai.rs` — struct `SafetyAnalysis` tambah field `app_name`, prompt AI sekarang minta nama asli app (com.whatsapp→WhatsApp, com.miui.securitycenter→Security)
+- `App.tsx` — `autoAnalyzeUnknown` dan `analyzeUnknown` apply `app_name` ke label tabel
+- `api.ts` / `lib.rs` / `db.rs` — `saveAiResults` kirim + persist `app_name` ke kolom `label` di SQLite cache
+- `types.ts` — interface `SafetyAnalysis` tambah `app_name: string`
+
+### Changed
+- Label fallback `pretty_label()` tetap ada sebagai placeholder sebelum AI jalan
+- Next scan: label AI load instant dari cache DB
+
+### Verified
+- `tsc --noEmit` — 0 error
+- `npm run build` — sukses
+- `cargo check` — 0 error, 0 warning
+- `cargo test` — 2 passed
+
+---
+
+## [2.2.2] — 2026-08-06
+
+Bug fix sprint: race condition, AI chat history, SQLite double-open, dead code cleanup.
+
+### Fixed
+- `App.tsx` — `runBatchOp` sekarang `await loadApps()` sebelum `setBusy(false)` (race condition: busy spinner hilang sebelum tabel refresh)
+- `App.tsx` — `runOp` sekarang `await loadApps()` sebelum `finally` (race condition sama)
+- `App.tsx` — `undoLast` sekarang `await loadApps()` sebelum `finally` (race condition sama)
+- `adb.rs` — `list_apps` tidak lagi buka `Connection::open()` sendiri (bypass managed `DbState` mutex → potential SQLITE_BUSY). Cache merge dipindah ke fungsi sync `merge_and_save_cache()` yang dipanggil dari `lib.rs` dengan managed connection
+- `Sidebar.tsx` — fix versi hardcoded `v2.2.0` → `v2.2.2`
+
+### Added
+- `ai.rs` — struct `ChatMessage` + `chat_with_ai` sekarang terima `Vec<ChatMessage>` (conversation history)
+- `lib.rs` — command `chat_with_ai` diteruskan `Vec<ai::ChatMessage>`
+- `api.ts` — `api.chat()` kirim array messages
+- `AIChat.tsx` — bangun history manual dari state + pesan baru, kirim ke backend (follow-up AI tidak hilang konteks)
+- `ChangelogDialog.tsx` — entry v2.2.2
+
+### Removed
+- `exportPreset.ts` — hapus dead code `importPreset()` + unused import `readTextFile`
+
+### Verified
+- `tsc --noEmit` — 0 error
+- `npm run build` (tsc + vite) — sukses
+- `cargo check` — 0 error, 0 warning
+
+---
+
+## [2.2.1] — 2026-08-06
+
+Deep audit: perbaikan race condition device, integritas response AI, dan keamanan API key.
+
+### Fixed
+- `App.tsx` — memilih device tidak lagi memicu `scan_devices` ulang akibat dependency callback yang berubah
+- `App.tsx` — stale-request guard mencegah hasil scan/AI device lama menimpa tabel atau cache device baru
+- `ai.rs` — response AI difilter terhadap package yang benar-benar diminta, dideduplikasi, dan level dinormalisasi sebelum disimpan
+- `ai.rs` — `settings.json` kini ditulis melalui temporary file lalu atomic rename dengan permission privat `0600`
+- `exportPreset.ts` — hapus import `plugin-fs` ganda yang menghasilkan warning pada production bundle
+
+### Verified
+- TypeScript typecheck, Rust format, 2 unit test, Clippy `-D warnings`, Vite build, dan Tauri production bundle
+- Runtime release diverifikasi melalui window desktop dan screenshot `3840×1080`
+
+---
+
+## [2.2.0] — 2026-08-05
+
+Fitur baru: atur waktu layar mati (lockscreen) via ADB + fix audit.
+
+### Added
+- `adb.rs` — command `get_screen_timeout` / `set_screen_timeout` (baca/tulis `system screen_off_timeout`), set langsung baca ulang sebagai bukti angka kepasang
+- `App.tsx` — tombol `⏱️ Layar` di topbar → dialog dropdown preset (1m/5m/10m/30m/60m/Selamanya), lewati batas 10 menit UI bawaan HP
+- Deteksi Device Admin: kalau angka ditolak sistem, nilai nyata ditampilkan (tidak klaim sukses palsu)
+- `adb.rs` — device info lengkap: baca `ro.product.marketname` (nama pasar, mis. Infinix Note 30 Pro bukan X678B), `model_code` mentah, `chipset` dari `ro.soc.model`/`ro.board.platform`
+- `ai.rs` — command `analyze_device` → brief teknisi format bullet (SPEK / ISU KHAS SERVIS / TIPS), maks 12 kata/poin
+- `Sidebar.tsx` — baris Kode + Chipset, tombol **✨ Analisa Device (AI)** + panel hasil
+- `db.rs` — **buku induk verdict AI lintas-device**: package yang sudah pernah dianalisa AI di HP manapun langsung diwarisi saat device baru terhubung (device baru tak mulai dari nol → loading jauh lebih cepat, hemat token AI)
+- `adb.rs` — re-merge hasil warisan ke data in-memory setelah save, biar frontend tidak analisa ulang package yang verdict-nya sudah ada
+
+### Changed / Performance
+- `db.rs` — `save_apps` (loop ratusan package tiap scan) kini dibungkus 1 transaction → dari ratusan tulis-ke-disk jadi 1 commit borongan (scan/reconnect device besar lebih cepat, hemat umur SSD)
+- `index.css` / `AppTable.tsx` — checkbox diperbesar (15px → 18px, sel tabel 20px) + seluruh sel checkbox jadi area tekan (bukan cuma kotak kecil) — lebih gampang diklik
+
+### Fixed
+- `ai.rs` — **package yang dilewatkan AI tak lagi nyangkut unknown selamanya**: kalau AI membalas array tanpa menyertakan sebagian package yang dikirim, package itu kini diisi eksplisit (`unknown` + reason "AI tak mengembalikan hasil") sehingga tercatat sudah dicoba, tidak silent, dan kelihatan di log — bukan dikirim-ulang lalu dilewatkan lagi tiap scan
+
+### Fixed
+- `App.tsx` — undo "disable" sekarang pakai `pm enable`, bukan `install-existing` (yang tidak me-re-enable app) — undoStack simpan `{pkg, kind}`
+- `App.tsx` — ganti bahasa tidak lagi menimpa `safety_reason` hasil AI (hanya timpa bila level tag statis == level app)
+- `adb.rs` / `ai.rs` — 3 clippy lint: `.next_back()`, gabung `.replace()`, `split_once`
+
+---
+
+## [2.1.3] — 2026-08-05
+
+Deep audit: stale closure + AI cache integrity + size persist.
+
+### Fixed
+- `App.tsx` — `autoAnalyzeUnknown` / `analyzeUnknown` missing `deviceId` di deps → AI result bisa gagal save ke device yang salah/null (stale closure)
+- `db.rs` — `batch_update_safety` sekarang pakai transaction + normalisasi level AI (`Safe`/`SAFE` → `safe`)
+- `App.tsx` — `normalizeSafety()` di frontend saat apply AI result (badge/filter konsisten)
+- `lib.rs` + `api.ts` — command `save_app_size` baru
+- `App.tsx` — ukuran APK yang di-fetch di DetailPanel sekarang di-persist ke SQLite (next open instant)
+
+### Notes
+- Device reconnect: AI cache + size cache sama-sama load dari DB
+- Hanya package unknown + size kosong yang butuh network/ADB work
+
+---
+
+## [2.1.2] — 2026-08-03
+
+Patch: AI result persistence + deep audit cleanup.
+
+### Fixed (Performance — AI Loading)
+- `db.rs` — tambah `batch_update_safety()` untuk bulk write hasil AI ke SQLite
+- `lib.rs` — tambah command `save_ai_results` (Tauri → DB)
+- `App.tsx` — `autoAnalyzeUnknown` dan `analyzeUnknown` sekarang simpan hasil AI ke DB setelah batch selesai
+- Device reconnect sekarang **load instant dari cache**, AI cuma dipanggil untuk package yang benar-benar baru
+
+### Fixed (Deep Audit Cleanup)
+- Hapus 4 dead npm deps: `@tanstack/react-table`, `class-variance-authority`, `clsx`, `tailwind-merge`
+- Hapus dead file `lib/utils.ts` (`cn()` tidak pernah dipanggil)
+- `ai.rs` — `strip_sse` sekarang handle multi-line SSE (concat semua delta chunks, bukan cuma ambil pertama)
+- `exportPreset.ts` — hapus hardcoded locale `id-ID`
+
+### Changed (i18n)
+- `DebloatPresets` — semua label (`title`, `select_safe`, `execute`) sekarang pakai `t()`
+- `SettingsDialog` — semua label (`title`, `test`, `save`, toast messages) sekarang pakai `t()`
+- `ChangelogDialog` — title + close button ikut `lang` prop
+- `i18n.ts` — tambah keys: `presets.*`, `settings.test/saved/save_fail/close`, `changelog.*`
+- Fix duplicate `settings.save` i18n key
+
+---
+
+## [2.1.1] — 2026-08-03
+
+Patch: deep audit bug fix + UI/UX overhaul + i18n consistency + build fix.
+
+### Fixed (Backend)
+- `adb.rs` — `list_apps` pakai `db_path()` langsung, bukan `init_db()` yang buka koneksi SQLite baru + CREATE TABLE ulang setiap scan (race condition potential)
+- `adb.rs` — `force_stop_package` cek exit code saja, stderr check dihapus (beberapa HP kirim stderr walau sukses)
+- `db.rs` — hapus dead code `update_safety()` + fix lifetime warning → Rust 0 warnings
+- `safety-tags.ts` — `com.android.*` catch-all sekarang cek tags dict dulu, package yang sudah di-map tidak di-override ke critical
+- `App.tsx` — `useEffect` lang change hanya update static tags, AI re-translate dihapus (penyebab infinite loop `setApps → render → re-trigger`)
+- `SearchBar.tsx` — `onChange` masuk deps array useEffect (fix stale closure pada debounce)
+
+### Fixed (Build / Critical)
+- `vite.config.ts` — tambah `base: "./"` — fix CSS/JS tidak load di Tauri production build (absolute path `/assets/` tidak resolve di `tauri://localhost/`)
+- `tauri.conf.json` — CSP set `null` — CSP ketat (`style-src self`) memblokir Tailwind CSS di WebView production
+
+### Added (UI/UX)
+- `ConfirmDialog` — custom confirmation dialog menggantikan `window.confirm()` bawaan browser, sesuai design system app
+- `AppTable` — tombol **Scan Device** di empty state, user tidak perlu cari refresh icon di sidebar
+- `Sidebar` — placeholder text saat belum ada device ("Hubungkan device via USB, lalu scan.")
+- AI Chat default position **bottom-right** (sebelumnya top-left, menutupi sidebar)
+- AI Chat messages `max-height: 380px` — scroll proper di chat panjang
+- Toaster dipindah `bottom-right` — tidak overlap topbar buttons
+
+### Changed (i18n)
+- Semua label hardcoded sekarang pakai `t()`: search placeholder, level filter, counter (`shown/selected`), log filter, sidebar hint
+- `Sidebar` — fix duplikasi model name (`Infinix Infinix X6788` → `Infinix X6788`)
+- `ChangelogDialog` — CSP entry dikoreksi dari "aktif" ke "dinonaktifkan"
+
+### Changed (Styling)
+- Table: `table-layout: auto` (bukan `fixed`) — kolom SAFETY/TIPE/STATUS/UKURAN tidak lagi terpotong ellipsis
+- Light theme: contrast boost — `--text-dim` #424a53, `--text-faint` #57606a, btn-ghost, sidebar shadow, scrollbar thumb
+- Dark theme: `--text-faint` dinaikkan ke `#6b7d9e` — sidebar text lebih readable
+- Light theme: `.btn-ghost` background `#e8ecf0`, `.side-label` color `#424a53`, `.tab` color `#57606a`
+
+---
+
+## [2.1.0] — 2026-08-03
+
+Patch besar: bug fixes kritis + UI/UX overhaul + dukungan penuh Bahasa Indonesia.
+
+### Fixed (Bug Kritis)
+- `db.rs` — `update_safety` sekarang filter per `device_id` (sebelumnya bisa overwrite data device lain)
+- `ai.rs` — hapus `init_db()` duplikat yang menyebabkan SQLite lock conflict
+- `adb.rs` — tambah timeout 30s pada semua ADB command (sebelumnya bisa hang selamanya)
+- `adb.rs` — `disable_package` cek output `"disabled"` bukan hanya exit code
+- `adb.rs` — `enable_package` cek output `"enabled"` bukan hanya exit code
+- `adb.rs` — `force_stop` cek stderr kosong (am force-stop selalu return 0)
+- `App.tsx` — `runBatch` sekarang `await loadApps` sebelum `setBusy(false)` (race condition)
+- `App.tsx` — `autoAnalyzeUnknown` queue semua unknown dalam batch 50, bukan hanya 50 pertama
+- `App.tsx` — undo stack sekarang track `disable` juga, bukan hanya `uninstall`
+
+### Added (UI/UX)
+- `AppTable` — kolom label app (nama readable) + package name sebagai subtitle
+- `AppTable` — sort size numeric yang benar (bukan string comparison)
+- `AppTable` — skeleton loading per-kolom proporsional
+- `Sidebar` — statistik breakdown: safe / risky / kritis / unknown dengan warna
+- `DetailPanel` — tombol copy package name
+- `DetailPanel` — semua label aksi sekarang mengikuti bahasa UI (i18n)
+- `DetailPanel` — safety badge translated sesuai bahasa
+- `SettingsDialog` — toggle tema Dark/Light langsung di Settings (tidak hanya dari topbar)
+- `LogDrawer` — auto-scroll ke log entry terbaru
+- `LogDrawer` — tombol export log ke file `.txt`
+- `SearchBar` — debounce 200ms (tidak lag saat mengetik cepat)
+- `AIChat` — support drag via touch (tablet/layar sentuh)
+- `AIChat` — minimized window bisa di-drag
+- `AIChat` — tombol clear history
+
+### Changed
+- `App.css` — hapus scaffold Tauri default yang tidak terpakai
+- `tauri.conf.json` — Content Security Policy (lihat v2.1.1 untuk update)
+- `db.rs` — WAL mode aktif (`PRAGMA journal_mode=WAL`) untuk performa SQLite lebih baik
+
+### Internasionalisasi (i18n)
+- `safety-tags.ts` — semua `reason` static tags sekarang punya versi Bahasa Indonesia
+- `ai.rs` — prompt AI batch kirim instruksi bahasa dari settings (reason AI ikut bahasa UI)
+- `App.tsx` — `enrichApps` pass `lang` ke semua call site
+- `App.tsx` — `useEffect` re-enrich otomatis saat bahasa diubah di Settings
+
+---
+
+## [2.0.0] — 2026-07-23
+
+Rilis v2 penuh (rebuild dari scaffold Tauri v2 + React + Rust). Target: Linux teknisi Megapass Sidoarjo.
+
+### Added
+- Deteksi device ADB (USB / Wi‑Fi) + auto-select
+- List apps dengan tab: Semua, System, User, Disabled, Running
+- Sort package / safety / size (asc/desc)
+- Search bar + tombol clear
+- Sticky header tabel
+- Aksi per-app & batch: Uninstall, Disable, Enable, Force Stop, Clear Data
+- Undo / restore package
+- Klasifikasi keamanan 4 level (safe / risky / critical / unknown)
+- Static offline safety tags (Android, Google, Xiaomi, Samsung, OPPO, Vivo, analytics)
+- **Auto AI** untuk package `unknown` (batch 50/call) — spek senjata utama v2
+- Tombol AI manual untuk sisa unknown
+- AI Settings: Base URL (`/v1`), API Key, Model, Temperature, Max Tokens, System Prompt
+- Tombol **Test Koneksi** AI + daftar model
+- AI Chat floating: drag, minimize, history tetap saat tutup panel
+- Dark / Light theme (light mode GitHub-style)
+- i18n Bahasa Indonesia / English
+- Progress bar scan (persen + status message)
+- Local SQLite cache (`~/.config/adb-uninstaller/cache.db`)
+- Export preset debloat (JSON) + fallback download
+- Debloat presets bawaan
+- Humanized error messages (kode teknis → bahasa teknisi)
+- Bundle release: `.deb` + `.AppImage`
+- Log drawer + toast notification
+- Info device: model, Android/SDK, battery, storage, RAM
+
+### Fixed
+- `normalize_base_url` tidak double `/v1`
+- Deteksi `is_running` exact match dari `ProcessRecord{...}`
+- `get_app_size` fallback portable (`wc -c` / path)
+- `api.restore` konsisten di undo flow
+- Refresh device: reset selection jika device hilang, auto-select ulang
+- AI chat auto-scroll ke pesan terbaru
+- Checkbox alignment center di tabel
+- Cache merge: hasil AI/safety tidak di-overwrite scan ulang
+- `enrichApps` tidak menimpa safety yang sudah known
+- Label cepat tanpa N+1 dumpsys (scan 200+ app tetap wajar)
+- `analyze_apps_batch` strip SSE + extract JSON array
+- Hasil AI disimpan ke SQLite
+- Permission Tauri dialog/fs untuk export
+- AI response parse toleran (SSE / markdown fence)
+
+### Changed
+- UI rombak total: sidebar + workbench dashboard teknisi
+- AI Chat tidak lagi nempel di panel kanan (jadi floating)
+- Light theme soft (tidak silau)
+- Default model / settings mengikuti config lokal teknisi
+
+### Security / Safety
+- Critical package di-skip pada batch uninstall/disable
+- Konfirmasi dialog sebelum aksi batch
+- API key disimpan lokal di config user (tidak di-commit)
+
+### Notes
+- Branch `v1-archive` menyimpan versi lama
+- Repo: https://github.com/4ntiDandruff/adb-uninstaller
+- Dev node: Kubuntu `hizam`
+
+---
+
+## [1.x] — archive
+
+Lihat branch `v1-archive`.

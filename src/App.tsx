@@ -1,0 +1,924 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
+import {
+  Sparkles,
+  RotateCcw,
+  Loader2,
+  AlertTriangle,
+  MessageSquare,
+  Clock,
+  Trash2,
+  ScrollText,
+  Sun,
+  Moon,
+  X,
+} from "lucide-react";
+import type { AppInfo, AppSettings, Device, DeviceInfo, LogEntry, SafetyLevel } from "./types";
+import { api, makeLog, toast } from "./components/api";
+import { Sidebar } from "./components/Sidebar";
+import { SearchBar } from "./components/SearchBar";
+import { AppTable } from "./components/AppTable";
+import { DetailPanel } from "./components/DetailPanel";
+import { LogDrawer } from "./components/LogDrawer";
+import { SettingsDialog } from "./components/SettingsDialog";
+import { ChangelogDialog } from "./components/ChangelogDialog";
+import { AIChat, type Msg } from "./components/AIChat";
+import { DebloatPresets } from "./components/DebloatPresets";
+import { ConfirmDialog } from "./components/ConfirmDialog";
+import { enrichApps, classifyPackage } from "./lib/safety-tags";
+import { translate, type Lang } from "./i18n";
+import { humanizeError } from "./errorMessages";
+import { exportPreset } from "./lib/exportPreset";
+
+type OpKind = "uninstall" | "disable" | "enable" | "force_stop" | "clear_data";
+
+// Normalize AI level casing so badges/filters work (Safe → safe)
+function normalizeSafety(level: string): AppInfo["safety_level"] {
+  const l = (level || "unknown").toLowerCase();
+  if (l === "safe" || l === "risky" || l === "critical" || l === "unknown") return l;
+  if (l.includes("crit")) return "critical";
+  if (l.includes("risk")) return "risky";
+  if (l.includes("safe") || l.includes("ok")) return "safe";
+  return "unknown";
+}
+
+
+export default function App() {
+  const [adbOk, setAdbOk] = useState<boolean | null>(null);
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [deviceId, setDeviceId] = useState<string | null>(null);
+  const [deviceInfo, setDeviceInfo] = useState<DeviceInfo | null>(null);
+  const [apps, setApps] = useState<AppInfo[]>([]);
+  const [loadingDevices, setLoadingDevices] = useState(false);
+  const [loadingApps, setLoadingApps] = useState(false);
+  const [scanProgress, setScanProgress] = useState(0);
+  const [scanMessage, setScanMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [query, setQuery] = useState("");
+  const [levelFilter, setLevelFilter] = useState<SafetyLevel | "all">("all");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [detail, setDetail] = useState<AppInfo | null>(null);
+  const [rightOpen, setRightOpen] = useState(false);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [changelogOpen, setChangelogOpen] = useState(false);
+  const [presetsOpen, setPresetsOpen] = useState(false);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [lang, setLang] = useState<Lang>("id");
+  const [undoStack, setUndoStack] = useState<{ pkg: string; kind: "uninstall" | "disable" }[]>([]);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMinimized, setChatMinimized] = useState(false);
+  // ponytail: default bottom-right, not top-left over sidebar
+  const [chatPos, setChatPos] = useState({ x: Math.max(window.innerWidth - 420, 100), y: Math.max(window.innerHeight - 560, 60) });
+  const [chatMsgs, setChatMsgs] = useState<Msg[]>([]);
+  const [confirm, setConfirm] = useState<{ title: string; message: string; detail?: string; danger?: boolean; onOk: () => void } | null>(null);
+  // Screen timeout (lockscreen) — nilai sekarang dalam ms, null = belum dibaca
+  const [timeoutOpen, setTimeoutOpen] = useState(false);
+  const [curTimeout, setCurTimeout] = useState<number | null>(null);
+  // AI analisa device — hasil brief teknisi
+  const [deviceAnalysis, setDeviceAnalysis] = useState<string | null>(null);
+  const [analyzingDevice, setAnalyzingDevice] = useState(false);
+  const loadRequestRef = useRef(0);
+
+  const t = useCallback((key: string) => translate(lang, key), [lang]);
+
+  const log = useCallback((entry: Omit<LogEntry, "id" | "ts">) => {
+    setLogs((l) => [...l.slice(-499), makeLog(entry)]);
+  }, []);
+
+  useEffect(() => {
+    const unlisten = listen<{ pct: number; msg: string }>("scan-progress", (event) => {
+      setScanProgress(event.payload.pct);
+      setScanMessage(event.payload.msg);
+    });
+    return () => {
+      unlisten.then((f) => f());
+    };
+  }, []);
+
+  useEffect(() => {
+    api.checkAdb().then((ok) => {
+      setAdbOk(ok);
+      log({
+        level: ok ? "success" : "error",
+        source: "system",
+        message: ok ? "ADB terdeteksi" : "[ADB-1001] ADB tidak terinstall",
+      });
+    });
+    api
+      .loadSettings()
+      .then((s) => {
+        setSettings(s);
+        setLang((s.language as Lang) || "id");
+        log({ level: "info", source: "system", message: "Settings dimuat" });
+        // Apply theme
+        if (s.theme === "light") {
+          document.documentElement.setAttribute("data-theme", "light");
+        } else {
+          document.documentElement.removeAttribute("data-theme");
+        }
+      })
+      .catch((e) => log({ level: "warn", source: "system", message: `Settings: ${e}` }));
+  }, [log]);
+
+  const scanDevices = useCallback(async () => {
+    setLoadingDevices(true);
+    setScanProgress(10);
+    setScanMessage("Mencari device...");
+    const t0 = performance.now();
+    try {
+      setScanProgress(30);
+      setScanMessage("Menjalankan adb devices...");
+      const devs = await api.scanDevices();
+      setScanProgress(80);
+      setScanMessage("Memproses hasil...");
+      setDevices(devs);
+      log({
+        level: "success",
+        source: "adb",
+        message: `Scan devices: ${devs.length} ditemukan`,
+        detail: devs.map((d) => `${d.id} [${d.status}] ${d.model}`).join("\n"),
+        duration_ms: Math.round(performance.now() - t0),
+      });
+      if (devs.length === 0) {
+        setDeviceId(null);
+        setApps([]);
+        setDeviceInfo(null);
+      } else {
+        setDeviceId((prev) => {
+          if (prev && devs.some((d) => d.id === prev)) return prev;
+          const online = devs.find((d) => d.status === "online") ?? devs[0];
+          return online.id;
+        });
+      }
+      setScanProgress(100);
+      setScanMessage("Scan selesai");
+    } catch (e) {
+      log({ level: "error", source: "adb", message: `Scan gagal: ${humanizeError(String(e))}` });
+      toast.error(`Scan device gagal`);
+      setScanMessage("Scan gagal");
+    } finally {
+      setLoadingDevices(false);
+      setTimeout(() => setScanProgress(0), 1000);
+    }
+  }, [log]);
+
+  useEffect(() => {
+    if (adbOk === true) {
+      scanDevices();
+    }
+  }, [adbOk, scanDevices]);
+
+  const autoAnalyzeUnknown = useCallback(async (
+    packages: string[],
+    targetDeviceId: string,
+    requestId: number,
+  ) => {
+    if (packages.length === 0) return;
+    setAnalyzing(true);
+    const t0 = performance.now();
+    let totalDone = 0;
+    try {
+      for (let i = 0; i < packages.length; i += 50) {
+        const batch = packages.slice(i, i + 50);
+        log({ level: "info", source: "ai", message: `Auto AI: batch ${Math.floor(i/50)+1} (${batch.length} pkg)` });
+        const results = await api.analyzeBatch(batch);
+        if (loadRequestRef.current !== requestId) return;
+        const map = new Map(results.map((r) => [r.package_name, r]));
+        setApps((prev) =>
+          prev.map((a) => {
+            const r = map.get(a.package_name);
+            return r ? { ...a, safety_level: normalizeSafety(r.level), safety_reason: r.reason, ...(r.app_name ? { label: r.app_name } : {}) } : a;
+          }),
+        );
+        // ponytail: persist AI results to SQLite so next load is instant
+        if (results.length > 0) {
+          api.saveAiResults(targetDeviceId, results.map((r) => ({
+            package_name: r.package_name,
+            app_name: r.app_name || "",
+            level: r.level,
+            reason: r.reason,
+          }))).catch((e) => log({ level: "warn", source: "cache", message: `Save AI cache gagal: ${e}` }));
+        }
+        totalDone += results.length;
+      }
+      log({ level: "success", source: "ai", message: `Auto AI selesai: ${totalDone} package`, duration_ms: Math.round(performance.now() - t0) });
+      toast.success(`AI auto: ${totalDone} package dianalisis`);
+    } catch (e) {
+      log({ level: "error", source: "ai", message: `Auto AI gagal`, detail: humanizeError(String(e)) });
+    } finally {
+      setAnalyzing(false);
+    }
+  }, [log]);
+
+  const loadApps = useCallback(
+    async (id: string) => {
+      const requestId = ++loadRequestRef.current;
+      setLoadingApps(true);
+      setScanProgress(5);
+      setScanMessage("Cek cache lokal...");
+      const t0 = performance.now();
+      try {
+        // Cek dulu ada cache tidak
+        setScanProgress(15);
+        setScanMessage("Query database lokal...");
+        const cached = await api.getCachedApps(id);
+        if (loadRequestRef.current !== requestId) return;
+        if (cached.length > 0) {
+          setScanProgress(50);
+          setScanMessage(`Load ${cached.length} app dari cache...`);
+          // Convert CachedApp ke AppInfo, enrich untuk safety tags
+          const apps: AppInfo[] = cached.map((c) => ({
+            package_name: c.package_name,
+            label: c.label,
+            is_system: c.is_system,
+            is_disabled: c.is_disabled,
+            is_running: false,
+            safety_level: c.safety_level,
+            safety_reason: c.safety_reason,
+            size: c.size,
+            version: c.version,
+          }));
+          // Enrich untuk update safety level dari static tags
+          setApps(enrichApps(apps, lang));
+          log({
+            level: "success",
+            source: "cache",
+            message: `Load dari cache: ${cached.length} package (terakhir scan: ${cached[0]?.scanned_at ?? "?"})`,
+            duration_ms: Math.round(performance.now() - t0),
+          });
+        }
+        
+        // Scan fresh untuk update running status dan data terbaru
+        setScanProgress(60);
+        setScanMessage("Scan device untuk update terbaru...");
+        const raw = await api.listApps(id);
+        if (loadRequestRef.current !== requestId) return;
+        setScanProgress(90);
+        setScanMessage("Memproses hasil...");
+        const enriched = enrichApps(raw, lang);
+        setApps(enriched);
+        log({
+          level: "success",
+          source: "adb",
+          message: `List apps: ${raw.length} package (fresh scan)`,
+          duration_ms: Math.round(performance.now() - t0),
+        });
+        api.getDeviceInfo(id)
+          .then((info) => {
+            if (loadRequestRef.current === requestId) setDeviceInfo(info);
+          })
+          .catch(() => {
+            if (loadRequestRef.current === requestId) setDeviceInfo(null);
+          });
+        setScanProgress(100);
+        setScanMessage("Selesai");
+        // Auto AI untuk package unknown (spek v2: unknown LANGSUNG diproses AI)
+        const unknowns = enriched.filter((a) => a.safety_level === "unknown").map((a) => a.package_name);
+        if (unknowns.length > 0) {
+          // fire-and-forget, tidak block UI
+          void autoAnalyzeUnknown(unknowns, id, requestId);
+        }
+      } catch (e) {
+        log({ level: "error", source: "adb", message: `List apps gagal: ${humanizeError(String(e))}` });
+        toast.error(`List apps gagal`);
+        setScanMessage("Gagal");
+      } finally {
+        if (loadRequestRef.current === requestId) {
+          setLoadingApps(false);
+          setTimeout(() => {
+            if (loadRequestRef.current === requestId) setScanProgress(0);
+          }, 1500);
+        }
+      }
+    },
+    // lang intentionally omitted — useEffect[lang] re-enriches static tags without full ADB rescan
+    [log, autoAnalyzeUnknown],
+  );
+
+  useEffect(() => {
+    if (deviceId) loadApps(deviceId);
+  }, [deviceId, loadApps]);
+
+  // Reset hasil analisa AI saat pindah device
+  useEffect(() => { setDeviceAnalysis(null); }, [deviceId]);
+
+  // Re-enrich saat lang berubah — static tags only, no AI re-call to prevent loops
+  // ponytail: removed AI re-translate to prevent infinite loop (setApps -> re-render -> re-trigger)
+  useEffect(() => {
+    if (apps.length === 0) return;
+    setApps((prev) => prev.map((a) => {
+      const tag = classifyPackage(a.package_name, lang);
+      if (tag.level !== 'unknown' && a.safety_level === tag.level) return { ...a, safety_reason: tag.reason };
+      return a;
+    }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang]);
+
+
+  const toggleSelect = useCallback((pkg: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(pkg)) next.delete(pkg);
+      else next.add(pkg);
+      return next;
+    });
+  }, []);
+
+  const toggleAll = useCallback((visible: AppInfo[]) => {
+    setSelected((prev) => {
+      const allSelected = visible.every((a) => prev.has(a.package_name));
+      const next = new Set(prev);
+      if (allSelected) visible.forEach((a) => next.delete(a.package_name));
+      else visible.forEach((a) => next.add(a.package_name));
+      return next;
+    });
+  }, []);
+
+  const openDetail = useCallback(
+    (app: AppInfo) => {
+      setDetail(app);
+      setRightOpen(true);
+      // Lazy-fetch ukuran APK saat detail dibuka
+      if (deviceId && (!app.size || app.size === "?")) {
+        api
+          .getAppSize(deviceId, app.package_name)
+          .then((size) => {
+            setApps((prev) =>
+              prev.map((x) => (x.package_name === app.package_name ? { ...x, size } : x)),
+            );
+            setDetail((d) => (d && d.package_name === app.package_name ? { ...d, size } : d));
+            // ponytail: persist size so next load no re-fetch
+            if (size && size !== "?") {
+              api.saveAppSize(deviceId, app.package_name, size).catch(() => {});
+            }
+          })
+          .catch(() => {});
+      }
+    },
+    [deviceId],
+  );
+
+  const runOp = useCallback(
+    async (kind: OpKind, pkg: string) => {
+      if (!deviceId) return;
+      const app = apps.find((a) => a.package_name === pkg);
+      const label = kind.replace("_", " ");
+      if (app?.safety_level === "critical") {
+        toast.error(`Diblokir: ${pkg} CRITICAL`);
+        log({ level: "warn", source: "ui", message: `Blokir op critical: ${label} ${pkg}` });
+        return;
+      }
+      setConfirm({
+        title: `${label.charAt(0).toUpperCase() + label.slice(1)}?`,
+        message: pkg,
+        detail: `Safety: ${app?.safety_level ?? "unknown"}`,
+        danger: kind === "uninstall" || kind === "clear_data",
+        onOk: async () => {
+          setConfirm(null);
+          setBusy(true);
+          log({ level: "info", source: "adb", message: `Exec: ${label} ${pkg}` });
+          try {
+            const res = await api[
+              kind === "force_stop" ? "forceStop" : kind === "clear_data" ? "clearData" : kind
+            ](deviceId, pkg);
+            if (res.success) {
+              toast.success(`${label} OK`);
+              log({ level: "success", source: "adb", message: `${label} sukses: ${pkg}`, detail: res.output, duration_ms: res.duration_ms });
+              if (kind === "uninstall" || kind === "disable") setUndoStack((u) => [...u, { pkg, kind }]);
+              if (deviceId) await loadApps(deviceId);
+            } else {
+              toast.error(`${label} gagal`);
+              log({ level: "error", source: "adb", message: `${label} gagal: ${pkg}`, detail: res.error ?? res.output, duration_ms: res.duration_ms });
+            }
+          } catch (e) {
+            toast.error(`${label} error`);
+            log({ level: "error", source: "adb", message: `${label} exception: ${pkg}`, detail: humanizeError(String(e)) });
+          } finally {
+            setBusy(false);
+          }
+        },
+      });
+    },
+    [deviceId, apps, loadApps, log],
+  );
+
+  const runBatch = useCallback(
+    async (packages: string[]) => {
+      if (!deviceId || packages.length === 0) return;
+      setConfirm({
+        title: `Uninstall ${packages.length} package?`,
+        message: packages.slice(0, 8).join("\n") + (packages.length > 8 ? `\n\u2026 +${packages.length - 8} lagi` : ""),
+        danger: true,
+        onOk: async () => {
+          setConfirm(null);
+          setBusy(true);
+          let success = 0;
+          let fail = 0;
+          for (const pkg of packages) {
+            const app = apps.find((a) => a.package_name === pkg);
+            if (app?.safety_level === "critical") {
+              log({ level: "warn", source: "adb", message: `Skip critical: ${pkg}` });
+              fail++;
+              continue;
+            }
+            try {
+              const res = await api.uninstall(deviceId, pkg);
+              if (res.success) {
+                success++;
+                setUndoStack((u) => [...u, { pkg, kind: "uninstall" }]);
+                log({ level: "success", source: "adb", message: `uninstall OK: ${pkg}`, duration_ms: res.duration_ms });
+              } else {
+                fail++;
+                log({ level: "error", source: "adb", message: `uninstall gagal: ${pkg}`, detail: humanizeError(res.error ?? res.output) });
+              }
+            } catch (e) {
+              fail++;
+              log({ level: "error", source: "adb", message: `uninstall exception: ${pkg}`, detail: humanizeError(String(e)) });
+            }
+          }
+          toast.success(`Batch: ${success} OK, ${fail} gagal`);
+          setSelected(new Set());
+          if (deviceId) await loadApps(deviceId);
+          setBusy(false);
+        },
+      });
+    },
+    [deviceId, apps, loadApps, log],
+  );
+
+  const runBatchOp = useCallback(
+    async (kind: OpKind, packages: string[]) => {
+      if (!deviceId || packages.length === 0) return;
+      const label = kind.replace("_", " ");
+      setConfirm({
+        title: `${label.charAt(0).toUpperCase() + label.slice(1)} ${packages.length} package?`,
+        message: packages.slice(0, 8).join("\n") + (packages.length > 8 ? `\n\u2026 +${packages.length - 8} lagi` : ""),
+        danger: kind === "uninstall" || kind === "clear_data",
+        onOk: async () => {
+          setConfirm(null);
+          setBusy(true);
+          let success = 0;
+          let fail = 0;
+          for (const pkg of packages) {
+            const app = apps.find((a) => a.package_name === pkg);
+            if (app?.safety_level === "critical") {
+              log({ level: "warn", source: "adb", message: `Skip critical: ${pkg}` });
+              fail++;
+              continue;
+            }
+            try {
+              const res = await api[
+                kind === "force_stop" ? "forceStop" : kind === "clear_data" ? "clearData" : kind
+              ](deviceId, pkg);
+              if (res.success) {
+                success++;
+                log({ level: "success", source: "adb", message: `${label} OK: ${pkg}`, duration_ms: res.duration_ms });
+              } else {
+                fail++;
+                log({ level: "error", source: "adb", message: `${label} gagal: ${pkg}`, detail: humanizeError(res.error ?? res.output) });
+              }
+            } catch (e) {
+              fail++;
+              log({ level: "error", source: "adb", message: `${label} exception: ${pkg}`, detail: humanizeError(String(e)) });
+            }
+          }
+          toast.success(`Batch ${label}: ${success} OK, ${fail} gagal`);
+          setSelected(new Set());
+          if (deviceId) await loadApps(deviceId);
+          setBusy(false);
+        },
+      });
+    },
+    [deviceId, apps, loadApps, log],
+  );
+
+  const undoLast = useCallback(async () => {
+    if (!deviceId || undoStack.length === 0) return;
+    const { pkg, kind } = undoStack[undoStack.length - 1];
+    setBusy(true);
+    try {
+      // ponytail: undo disable pakai enable, bukan install-existing (yang tak re-enable app)
+      const res = kind === "disable" ? await api.enable(deviceId, pkg) : await api.restore(deviceId, pkg);
+      if (!res.success) {
+        throw new Error(res.error ?? "Undo gagal");
+      }
+      setUndoStack((u) => u.slice(0, -1));
+      toast.success(`Undo: ${pkg} dikembalikan`);
+      log({ level: "success", source: "adb", message: `undo ${kind}: ${pkg}` });
+      await loadApps(deviceId);
+    } catch (e) {
+      toast.error(`Undo gagal`);
+      log({ level: "error", source: "adb", message: `undo gagal: ${pkg}`, detail: String(e) });
+    } finally {
+      setBusy(false);
+    }
+  }, [deviceId, undoStack, loadApps, log]);
+
+  const analyzeUnknown = useCallback(async () => {
+    const unknown = apps.filter((a) => a.safety_level === "unknown").slice(0, 50);
+    if (unknown.length === 0) {
+      toast.info("Tidak ada package unknown");
+      return;
+    }
+    setAnalyzing(true);
+    const t0 = performance.now();
+    try {
+      const results = await api.analyzeBatch(unknown.map((a) => a.package_name));
+      const map = new Map(results.map((r) => [r.package_name, r]));
+      setApps((prev) =>
+        prev.map((a) => {
+          const r = map.get(a.package_name);
+          return r ? { ...a, safety_level: normalizeSafety(r.level), safety_reason: r.reason, ...(r.app_name ? { label: r.app_name } : {}) } : a;
+        }),
+      );
+      // ponytail: persist manual AI results too
+      if (deviceId && results.length > 0) {
+        api.saveAiResults(deviceId, results.map((r) => ({
+          package_name: r.package_name,
+          app_name: r.app_name || "",
+          level: r.level,
+          reason: r.reason,
+        }))).catch(() => {});
+      }
+      toast.success(`AI analysis: ${results.length} package`);
+      log({ level: "success", source: "ai", message: `AI batch ${results.length} package`, duration_ms: Math.round(performance.now() - t0) });
+    } catch (e) {
+      toast.error(`AI analysis gagal`);
+      log({ level: "error", source: "ai", message: `AI batch gagal`, detail: String(e) });
+    } finally {
+      setAnalyzing(false);
+    }
+  }, [apps, log, deviceId]);
+
+  const openTimeout = useCallback(() => {
+    setTimeoutOpen(true);
+    setCurTimeout(null);
+    if (deviceId) api.getScreenTimeout(deviceId).then(setCurTimeout).catch(() => setCurTimeout(-1));
+  }, [deviceId]);
+
+  const applyTimeout = useCallback(
+    async (ms: number) => {
+      if (!deviceId) return;
+      setBusy(true);
+      try {
+        const res = await api.setScreenTimeout(deviceId, ms);
+        if (res.success) {
+          const actual = Number(res.output);
+          setCurTimeout(actual);
+          const mins = actual >= 2147483647 ? "\u221e" : `${Math.round(actual / 60000)}m`;
+          toast.success(`Layar mati: ${mins}`);
+          log({ level: "success", source: "adb", message: `Screen timeout set ${actual}ms`, duration_ms: res.duration_ms });
+          setTimeoutOpen(false);
+        } else {
+          toast.error("Gagal set timeout");
+          log({ level: "error", source: "adb", message: `Set timeout gagal`, detail: res.error ?? res.output });
+        }
+      } catch (e) {
+        toast.error("Set timeout error");
+        log({ level: "error", source: "adb", message: `Set timeout exception`, detail: humanizeError(String(e)) });
+      } finally {
+        setBusy(false);
+      }
+    },
+    [deviceId, log],
+  );
+
+  const analyzeDevice = useCallback(async () => {
+    if (!deviceInfo) return;
+    setAnalyzingDevice(true);
+    setDeviceAnalysis(null);
+    try {
+      const brief = await api.analyzeDevice(
+        deviceInfo.model,
+        deviceInfo.chipset || "unknown",
+        `${deviceInfo.android_version} (SDK ${deviceInfo.sdk_level})`,
+      );
+      setDeviceAnalysis(brief);
+      log({ level: "success", source: "ai", message: `Analisa device: ${deviceInfo.model}` });
+    } catch (e) {
+      toast.error("Analisa device gagal");
+      log({ level: "error", source: "ai", message: `Analisa device gagal`, detail: humanizeError(String(e)) });
+    } finally {
+      setAnalyzingDevice(false);
+    }
+  }, [deviceInfo, log]);
+
+  const stats = useMemo(() => {
+    const safe = apps.filter((a) => a.safety_level === "safe").length;
+    const risky = apps.filter((a) => a.safety_level === "risky").length;
+    const critical = apps.filter((a) => a.safety_level === "critical").length;
+    const unknown = apps.filter((a) => a.safety_level === "unknown").length;
+    return { safe, risky, critical, unknown };
+  }, [apps]);
+
+  const chatContext = useMemo(
+    () =>
+      `Device: ${deviceId ?? "-"}\nTotal apps: ${apps.length}\nSafe:${stats.safe} Risky:${stats.risky} Critical:${stats.critical} Unknown:${stats.unknown}\nSample: ${apps
+        .slice(0, 15)
+        .map((a) => a.package_name)
+        .join(", ")}`,
+    [deviceId, apps, stats],
+  );
+
+  if (adbOk === false) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
+        <AlertTriangle size={52} className="text-warning" />
+        <h1 className="text-xl font-bold">ADB tidak terdeteksi</h1>
+        <p className="max-w-md text-sm text-dim">
+          Install dulu: <code className="rounded bg-slate-800 px-2 py-0.5">sudo apt install adb</code> lalu restart
+          aplikasi.
+        </p>
+        <button className="btn btn-primary" onClick={() => api.checkAdb().then(setAdbOk)}>
+          Cek Lagi
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="app-shell">
+      <Sidebar
+        devices={devices}
+        deviceId={deviceId}
+        onSelectDevice={setDeviceId}
+        onRefresh={scanDevices}
+        loadingDevices={loadingDevices}
+        deviceInfo={deviceInfo}
+        onOpenSettings={() => setSettingsOpen(true)}
+        apps={apps}
+        onAnalyzeDevice={analyzeDevice}
+        deviceAnalysis={deviceAnalysis}
+        analyzingDevice={analyzingDevice}
+        t={t}
+      />
+
+      <div className="main">
+        {/* Topbar */}
+        <div className="topbar">
+          <div className="topbar-title">{t("topbar.title")}</div>
+          <div className="topbar-spacer" />
+
+          <div className="topbar-group">
+            <button className="btn btn-ghost btn-sm" onClick={() => setPresetsOpen(true)} title={t("topbar.presets")}><Trash2 size={14} /> {t("topbar.presets")}</button>
+            <button className="btn btn-ghost btn-sm" onClick={openTimeout} disabled={!deviceId} title={deviceId ? "Perpanjang waktu layar mati (lockscreen)" : "Pilih device dulu"}><Clock size={14} /> Layar</button>
+            <button className="btn btn-ghost btn-sm" onClick={analyzeUnknown} disabled={analyzing || stats.unknown === 0} title="AI analisis package unknown">
+              {analyzing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} AI ({stats.unknown})
+            </button>
+            <button className="btn btn-ghost btn-sm" onClick={undoLast} disabled={busy || undoStack.length === 0} title="Undo uninstall terakhir">
+              <RotateCcw size={14} /> Undo ({undoStack.length})
+            </button>
+          </div>
+
+          <div className="topbar-sep" />
+
+          <div className="topbar-group">
+            <button className="btn btn-ghost btn-sm" onClick={() => { setChatOpen((o) => !o); setChatMinimized(false); }} title={t("chat.title")}>
+              <MessageSquare size={14} /> AI Chat
+            </button>
+            <button className="btn btn-ghost btn-sm" onClick={() => setChangelogOpen(true)} title="Catatan Rilis"><ScrollText size={14} /></button>
+          </div>
+
+          <div className="topbar-sep" />
+
+          <div className="topbar-group">
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => {
+                const next = settings?.theme === "light" ? "dark" : "light";
+                if (next === "light") { document.documentElement.setAttribute("data-theme", "light"); }
+                else { document.documentElement.removeAttribute("data-theme"); }
+                if (settings) {
+                  const updated = { ...settings, theme: next };
+                  setSettings(updated);
+                  api.saveSettings(updated).catch((e) => log({ level: "warn", source: "system", message: 'Simpan theme gagal: ' + e }));
+                }
+              }}
+              title={t("topbar.theme")}
+            >
+              {settings?.theme === "light" ? <Moon size={14} /> : <Sun size={14} />}
+            </button>
+            <select className="select-dark btn-sm" style={{ width: 70 }} value={lang} onChange={(e) => {
+              const next = e.target.value as Lang;
+              setLang(next);
+              if (settings) { const updated = { ...settings, language: next }; setSettings(updated); api.saveSettings(updated).catch(() => {}); }
+            }}>
+              <option value="id">ID</option>
+              <option value="en">EN</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Progress bar */}
+        {(loadingDevices || loadingApps) && scanProgress > 0 && (
+          <div className="progress-container">
+            <div className="progress-info">
+              <span className="progress-text">{scanMessage}</span>
+              <span className="progress-pct">{scanProgress}%</span>
+            </div>
+            <div className="progress-bar">
+              <div className="progress-fill" style={{ width: `${scanProgress}%` }} />
+            </div>
+          </div>
+        )}
+
+        {/* Workbench */}
+        <div className="workbench">
+          <div className="content">
+            <div className="toolbar">
+              <SearchBar value={query} onChange={setQuery} onClear={() => setQuery("")} placeholder={t("toolbar.search")} />
+              <select
+                className="select-dark"
+                style={{ width: 150 }}
+                value={levelFilter}
+                onChange={(e) => setLevelFilter(e.target.value as SafetyLevel | "all")}
+              >
+                <option value="all">{t("toolbar.all_levels")}</option>
+                <option value="safe">Safe</option>
+                <option value="risky">Risky</option>
+                <option value="critical">Critical</option>
+                <option value="unknown">Unknown</option>
+              </select>
+              {(query || levelFilter !== "all") && (
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => {
+                    setQuery("");
+                    setLevelFilter("all");
+                  }}
+                >
+                  <RotateCcw size={13} /> Reset
+                </button>
+              )}
+              {selected.size > 0 && (
+                <div className="ml-auto flex items-center gap-1.5 pl-3" style={{borderLeft: "1px solid var(--border)"}}>
+                  <button className="btn btn-danger btn-sm" disabled={busy} onClick={() => runBatch([...selected])}>
+                    {t("toolbar.uninstall")} {selected.size}
+                  </button>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    disabled={busy}
+                    onClick={() => runBatchOp("disable", [...selected])}
+                    title={t("toolbar.disable")}
+                  >
+                    {t("toolbar.disable")}
+                  </button>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    disabled={busy}
+                    onClick={() => runBatchOp("enable", [...selected])}
+                    title={t("toolbar.enable")}
+                  >
+                    {t("toolbar.enable")}
+                  </button>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    disabled={busy}
+                    onClick={() => runBatchOp("force_stop", [...selected])}
+                    title={t("toolbar.stop")}
+                  >
+                    {t("toolbar.stop")}
+                  </button>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    disabled={busy}
+                    onClick={() => runBatchOp("clear_data", [...selected])}
+                    title={t("toolbar.clear")}
+                  >
+                    {t("toolbar.clear")}
+                  </button>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    disabled={busy}
+                    onClick={() => exportPreset(apps, selected, deviceInfo?.model)}
+                    title="Export preset debloat"
+                  >
+                    💾 Export
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <AppTable
+              apps={apps}
+              loading={loadingApps}
+              query={query}
+              levelFilter={levelFilter}
+              selected={selected}
+              onToggleSelect={toggleSelect}
+              onToggleAll={toggleAll}
+              onOpenDetail={openDetail}
+              activeApp={detail?.package_name ?? null}
+              onScan={scanDevices}
+              t={t}
+            />
+
+
+            <LogDrawer logs={logs} onClear={() => setLogs([])} />
+          </div>
+
+          {/* Right panel: detail atau AI */}
+          {rightOpen && (
+              <DetailPanel
+                app={detail}
+                onClose={() => setRightOpen(false)}
+                onUninstall={(a) => runOp("uninstall", a.package_name)}
+                onDisable={(a) => runOp("disable", a.package_name)}
+                onEnable={(a) => runOp("enable", a.package_name)}
+                onForceStop={(a) => runOp("force_stop", a.package_name)}
+                onClearData={(a) => runOp("clear_data", a.package_name)}
+                busy={busy}
+                t={t}
+              />
+          )}
+        </div>
+      </div>
+
+      {chatOpen && (
+        <AIChat
+          context={chatContext}
+          msgs={chatMsgs}
+          setMsgs={setChatMsgs}
+          pos={chatPos}
+          setPos={setChatPos}
+          minimized={chatMinimized}
+          onClose={() => setChatOpen(false)}
+          onToggleMinimize={() => setChatMinimized((m) => !m)}
+        />
+      )}
+
+      {presetsOpen && (
+        <div className="modal-overlay" onClick={() => setPresetsOpen(false)}>
+          <div className="modal" style={{ maxWidth: 640 }} onClick={(e) => e.stopPropagation()}>
+            <DebloatPresets installedApps={apps} onExecute={(pkgs) => { setPresetsOpen(false); runBatch(pkgs); }} busy={busy} t={t} />
+          </div>
+        </div>
+      )}
+      {timeoutOpen && (
+        <div className="modal-overlay" onClick={() => setTimeoutOpen(false)}>
+          <div className="modal" style={{ maxWidth: 400 }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <div className="modal-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Clock size={16} /> Waktu Layar Mati
+              </div>
+              <button className="btn btn-ghost btn-icon" onClick={() => setTimeoutOpen(false)} title="Tutup">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="modal-body">
+            <p className="text-sm text-dim mb-3">
+              Saat ini:{" "}
+              <b>
+                {curTimeout === null
+                  ? "membaca\u2026"
+                  : curTimeout < 0
+                  ? "?"
+                  : curTimeout >= 2147483647
+                  ? "Selamanya"
+                  : `${Math.round(curTimeout / 60000)} menit`}
+              </b>
+            </p>
+            <div className="flex flex-col gap-1.5">
+              {[
+                { label: "1 menit", ms: 60000 },
+                { label: "5 menit", ms: 300000 },
+                { label: "10 menit", ms: 600000 },
+                { label: "30 menit", ms: 1800000 },
+                { label: "60 menit", ms: 3600000 },
+                { label: "Selamanya (layar tak mati)", ms: 2147483647 },
+              ].map((o) => (
+                <button
+                  key={o.ms}
+                  className={`btn btn-sm ${curTimeout === o.ms ? "btn-primary" : "btn-ghost"}`}
+                  disabled={busy || !deviceId}
+                  onClick={() => applyTimeout(o.ms)}
+                  style={{ justifyContent: "flex-start" }}
+                >
+                  {curTimeout === o.ms ? "✓ " : ""}{o.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-faint mt-3">
+              Kalau HP terpasang Device Admin (app kantor/keamanan), angka bisa ditolak sistem — hasil nyata ditampilkan di atas setelah set.
+            </p>
+            </div>
+          </div>
+        </div>
+      )}
+      <ChangelogDialog open={changelogOpen} onClose={() => setChangelogOpen(false)} lang={lang} />
+      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} onSaved={setSettings} />
+      <ConfirmDialog
+        open={confirm !== null}
+        title={confirm?.title ?? ""}
+        message={confirm?.message ?? ""}
+        detail={confirm?.detail}
+        danger={confirm?.danger}
+        onConfirm={() => confirm?.onOk()}
+        onCancel={() => setConfirm(null)}
+      />
+    </div>
+  );
+}
+
