@@ -1,13 +1,14 @@
-import { X, Globe, Github, Info, ShieldCheck, Heart } from "lucide-react";
+import { X, Globe, Github, Info, ShieldCheck, Heart, ScrollText } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
 interface Props {
   open: boolean;
   onClose: () => void;
+  onOpenChangelog: () => void;
   lang?: string;
 }
 
-export function AboutDialog({ open, onClose, lang = "id" }: Props) {
+export function AboutDialog({ open, onClose, onOpenChangelog, lang = "id" }: Props) {
   if (!open) return null;
 
   const handleOpenLink = async (url: string) => {
@@ -80,10 +81,10 @@ export function AboutDialog({ open, onClose, lang = "id" }: Props) {
             </div>
           </div>
 
-          {/* Links / Website */}
+          {/* Links / Website / Changelog */}
           <div className="flex gap-2 pt-2">
             <button
-              className="btn btn-ghost btn-sm flex-1 flex items-center justify-center gap-2"
+              className="btn btn-ghost btn-sm flex-1 flex items-center justify-center gap-1.5"
               onClick={() => handleOpenLink("https://megapass.web.id")}
               title="Kunjungi Website Megapass"
               style={{ border: "1px solid var(--border)" }}
@@ -92,13 +93,22 @@ export function AboutDialog({ open, onClose, lang = "id" }: Props) {
               <span>Website</span>
             </button>
             <button
-              className="btn btn-ghost btn-sm flex-1 flex items-center justify-center gap-2"
+              className="btn btn-ghost btn-sm flex-1 flex items-center justify-center gap-1.5"
               onClick={() => handleOpenLink("https://github.com/4ntiDandruff/adb-uninstaller")}
               title="Kunjungi Repository GitHub"
               style={{ border: "1px solid var(--border)" }}
             >
               <Github size={14} />
               <span>GitHub</span>
+            </button>
+            <button
+              className="btn btn-ghost btn-sm flex-1 flex items-center justify-center gap-1.5"
+              onClick={() => { onClose(); onOpenChangelog(); }}
+              title="Lihat Catatan Rilis"
+              style={{ border: "1px solid var(--border)" }}
+            >
+              <ScrollText size={14} className="text-warning" />
+              <span>Rilis</span>
             </button>
           </div>
         </div>

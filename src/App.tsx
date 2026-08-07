@@ -8,7 +8,6 @@ import {
   MessageSquare,
   Clock,
   Trash2,
-  ScrollText,
   Sun,
   Moon,
   X,
@@ -681,7 +680,6 @@ export default function App() {
             <button className="btn btn-ghost btn-sm" onClick={() => { setChatOpen((o) => !o); setChatMinimized(false); }} title={t("chat.title")}>
               <MessageSquare size={14} /> AI Chat
             </button>
-            <button className="btn btn-ghost btn-sm" onClick={() => setChangelogOpen(true)} title="Catatan Rilis"><ScrollText size={14} /></button>
             <button className="btn btn-ghost btn-sm" onClick={() => setAboutOpen(true)} title={t("topbar.about")}><Info size={14} /></button>
           </div>
 
@@ -912,7 +910,7 @@ export default function App() {
         </div>
       )}
       <ChangelogDialog open={changelogOpen} onClose={() => setChangelogOpen(false)} lang={lang} />
-      <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} lang={lang} />
+      <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} onOpenChangelog={() => setChangelogOpen(true)} lang={lang} />
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} onSaved={setSettings} />
       <ConfirmDialog
         open={confirm !== null}
