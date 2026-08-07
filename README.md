@@ -15,6 +15,11 @@ Desktop app Linux untuk manage aplikasi Android via ADB: scan device, list packa
 
 Aplikasi ini dipaketkan resmi dalam format **.deb** untuk Linux (Kubuntu, Ubuntu, Linux Mint, Debian).
 
+### Lokasi File .deb (Hasil Build):
+```
+/home/hizam/proyek/adb-uninstaller/src-tauri/target/release/bundle/deb/ADB Uninstaller_2.2.4_amd64.deb
+```
+
 ### Cara Install Paket .deb:
 ```bash
 sudo dpkg -i "src-tauri/target/release/bundle/deb/ADB Uninstaller_2.2.4_amd64.deb"
