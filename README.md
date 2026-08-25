@@ -114,6 +114,7 @@ Build lokal menghasilkan:
 git clone https://github.com/4ntiDandruff/adb-uninstaller.git
 cd adb-uninstaller
 npm install
+export PATH="$HOME/.cargo/bin:$PATH"  # jika cargo: command not found
 npm run tauri build
 ```
 
