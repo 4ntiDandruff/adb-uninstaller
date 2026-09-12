@@ -32,3 +32,12 @@ settings.local.json
 
 # Build artifacts
 src-tauri/target
+
+# OPSEC & Local Prompts
+PROMPT.md
+plan.md
+*.token
+*.session
+*.key
+*.pem
+*.id_rsa

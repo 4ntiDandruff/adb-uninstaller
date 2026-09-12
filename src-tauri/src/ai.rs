@@ -38,9 +38,9 @@ pub struct AppSettings {
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
-            ai_base_url: "http://43.163.100.241:1997/v1".into(),
+            ai_base_url: "https://api.openai.com/v1".into(),
             ai_api_key: String::new(),
-            ai_model: "kr/claude-haiku-4.5".into(),
+            ai_model: "gpt-4o-mini".into(),
             ai_system_prompt:
                 "Kamu asisten ADB untuk teknisi servis HP Indonesia. Spesialisasi: debloat Android, analisa package, troubleshooting HP. Jawab dalam Bahasa Indonesia kecuali diminta bahasa lain. Singkat dan praktis.".into(),
             language: "id".into(),
@@ -87,7 +87,7 @@ pub fn save_settings(settings: AppSettings) -> Result<(), String> {
 }
 
 fn strip_sse(text: &str) -> String {
-    // ZevaiRouter kadang return SSE: "data: {...}\ndata: {...}\ndata: [DONE]"
+    // Provider kadang return SSE: "data: {...}\ndata: {...}\ndata: [DONE]"
     // Concat semua JSON payload, bukan cuma ambil yang pertama.
     let mut parts: Vec<String> = Vec::new();
     let mut is_sse = false;
@@ -483,7 +483,7 @@ pub async fn chat_with_ai(messages: Vec<ChatMessage>, context: String) -> Result
 
     let text = strip_sse(&text);
     if text.is_empty() {
-        return Err("[ADB-4009] AI balas body kosong (HTTP 200 tapi no content). Cek model/provider di ZevaiRouter.".into());
+        return Err("[ADB-4009] AI balas body kosong (HTTP 200 tapi no content). Cek model/provider di pengaturan AI.".into());
     }
     let v: Value = serde_json::from_str(&text).map_err(|e| {
         let preview: String = text.chars().take(200).collect();

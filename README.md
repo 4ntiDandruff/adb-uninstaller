@@ -17,7 +17,7 @@ Aplikasi ini dipaketkan resmi dalam format **.deb** untuk Linux (Kubuntu, Ubuntu
 
 ### Lokasi File .deb (Hasil Build):
 ```
-/home/hizam/proyek/adb-uninstaller/src-tauri/target/release/bundle/deb/ADB Uninstaller_2.2.5_amd64.deb
+src-tauri/target/release/bundle/deb/ADB Uninstaller_2.2.5_amd64.deb
 ```
 
 ### Cara Install Paket .deb:
@@ -54,7 +54,7 @@ sudo dpkg -i "src-tauri/target/release/bundle/deb/ADB Uninstaller_2.2.5_amd64.de
 - Critical package diblokir dari uninstall/disable
 
 ### AI
-- Custom OpenAI-compatible provider (ZevaiRouter / lokal / OpenAI)
+- Custom OpenAI-compatible provider (Ollama / OpenRouter / Groq / OpenAI)
 - Tombol **Test Koneksi** + daftar model
 - Chat floating window (drag mouse + touch, minimize, clear history)
 - Temperature + max tokens di Settings
