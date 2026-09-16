@@ -7,32 +7,39 @@ Format pencatatan berpedoman pada prinsip *Keep a Changelog* dengan kata kerja f
 
 ## [2.3.0] — 2026-09-16
 
-Rilis Mayor: Penambahan Modul Diagnostik Memori Storage Doctor, Perombakan Dual-Theme Autentik Megapass, dan Standardisasi Geometri Tombol.
+Rilis Mayor: Penambahan Modul Diagnostik Memori Storage Doctor, Ekstraktor APK Offline, Floating Bottom Action Dock, Sekring Kernel Anti-Zombie, dan Perombakan Dual-Theme Autentik Megapass.
 
 ### Added (Fitur & Instrumen Baru)
-- **Modul Storage Doctor**: Menambahkan kokpit telemetri penyimpanan internal Android (Total, Used, Free) dengan visualisasi bar kapasitas real-time.
+- **Ekstraktor APK Offline (Offline APK Extractor)**: Menambahkan mesin penarik berkas APK mentah (`extract_apk` dan `extract_multiple_apks` di backend Rust) yang mengambil path via `pm path` dan menyedotnya langsung ke folder `~/Downloads/APK_Backup/<vendor_model>/<package>_v<version>.apk` untuk backup aplikasi penting konsumen tanpa internet.
+- **Floating Bottom Action Dock**: Menambahkan bilah aksi melayang responsif di bagian bawah layar (`.floating-batch-dock`) yang muncul otomatis saat paket dipilih, menyediakan tombol seleksi jempol cepat (Uninstall, Disable, Enable, Ekstraksi APK, Export JSON, dan Clear).
+- **Scanner Multi-Vendor Storage Doctor**:
+  - *Telegram Pruner*: Pemindaian otomatis folder media Telegram berukuran masif (Video, Dokumen, Audio) dan cache partikel.
+  - *Crash Dumps & Debug Logs*: Pembersihan berkas dump debug vendor OEM bawaan MIUI/HyperOS, ColorOS/Realme, Transsion (Infinix/Tecno), dan Vivo yang sering membengkak puluhan gigabyte di `/sdcard/`.
+  - *Orphan Zombie Directory*: Katalog deteksi folder sisa aplikasi yang sudah dicopot (TikTok, Likee, Helo, DUrecorder, InShot, VivaVideo, Baidu).
+- **Multi-Segment Interactive Progress Meter**: Menambahkan visualisasi kapasitas penyimpanan bertingkat (Sistem & Aplikasi, Sampah Terpilih Siap Dipulihkan, dan Sisa Ruang Bebas) dengan animasi transisi pegas 350ms cubic-bezier dan efek denyut pendar lembut.
+- **Tombol 1-Klik Bersihkan Semua Aman**: Menambahkan tombol aksi instan untuk menyeleksi seluruh item berstatus aman (*Safe*) dan langsung membuka dialog konfirmasi dry-run.
+- **Lencana Kategori Brand Storage**: Menambahkan 6 kelas warna khas brand untuk identifikasi visual instan (`badge-cat-whatsapp`, `badge-cat-telegram`, `badge-cat-orphan`, `badge-cat-apk`, `badge-cat-cache`, `badge-cat-logs`).
 - **Speedometer Chip eMMC / UFS**: Menanamkan micro-test penulisan acak via `dd if=/dev/zero of=... bs=1M count=10 oflag=dsync` untuk mengukur kecepatan tulis nyata (*write speed* dalam MB/s) dan latensi respon (ms), mendeteksi keausan chip memori flash sebelum terlambat.
 - **Pembersihan Cache Global Tanpa Root**: Menambahkan saklar *Trim Caches* yang memicu perintah kernel `pm trim-caches 999999999999` untuk menyapu sampah RAM/cache seluruh aplikasi seketika.
-- **Triage 5 Kategori Sampah Memori**: Menambahkan pemindaian otomatis untuk berkas instalasi APK usang (`/sdcard/Download/*.apk`), cache thumbnail (`.thumbnails`), berkas cache aplikasi, folder berkas temporer, dan folder sisa aplikasi yang sudah dicopot.
 - **Simulasi Dry-Run**: Menambahkan dialog pratinjau sebelum eksekusi pembersihan permanen agar teknisi dapat meninjau daftar berkas dan total ukuran byte yang akan dihapus.
 - **Ekspor Laporan Servis WhatsApp 1-Klik**: Menambahkan generator teks laporan format pesan instan bertajuk `*LAPORAN SERVIS MEMORI — MEGAPASS*` yang langsung tersalin ke clipboard sistem.
 - **AI Storage Advisor**: Menambahkan integrasi konsultasi diagnosis storage berbasis model AI untuk memberikan 3 poin saran teknis fisik kepada teknisi meja servis.
-- **Tema Ganda Autentik Meja Servis**:
-  - *Dark Modern Tech*: Mengunci fondasi Deep Slate (`#0B1220`) dengan pendar aksen Electric Cyan (`#22D3EE`) dan tombol bergradien tegangan tinggi.
-  - *Cupertino Liquid Crystal v2.0*: Mengimplementasikan fondasi kanvas Platinum (`#F5F5F7`) berpadu 5 titik gradien ambient iridescent mesh dinamis dan tombol biru Apple (`#0071E3`).
-- **Ikon SVG Lucide Penuh pada Seluruh Tombol Aksi**: Menambahkan ikon native `<Trash2>`, `<Ban>`, `<CheckCircle2>`, `<PowerOff>`, `<Eraser>`, `<Download>`, dan `<Sparkles>` pada toolbar batch dan panel inspektur aplikasi.
+- **Standarisasi Header Modal Presets & Confirm**: Menambahkan `modal-head`, ikon `Trash2`, judul baku, dan tombol tutup silang `X` pada `DebloatPresets.tsx` dan `ConfirmDialog.tsx`.
 
 ### Changed (Penyelarasan & Peningkatan Performa)
+- **Eliminasi Total Karakter Emoji ke TUI Badges**: Menghapus seluruh karakter emoji grafis (`✨`, `🐛`, `🎨`, `⚠️`, `✓`, `📜`) dari antarmuka dan menggantikannya dengan 100% lencana teks TUI meja servis (`[feat]`, `[fix]`, `[ui]`, `[perf]`, `[ai]`, `[clean]`, `[sec]`) dan inline SVG native Lucide (`ScrollText`, `CheckCircle2`).
+- **Peningkatan Kontras Tema Terang (WCAG AA/AAA)**: Mengunci warna teks utilitas aksen cyan (`#0284c7`), amber (`#b45309`), dan merah (`#b91c1c`) di mode terang sehingga memiliki rasio kontras tinggi (>4.5:1) di atas latar belakang putih.
+- **Fisika Transisi Scoped**: Mengganti seluruh sisa deklarasi `transition-all` menjadi transisi properti terarah (seperti `transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1)`) pada bilah statistik sidebar dan progress meter.
+- **Concentric Radius & Hover Lift**: Memperbarui radius kartu bento dari 12px menjadi 14px agar proporsional dengan padding 16px, dilengkapi efek angkat `translateY(-1px)` saat kursor melayang.
 - **Standardisasi Geometri Tombol**: Mengunci seluruh tombol antarmuka pada skala terukur: tinggi 32px untuk aksi utama (`.btn`), tinggi 28px untuk tombol utilitas (`.btn-sm`), dan bujur sangkar presisi 28px × 28px untuk tombol ikon murni (`.btn-icon.btn-sm`).
-- **Penyelarasan Elemen Topbar**: Mengunci dropdown pilihan bahasa (`select-dark btn-sm`) dan tombol utilitas (*Theme, Info, Screen, Presets, Undo, AI Chat*) tepat pada satu garis horizontal dengan tinggi seragam 28px.
-- **Eliminasi Total Karakter Emoji**: Menghapus seluruh karakter emoji mentah sistem (`💾`, `⚡`, `🛡️`, `🧹`, `🚀`) dari antarmuka dan menggantikannya dengan 100% inline SVG Lucide agar kebal dari kerusakan rendering kotak silang (*tofu*).
-- **Segmented Control Neomorphic**: Mengubah tab aktif navigasi menjadi kartu terangkat berwarna putih (`#FFFFFF`) dengan bayangan halus `0 2px 8px rgba(0,0,0,0.1)` pada mode terang dan gradien cyan berteks gelap kontras pada mode gelap.
+- **Diferensiasi Ikon Ekspor**: Memisahkan ikon untuk ekstraksi APK mentah (`<Download>`) dan ekspor preset JSON (`<FileDown>`).
 
-### Fixed (Perbaikan Bug & Sirkuit)
-- **Bug Chevron Tiling Dropdown (`v v v v v`)**: Memperbaiki reset properti `background:` shorthand CSS pada kelas `.select-dark` di mode terang yang sebelumnya menghapus deklarasi `background-repeat: no-repeat`.
-- **Garis Potong Empty State Tabel**: Menghilangkan garis batas horizontal `border-bottom` bawaan tabel saat antrean paket kosong, menjaga area pandang tengah tetap lapang dan rapi.
-- **Kontras Teks Badge Kategori Storage**: Memperbaiki kontras warna teks pada pil hitungan kategori aktif agar terbaca tegas di mode terang maupun mode gelap.
-- **Dead Code Eliminasi di Storage Doctor**: Menghapus import ikon `Smartphone` yang tidak terpakai di berkas `StorageDoctor.tsx` guna meloloskan validasi kompilasi `tsc --noEmit`.
+### Fixed (Perbaikan Bug & Sirkuit Keamanan)
+- **Sekring Kernel Tokio Anti-Zombie**: Menanamkan `.kill_on_drop(true)` pada Tokio `Command` di driver ADB backend (`run_adb`, `run_adb_piped`, `extract_apk`) untuk mematikan sub-proses ADB seketika jika tugas dibatalkan atau timeout, mencegah kebocoran proses zombie di kernel Linux.
+- **Clippy Compiler Lints**: Membersihkan *needless borrow* pada `extract_apk` handler Rust sehingga kompilasi bersih tanpa *warning*.
+- **Bug Chevron Tiling Dropdown (`v v v v v`)**: Memperbaiki reset properti `background:` shorthand CSS pada kelas `.select-dark` di mode terang.
+- **Eliminasi Karakter Em-Dash**: Mengganti seluruh karakter em-dash (`—`) menjadi tanda panah (`→`) atau tanda hubung biasa (`-`) sesuai standar direktif anti-AI slop.
+- **Sinkronisasi Versi Antarmuka**: Memperbarui string versi pada dialog Tentang dan catatan rilis menjadi `v2.3.0`.
 
 ---
 
@@ -58,47 +65,3 @@ Audit Sistem Menyeluruh, Optimasi Performa Basis Data, dan Penyesuaian CSP Tauri
 ### Fixed
 - **Optimasi Sambungan Basis Data**: Mengalihkan fungsi `list_apps` pada `adb.rs` untuk memakai instance path `db_path()` langsung tanpa memanggil `init_db()` berulang, mengeliminasi potensi tabrakan *race condition*.
 - **Penyelesaian Peringatan Compiler Rust**: Membersihkan fungsi mati `update_safety()` pada `db.rs` dan memperbaiki *lifetime annotation* hingga kompilasi Rust mencapai 0 peringatan (*clean build*).
-- **Penanganan Jalur Aset Produksi**: Menambahkan `base: "./"` pada konfigurasi `vite.config.ts` untuk memastikan berkas CSS dan JS ter-bundle utuh di WebView Tauri Linux.
-- **Pengaturan CSP WebView**: Mengatur Content Security Policy (CSP) ke mode `null` agar injeksi style Tailwind CSS runtime tidak diblokir oleh engine WebKitGTK.
-
-### Added
-- Merancang komponen `ConfirmDialog` kustom untuk menggantikan popup bawaan browser `window.confirm()`.
-- Menambahkan tombol aksi cepat *Scan Device* tepat di tengah kanvas kosong (*empty state*).
-- Memindahkan posisi default HUD AI Chat ke pojok kanan bawah agar tidak menghalangi panel samping.
-
----
-
-## [2.1.0] — 2026-08-03
-
-Pembaruan Mayor Stabilitas Komunikasi ADB dan Penyelamatan Basis Data.
-
-### Added
-- Menambahkan kolom nama aplikasi readable beserta ID paket mono pada tabel utama.
-- Mengaktifkan pengurutan numerik ukuran paket (Bytes) secara presisi, menggantikan perbandingan karakter string.
-- Menerapkan arsitektur basis data *Write-Ahead Logging* (`PRAGMA journal_mode = WAL`) pada SQLite lokal agar data klasifikasi aman dari ancaman mati lampu tiba-tiba.
-- Menyediakan riwayat log terminal dengan fitur ekspor berkas teks `.txt` dan drawer auto-scroll.
-
-### Fixed
-- Memasang sekring waktu tunggu *timeout 30 detik* pada seluruh panggilan `adb.rs` untuk mencegah aplikasi freeze permanen saat kabel USB longgar.
-- Memperbaiki kebocoran pembaharuan tabel `db.rs` agar query `update_safety` terisolasi per `device_id` unik.
-- Memperbaiki antrean analisa AI batch sehingga seluruh paket *unknown* diproses tuntas tanpa terpotong di angka 50 aplikasi pertama.
-
----
-
-## [2.0.0] — 2026-07-23
-
-Pembangunan Ulang Total (Rebuild) Menuju Arsitektur Desktop Native Modern (Tauri v2 + React + Rust).
-
-### Added
-- Penggantian total mesin backend berbasis Electron/Python menjadi binary native Rust via Tauri v2.
-- Pengurangan beban memori operasional dari 450 MB menjadi di bawah 45 MB saat idle.
-- Pemetaan otomatis status aplikasi Android: Semua, Sistem, Pengguna, Dinonaktifkan, dan Sedang Berjalan.
-- Klasifikasi keamanan otomatis 4 level: *Safe*, *Risky*, *Critical*, dan *Unknown*.
-- Sekring pengaman sirkuit: Paket bertanda *Critical* dikunci otomatis dari tombol uninstall massal untuk mencegah *soft-brick* atau *bootloop*.
-- Pembuatan paket instalasi Debian `.deb` dan binary mandiri `.AppImage` siap pakai untuk Linux desktop meja servis.
-
----
-
-## [1.x] — Arsip Warisan
-
-Arsip versi generasi pertama berbasis skrip shell CLI dan Python Tkinter dialihkan ke branch repositori `v1-archive`.
