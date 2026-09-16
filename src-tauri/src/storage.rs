@@ -77,8 +77,8 @@ pub fn is_safe_to_delete(path: &str) -> Result<(), String> {
             return Err(format!("[SEC-302] Ditolak: dilarang menghapus root directory ({path})"));
         }
     }
-    // Proteksi direktori induk WhatsApp / WA Business
-    let protected_wa = [
+    // Proteksi direktori induk WhatsApp / Telegram / Messenger
+    let protected_app_roots = [
         "/sdcard/WhatsApp",
         "/storage/emulated/0/WhatsApp",
         "/sdcard/WhatsApp Business",
@@ -91,10 +91,18 @@ pub fn is_safe_to_delete(path: &str) -> Result<(), String> {
         "/storage/emulated/0/Android/media/com.whatsapp.w4b",
         "/sdcard/Android/media/com.whatsapp.w4b/WhatsApp Business",
         "/storage/emulated/0/Android/media/com.whatsapp.w4b/WhatsApp Business",
+        "/sdcard/Telegram",
+        "/storage/emulated/0/Telegram",
+        "/sdcard/Android/media/org.telegram.messenger",
+        "/storage/emulated/0/Android/media/org.telegram.messenger",
+        "/sdcard/Android/media/org.telegram.messenger.web",
+        "/storage/emulated/0/Android/media/org.telegram.messenger.web",
+        "/sdcard/Android/media/org.thunderdog.challegram",
+        "/storage/emulated/0/Android/media/org.thunderdog.challegram",
     ];
-    for wa in protected_wa {
-        if clean == wa {
-            return Err(format!("[SEC-306] Ditolak: direktori induk WhatsApp dilindungi ({clean})"));
+    for app_root in protected_app_roots {
+        if clean == app_root {
+            return Err(format!("[SEC-306] Ditolak: direktori induk aplikasi dilindungi ({clean})"));
         }
     }
     for protected in PROTECTED_FOLDERS {
@@ -347,6 +355,72 @@ pub async fn scan_storage_junk(
         }
     }
 
+    // 2. Telegram Media Pruner
+    let tg_bases = [
+        ("/sdcard/Android/media/org.telegram.messenger/Telegram", "Telegram"),
+        ("/sdcard/Telegram", "Telegram"),
+        ("/sdcard/Android/media/org.thunderdog.challegram/Telegram", "Telegram X"),
+        ("/sdcard/Android/media/org.telegram.messenger.web/Telegram", "Telegram Web"),
+    ];
+
+    for (tg, tg_label) in tg_bases {
+        let tg_subdirs = [
+            ("Telegram Video", "video", "Duplikat video unduhan Telegram"),
+            ("Telegram Documents", "dokumen", "File dokumen/arsip unduhan Telegram"),
+            ("Telegram Audio", "audio", "File audio/voice note unduhan Telegram"),
+        ];
+
+        let mut found_tg = false;
+        for (sub, kind, desc) in tg_subdirs {
+            let p = format!("{tg}/{sub}");
+            let sz = get_path_size_bytes(&device_id, &p).await;
+            if sz > 1024 * 1024 {
+                found_tg = true;
+                items.push(TrashItem {
+                    id: format!("tg_{}_{}", kind, items.len()),
+                    category: "telegram".into(),
+                    path: p,
+                    name: format!("{tg_label} {sub}"),
+                    size_bytes: sz,
+                    size_formatted: format_bytes(sz),
+                    safety_level: "safe".into(),
+                    description_id: desc.into(),
+                    description_en: format!("Telegram downloaded {kind} cache bloat"),
+                });
+            }
+        }
+        if found_tg {
+            break;
+        }
+    }
+
+    // 3. Vendor Logs & Crash Dumps
+    let vendor_log_dirs = [
+        ("/sdcard/MIUI/debug_log", "MIUI Debug Logs"),
+        ("/sdcard/ColorOS/Log", "ColorOS / Realme Logs"),
+        ("/sdcard/Transsion/log", "Infinix / Tecno Logs"),
+        ("/sdcard/vivo/log", "Vivo Funtouch Logs"),
+        ("/sdcard/logs", "System Diagnostic Logs"),
+        ("/sdcard/log", "System Dump Logs"),
+    ];
+
+    for (ld, label) in vendor_log_dirs {
+        let sz = get_path_size_bytes(&device_id, ld).await;
+        if sz > 1024 * 512 {
+            items.push(TrashItem {
+                id: format!("log_{}", items.len()),
+                category: "logs".into(),
+                path: ld.to_string(),
+                name: label.to_string(),
+                size_bytes: sz,
+                size_formatted: format_bytes(sz),
+                safety_level: "safe".into(),
+                description_id: "Log sistem & crash dump pabrikan yang menumpuk di memori".into(),
+                description_en: "Manufacturer system logging and crash dumps".into(),
+            });
+        }
+    }
+
     // 2. Thumbnail Cache (.thumbnails)
     let thumb_paths = ["/sdcard/DCIM/.thumbnails", "/sdcard/.thumbnails"];
     for tp in thumb_paths {
@@ -399,6 +473,13 @@ pub async fn scan_storage_junk(
         ("CapCut", "com.lemon.lvoverseas"),
         ("UCDownloads", "com.UCMobile.intl"),
         ("cleanmaster", "com.cleanmaster.mguard"),
+        ("TikTok", "com.zhiliaoapp.musically"),
+        ("Likee", "video.like"),
+        ("Helo", "com.eterno.helo"),
+        ("DUrecorder", "com.duapps.recorder"),
+        ("InShot", "com.camerasideas.instashot"),
+        ("VivaVideo", "com.quvideo.xiaoying"),
+        ("baidu", "com.baidu.searchbox"),
     ];
 
     if let Ok((out, _, 0)) = run_adb_device(&device_id, &["shell", "ls", "-1", "/sdcard"]).await {
@@ -490,6 +571,8 @@ mod tests {
         assert!(is_safe_to_delete("/sdcard/WhatsApp").is_err());
         assert!(is_safe_to_delete("/sdcard/WhatsApp Business").is_err());
         assert!(is_safe_to_delete("/sdcard/Android/media/com.whatsapp").is_err());
+        assert!(is_safe_to_delete("/sdcard/Telegram").is_err());
+        assert!(is_safe_to_delete("/sdcard/Telegram/Telegram Video").is_ok());
         assert!(is_safe_to_delete("/data/app").is_err());
         assert!(is_safe_to_delete("/sdcard/foo/../DCIM").is_err());
 

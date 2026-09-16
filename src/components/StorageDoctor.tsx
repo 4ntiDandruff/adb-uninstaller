@@ -14,6 +14,10 @@ import {
   Loader2,
   Sparkles,
   X,
+  Send,
+  FileText,
+  Search,
+  CheckCheck,
 } from "lucide-react";
 import { api, toast } from "./api";
 import type { AppInfo, DeviceInfo, StorageStats, TrashItem } from "../types";
@@ -26,13 +30,14 @@ interface Props {
   lang: string;
 }
 
-type CategoryFilter = "all" | "whatsapp" | "orphan" | "apk" | "cache";
+type CategoryFilter = "all" | "whatsapp" | "telegram" | "orphan" | "apk" | "cache" | "logs";
 
 export function StorageDoctor({ deviceId, deviceInfo, installedApps, t, lang }: Props) {
   const [stats, setStats] = useState<StorageStats | null>(null);
   const [items, setItems] = useState<TrashItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<CategoryFilter>("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [scanning, setScanning] = useState(false);
   const [trimming, setTrimming] = useState(false);
   const [benchmarking, setBenchmarking] = useState(false);
@@ -56,6 +61,7 @@ export function StorageDoctor({ deviceId, deviceInfo, installedApps, t, lang }: 
     setItems([]);
     setSelectedIds(new Set());
     setAiAdvice(null);
+    setSearchQuery("");
     loadStats();
   }, [deviceId, loadStats]);
 
@@ -97,7 +103,7 @@ export function StorageDoctor({ deviceId, deviceInfo, installedApps, t, lang }: 
     }
   }, [deviceId, loadStats, t]);
 
-  // Uji Speed eMMC
+  // Uji Speed eMMC / UFS
   const runBenchmark = useCallback(async () => {
     if (!deviceId) return;
     setBenchmarking(true);
@@ -123,12 +129,18 @@ export function StorageDoctor({ deviceId, deviceInfo, installedApps, t, lang }: 
   };
 
   const filteredItems = useMemo(() => {
-    if (filter === "all") return items;
-    return items.filter((i) => i.category === filter);
-  }, [items, filter]);
+    let list = filter === "all" ? items : items.filter((i) => i.category === filter);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(
+        (i) => i.name.toLowerCase().includes(q) || i.path.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [items, filter, searchQuery]);
 
   const toggleAllVisible = () => {
-    const allChecked = filteredItems.every((i) => selectedIds.has(i.id));
+    const allChecked = filteredItems.length > 0 && filteredItems.every((i) => selectedIds.has(i.id));
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (allChecked) {
@@ -139,6 +151,17 @@ export function StorageDoctor({ deviceId, deviceInfo, installedApps, t, lang }: 
       return next;
     });
   };
+
+  // 1-Click: Bersihkan Semua yang Berstatus Safe
+  const cleanAllSafe = useCallback(() => {
+    const safeItems = items.filter((i) => i.safety_level === "safe");
+    if (safeItems.length === 0) {
+      toast.info("Tidak ada item berstatus aman yang siap dibersihkan");
+      return;
+    }
+    setSelectedIds(new Set(safeItems.map((i) => i.id)));
+    setDryRunOpen(true);
+  }, [items]);
 
   // Hitung total size yang terpilih
   const selectedSize = useMemo(() => {
@@ -154,34 +177,73 @@ export function StorageDoctor({ deviceId, deviceInfo, installedApps, t, lang }: 
     return `${bytes} B`;
   };
 
+  // Statistik per kategori untuk badge tab
+  const categoryStats = useMemo(() => {
+    const res: Record<string, { count: number; bytes: number }> = {
+      all: { count: items.length, bytes: items.reduce((a, b) => a + b.size_bytes, 0) },
+      whatsapp: { count: 0, bytes: 0 },
+      telegram: { count: 0, bytes: 0 },
+      orphan: { count: 0, bytes: 0 },
+      apk: { count: 0, bytes: 0 },
+      cache: { count: 0, bytes: 0 },
+      logs: { count: 0, bytes: 0 },
+    };
+    for (const it of items) {
+      if (res[it.category]) {
+        res[it.category].count += 1;
+        res[it.category].bytes += it.size_bytes;
+      }
+    }
+    return res;
+  }, [items]);
+
+  // Multi-segment storage calculations
+  const segmentStats = useMemo(() => {
+    if (!stats || stats.total_bytes === 0) {
+      return { systemAndAppsPct: 0, reclaimablePct: 0, freePct: 100, systemBytes: 0 };
+    }
+    const total = stats.total_bytes;
+    const used = stats.used_bytes;
+    const reclaimable = selectedSize;
+    const free = stats.free_bytes;
+    const systemBytes = used > reclaimable ? used - reclaimable : 0;
+
+    const systemAndAppsPct = Math.max(0, (systemBytes / total) * 100);
+    const reclaimablePct = Math.max(0, (reclaimable / total) * 100);
+    const freePct = Math.max(0, (free / total) * 100);
+
+    return { systemAndAppsPct, reclaimablePct, freePct, systemBytes };
+  }, [stats, selectedSize]);
+
   // Salin Laporan WhatsApp
   const copyWaReport = useCallback(() => {
-    const model = deviceInfo?.model || "Android Device";
+    const model = deviceInfo?.market_name || deviceInfo?.model || "Android Device";
     const freeBefore = stats?.free_formatted || "—";
     const speed = stats?.emmc_write_speed_mbps ? `${stats.emmc_write_speed_mbps} MB/s` : "Normal";
     const healthLabel =
       stats?.emmc_health === "good"
-        ? "Sehat"
+        ? "Sehat (Responsif)"
         : stats?.emmc_health === "warning"
-        ? "Mulai Lambat"
+        ? "Mulai Aus (Sedikit Lambat)"
         : stats?.emmc_health === "critical"
-        ? "Kritis"
+        ? "Kritis (Risiko Kerusakan Chip)"
         : "Normal";
 
     const reportLines = [
-      `*LAPORAN SERVIS MEMORI — MEGAPASS*`,
+      `*LAPORAN DIAGNOSA PENYIMPANAN — MEGAPASS*`,
       `Perangkat: ${model}`,
-      `• Memori Tersedia: ${freeBefore}`,
-      `• Total Sampah Terdeteksi: ${formatBytesLocal(selectedSize)}`,
-      `• Kondisi Flash Memory: ${healthLabel} (${speed})`,
-      `• Status: Siap dibersihkan`,
+      `• Kapasitas Total: ${stats?.total_formatted ?? "—"}`,
+      `• Memori Bebas: ${freeBefore}`,
+      `• Total Sampah Dibersihkan: ${formatBytesLocal(selectedSize)}`,
+      `• Kondisi Chip Memori: ${healthLabel} (${speed})`,
+      `• Status Pembersihan: Siap dieksekusi`,
     ];
 
     if (aiAdvice) {
-      reportLines.push(``, `*Diagnosa AI Teknisi:*`, aiAdvice.trim());
+      reportLines.push(``, `*Diagnosa Teknisi AI:*`, aiAdvice.trim());
     }
 
-    reportLines.push(``, `_Megapass Intra Solusindo — Servis Cepat & Transparan_`);
+    reportLines.push(``, `_Megapass Intra Solusindo • Servis Transparan & Presisi_`);
 
     navigator.clipboard.writeText(reportLines.join("\n")).then(() => {
       toast.success(t("storage.report_copied"));
@@ -197,9 +259,8 @@ export function StorageDoctor({ deviceId, deviceInfo, installedApps, t, lang }: 
     setDeleting(true);
     try {
       await api.deleteJunkItems(deviceId, targets);
-      toast.success(`${targets.length} item berhasil dibersihkan`);
+      toast.success(`${targets.length} item sampah berhasil dibersihkan`);
       setDryRunOpen(false);
-      // Hapus item dari list lokal
       setItems((prev) => prev.filter((i) => !selectedIds.has(i.id)));
       setSelectedIds(new Set());
       await loadStats();
@@ -267,68 +328,160 @@ Format output persis (maksimal 15 kata per poin, tanpa markdown tebal):
     );
   }
 
+  const categoryMeta = [
+    { key: "all" as const, label: t("storage.cat_all"), icon: HardDrive },
+    { key: "whatsapp" as const, label: t("storage.cat_whatsapp"), icon: MessageSquare },
+    { key: "telegram" as const, label: t("storage.cat_telegram"), icon: Send },
+    { key: "orphan" as const, label: t("storage.cat_orphan"), icon: FolderMinus },
+    { key: "apk" as const, label: t("storage.cat_apk"), icon: FileCode },
+    { key: "cache" as const, label: t("storage.cat_cache"), icon: ShieldCheck },
+    { key: "logs" as const, label: t("storage.cat_logs"), icon: FileText },
+  ];
+
   return (
     <div className="flex flex-col gap-4 p-4 max-w-7xl mx-auto w-full">
-      {/* Header Title */}
-      <div className="flex flex-col gap-1">
-        <h2 className="text-xl font-bold flex items-center gap-2">
-          <HardDrive className="text-primary" size={22} />
-          {t("storage.title")}
-        </h2>
-        <p className="text-xs text-dim">{t("storage.subtitle")}</p>
+      {/* Header Title & Subtitle */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-[var(--border)] pb-3">
+        <div className="flex flex-col gap-0.5">
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <HardDrive className="text-primary" size={22} />
+            {t("storage.title")}
+          </h2>
+          <p className="text-xs text-dim">{t("storage.subtitle")}</p>
+        </div>
+
+        {/* Global Action Group */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            className="btn btn-primary btn-sm text-xs"
+            onClick={runScan}
+            disabled={!deviceId || scanning}
+          >
+            {scanning ? <Loader2 size={13} className="animate-spin" /> : <HardDrive size={13} />}
+            {t("storage.btn_scan")}
+          </button>
+          {items.length > 0 && (
+            <button
+              className="btn btn-success btn-sm text-xs"
+              onClick={cleanAllSafe}
+              disabled={!deviceId || deleting}
+              title="Pilih semua sampah berstatus aman dan buka konfirmasi hapus"
+            >
+              <CheckCheck size={13} />
+              {t("storage.btn_clean_safe")}
+            </button>
+          )}
+          <button
+            className="btn btn-ghost btn-sm text-xs"
+            onClick={runTrim}
+            disabled={!deviceId || trimming}
+            title="Trim cache semua aplikasi secara global tanpa root"
+          >
+            {trimming ? <Loader2 size={13} className="animate-spin" /> : <Zap size={13} />}
+            {t("storage.btn_trim")}
+          </button>
+          <button
+            className="btn btn-ghost btn-sm text-xs text-amber-400 hover:text-amber-300"
+            onClick={runAiConsultation}
+            disabled={!deviceId || aiConsulting}
+            title="Konsultasi AI: Analisa kondisi storage & rekomendasi teknisi"
+          >
+            {aiConsulting ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+            {aiConsulting ? t("storage.ai_analyzing") : t("storage.btn_ai_advisor")}
+          </button>
+          <button
+            className="btn btn-ghost btn-sm text-xs"
+            onClick={copyWaReport}
+            disabled={!deviceId}
+            title="Salin ringkasan ke format chat WhatsApp pelanggan"
+          >
+            <Copy size={13} />
+            {t("storage.btn_copy_report")}
+          </button>
+        </div>
       </div>
 
       {/* Bento Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {/* Card 1: Kapasitas Internal */}
+        {/* Card 1: Multi-Segment Storage Meter */}
         <div className="card-bento">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-dim">{t("storage.card_capacity")}</span>
             <HardDrive size={16} className="text-dim" />
           </div>
-          <div className="my-3">
-            <div className="text-2xl font-bold tabular-nums tracking-tight">
-              {stats?.free_formatted ?? "—"}{" "}
-              <span className="text-xs font-normal text-dim">tersedia</span>
+          <div className="my-2.5">
+            <div className="flex items-baseline justify-between">
+              <div className="text-2xl font-bold tabular-nums tracking-tight">
+                {stats?.free_formatted ?? "—"}{" "}
+                <span className="text-xs font-normal text-dim">bebas</span>
+              </div>
+              <span className="text-xs font-semibold tabular-nums text-primary">
+                {stats?.percent_used ?? 0}% terpakai
+              </span>
             </div>
-            <div className="text-xs text-dim mt-1">
-              Total {stats?.total_formatted ?? "—"} · Terpakai {stats?.used_formatted ?? "—"} (
-              {stats?.percent_used ?? 0}%)
+            <div className="text-xs text-dim mt-0.5">
+              Total {stats?.total_formatted ?? "—"} · Terpakai {stats?.used_formatted ?? "—"}
             </div>
-            {/* Progress Bar */}
-            <div className="w-full bg-[var(--bg-active)] h-2 rounded-full mt-2 overflow-hidden">
+
+            {/* Multi-segment Interactive Progress Bar */}
+            <div className="w-full bg-[var(--bg-active)] h-2.5 rounded-full mt-2.5 overflow-hidden flex shadow-inner">
               <div
-                className={`h-full transition-all duration-300 ${
-                  (stats?.percent_used ?? 0) > 90
-                    ? "bg-red-500"
-                    : (stats?.percent_used ?? 0) > 75
-                    ? "bg-amber-500"
-                    : "bg-primary"
-                }`}
-                style={{ width: `${stats?.percent_used ?? 0}%` }}
+                className="h-full bg-primary/80 transition-all duration-300"
+                style={{ width: `${segmentStats.systemAndAppsPct}%` }}
+                title={`Sistem & Apps: ${formatBytesLocal(segmentStats.systemBytes)}`}
+              />
+              {selectedSize > 0 && (
+                <div
+                  className="h-full bg-emerald-400 transition-all duration-300 animate-pulse"
+                  style={{ width: `${segmentStats.reclaimablePct}%` }}
+                  title={`Sampah Terpilih: ${formatBytesLocal(selectedSize)}`}
+                />
+              )}
+              <div
+                className="h-full bg-[var(--bg-hover)] transition-all duration-300"
+                style={{ width: `${segmentStats.freePct}%` }}
+                title={`Ruang Bebas: ${stats?.free_formatted ?? "—"}`}
               />
             </div>
+
+            {/* Legend Indicators */}
+            <div className="flex items-center gap-3 mt-2 text-[11px] text-faint flex-wrap">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-primary/80" />
+                <span>OS & App</span>
+              </div>
+              {selectedSize > 0 && (
+                <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  <span>+{formatBytesLocal(selectedSize)} pulih</span>
+                </div>
+              )}
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-[var(--border-strong)]" />
+                <span>Bebas</span>
+              </div>
+            </div>
           </div>
-          <div className="text-[11px] text-faint">
+          <div className="text-[11px] text-faint border-t border-[var(--border)] pt-2 mt-1">
             {stats && stats.percent_used > 85
-              ? "Penyimpanan hampir penuh. Bersihkan cache & sampah."
-              : "Kapasitas ruang internal dalam batas aman."}
+              ? "Peringatan: Memori hampir penuh (>85%), berisiko lag pada OS."
+              : "Kapasitas partisi data dalam ambang batas aman."}
           </div>
         </div>
 
-        {/* Card 2: eMMC / UFS Health */}
+        {/* Card 2: eMMC / UFS Speed Benchmark */}
         <div className="card-bento">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-dim">{t("storage.card_emmc")}</span>
             <Activity size={16} className="text-dim" />
           </div>
-          <div className="my-3">
+          <div className="my-2.5">
             <div className="flex items-baseline gap-2">
               <div className="text-2xl font-bold tabular-nums tracking-tight">
                 {stats?.emmc_write_speed_mbps ? `${stats.emmc_write_speed_mbps} MB/s` : "—"}
               </div>
               <span
-                className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${
                   stats?.emmc_health === "good"
                     ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                     : stats?.emmc_health === "warning"
@@ -348,73 +501,62 @@ Format output persis (maksimal 15 kata per poin, tanpa markdown tebal):
               </span>
             </div>
             <div className="text-xs text-dim mt-1">
-              Latensi: {stats?.emmc_latency_ms ? `${stats.emmc_latency_ms} ms` : "—"}
+              Latensi: {stats?.emmc_latency_ms ? `${stats.emmc_latency_ms} ms` : "—"} · Micro-test 8MB dsync
             </div>
           </div>
-          <button
-            className="btn btn-ghost btn-sm text-xs self-start"
-            onClick={runBenchmark}
-            disabled={!deviceId || benchmarking}
-            title="Benchmark eMMC write speed dengan dd dsync micro-test"
-          >
-            {benchmarking ? (
-              <Loader2 size={12} className="animate-spin" />
-            ) : (
-              <RotateCcw size={12} />
-            )}
-            {t("storage.btn_bench")}
-          </button>
+          <div className="flex items-center justify-between border-t border-[var(--border)] pt-2 mt-1">
+            <div className="text-[11px] text-faint">
+              {stats?.emmc_write_speed_mbps && stats.emmc_write_speed_mbps >= 45
+                ? "Chip UFS berkinerja tinggi (sangat responsif)"
+                : stats?.emmc_write_speed_mbps && stats.emmc_write_speed_mbps >= 15
+                ? "Kondisi eMMC 5.1 standar (sehat)"
+                : stats?.emmc_write_speed_mbps && stats.emmc_write_speed_mbps > 0
+                ? "Kecepatan rendah, kemungkinan chip aus"
+                : "Klik uji speed untuk diagnosa fisik"}
+            </div>
+            <button
+              className="btn btn-ghost btn-sm text-xs shrink-0"
+              onClick={runBenchmark}
+              disabled={!deviceId || benchmarking}
+              title="Uji kecepatan tulis fisik flash memory (dd oflag=dsync)"
+            >
+              {benchmarking ? (
+                <Loader2 size={12} className="animate-spin" />
+              ) : (
+                <RotateCcw size={12} />
+              )}
+              {t("storage.btn_bench")}
+            </button>
+          </div>
         </div>
 
-        {/* Card 3: Aksi Cepat & Sampah */}
+        {/* Card 3: Status Sampah & Eksekusi */}
         <div className="card-bento">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-dim">{t("storage.card_reclaimable")}</span>
             <Trash2 size={16} className="text-dim" />
           </div>
-          <div className="my-3">
+          <div className="my-2.5">
             <div className="text-2xl font-bold tabular-nums tracking-tight text-emerald-400">
               {formatBytesLocal(selectedSize)}
             </div>
             <div className="text-xs text-dim mt-1">
-              {selectedIds.size} dari {items.length} item sampah terpilih
+              {selectedIds.size} dari {items.length} item terpilih untuk dibersihkan
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center justify-between border-t border-[var(--border)] pt-2 mt-1">
+            <div className="text-[11px] text-faint">
+              {selectedIds.size > 0
+                ? "Siap dibersihkan secara aman"
+                : "Pilih item untuk dibersihkan"}
+            </div>
             <button
-              className="btn btn-primary btn-sm text-xs"
-              onClick={runScan}
-              disabled={!deviceId || scanning}
+              className="btn btn-danger btn-sm text-xs"
+              onClick={() => setDryRunOpen(true)}
+              disabled={selectedIds.size === 0 || deleting}
             >
-              {scanning ? <Loader2 size={12} className="animate-spin" /> : <HardDrive size={12} />}
-              {t("storage.btn_scan")}
-            </button>
-            <button
-              className="btn btn-ghost btn-sm text-xs"
-              onClick={runTrim}
-              disabled={!deviceId || trimming}
-              title="Trim cache semua aplikasi secara global tanpa root"
-            >
-              {trimming ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
-              {t("storage.btn_trim")}
-            </button>
-            <button
-              className="btn btn-ghost btn-sm text-xs text-amber-400 hover:text-amber-300"
-              onClick={runAiConsultation}
-              disabled={!deviceId || aiConsulting}
-              title="Konsultasi AI: Analisa kondisi storage & rekomendasi teknisi"
-            >
-              {aiConsulting ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-              {aiConsulting ? t("storage.ai_analyzing") : t("storage.btn_ai_advisor")}
-            </button>
-            <button
-              className="btn btn-ghost btn-sm text-xs"
-              onClick={copyWaReport}
-              disabled={!deviceId}
-              title="Salin ringkasan ke WhatsApp"
-            >
-              <Copy size={12} />
-              {t("storage.btn_copy_report")}
+              <Trash2 size={12} />
+              {t("storage.btn_clean")}
             </button>
           </div>
         </div>
@@ -455,22 +597,14 @@ Format output persis (maksimal 15 kata per poin, tanpa markdown tebal):
         </div>
       )}
 
-      {/* Category Tabs & Table Header */}
+      {/* Category Tabs & Table Toolbar */}
       <div className="flex flex-col gap-2 mt-2">
-        <div className="flex items-center gap-2 border-b border-[var(--border)] pb-2 flex-wrap">
-          <div className="segmented-pill">
-            {(
-              [
-                { key: "all", label: t("storage.cat_all"), icon: HardDrive },
-                { key: "whatsapp", label: t("storage.cat_whatsapp"), icon: MessageSquare },
-                { key: "orphan", label: t("storage.cat_orphan"), icon: FolderMinus },
-                { key: "apk", label: t("storage.cat_apk"), icon: FileCode },
-                { key: "cache", label: t("storage.cat_cache"), icon: ShieldCheck },
-              ] as const
-            ).map((cat) => {
+        <div className="flex items-center justify-between gap-2 border-b border-[var(--border)] pb-2 flex-wrap">
+          {/* Segmented Category Filter */}
+          <div className="segmented-pill overflow-x-auto max-w-full">
+            {categoryMeta.map((cat) => {
               const Icon = cat.icon;
-              const count =
-                cat.key === "all" ? items.length : items.filter((i) => i.category === cat.key).length;
+              const meta = categoryStats[cat.key] || { count: 0, bytes: 0 };
               return (
                 <button
                   key={cat.key}
@@ -486,24 +620,35 @@ Format output persis (maksimal 15 kata per poin, tanpa markdown tebal):
                         : "bg-[var(--bg-active)] text-dim"
                     }`}
                   >
-                    {count}
+                    {meta.count}
+                    {meta.bytes > 0 && ` · ${formatBytesLocal(meta.bytes)}`}
                   </span>
                 </button>
               );
             })}
           </div>
 
-          <div className="ml-auto flex items-center gap-2">
-            {selectedIds.size > 0 && (
-              <button
-                className="btn btn-danger btn-sm text-xs"
-                onClick={() => setDryRunOpen(true)}
-                disabled={deleting}
-              >
-                <Trash2 size={12} />
-                {t("storage.btn_clean")} ({formatBytesLocal(selectedSize)})
-              </button>
-            )}
+          {/* Quick Search on Junk Items */}
+          <div className="flex items-center gap-2 ml-auto">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Cari folder sampah..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="input input-sm pl-7 text-xs"
+                style={{ width: 180, height: 28 }}
+              />
+              <Search size={12} className="absolute left-2 top-2 text-dim pointer-events-none" />
+              {searchQuery && (
+                <button
+                  className="absolute right-1.5 top-1.5 text-dim hover:text-[var(--text)]"
+                  onClick={() => setSearchQuery("")}
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -524,7 +669,7 @@ Format output persis (maksimal 15 kata per poin, tanpa markdown tebal):
                   />
                 </th>
                 <th>Target Pembersihan</th>
-                <th style={{ width: 100 }}>Kategori</th>
+                <th style={{ width: 110 }}>Kategori</th>
                 <th style={{ width: 90 }}>Tingkat</th>
                 <th style={{ width: 90, textAlign: "right" }}>Ukuran</th>
               </tr>
@@ -533,7 +678,11 @@ Format output persis (maksimal 15 kata per poin, tanpa markdown tebal):
               {filteredItems.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="text-center py-8 text-dim text-xs">
-                    {items.length === 0 ? t("storage.empty_scan") : "Tidak ada item pada kategori ini."}
+                    {items.length === 0
+                      ? t("storage.empty_scan")
+                      : searchQuery
+                      ? `Tidak ada sampah yang cocok dengan kata kunci "${searchQuery}".`
+                      : "Tidak ada item pada kategori ini."}
                   </td>
                 </tr>
               ) : (
@@ -591,7 +740,7 @@ Format output persis (maksimal 15 kata per poin, tanpa markdown tebal):
       {/* Modal Dry-Run Konfirmasi Sebelum Hapus */}
       {dryRunOpen && (
         <div className="modal-overlay" onClick={() => setDryRunOpen(false)}>
-          <div className="modal" style={{ maxWidth: 540 }} onClick={(e) => e.stopPropagation()}>
+          <div className="modal" style={{ maxWidth: 560 }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-head">
               <div className="flex items-center gap-2">
                 <AlertTriangle size={18} className="text-danger" />
@@ -602,7 +751,7 @@ Format output persis (maksimal 15 kata per poin, tanpa markdown tebal):
               <p className="text-sm">{t("storage.dryrun_desc")}</p>
               <div
                 className="rounded-lg p-2 text-xs mono flex flex-col gap-1 border border-[var(--border)] overflow-y-auto"
-                style={{ background: "var(--bg-card)", maxHeight: 180 }}
+                style={{ background: "var(--bg-card)", maxHeight: 200 }}
               >
                 {items
                   .filter((i) => selectedIds.has(i.id))
@@ -634,7 +783,7 @@ Format output persis (maksimal 15 kata per poin, tanpa markdown tebal):
                 disabled={deleting}
               >
                 {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                {t("storage.dryrun_confirm")}
+                {t("storage.dryrun_confirm")} ({formatBytesLocal(selectedSize)})
               </button>
             </div>
           </div>
