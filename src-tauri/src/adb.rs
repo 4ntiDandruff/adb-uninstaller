@@ -339,7 +339,7 @@ fn pretty_label(package: &str) -> String {
 
 
 /// Merge cache + save apps — dipanggil SETELAH semua ADB async selesai
-pub fn merge_and_save_cache(conn: &rusqlite::Connection, device_id: &str, apps: &mut Vec<AppInfo>) {
+pub fn merge_and_save_cache(conn: &rusqlite::Connection, device_id: &str, apps: &mut [AppInfo]) {
     if let Ok(cached) = crate::db::load_apps(conn, device_id) {
         let map: std::collections::HashMap<String, crate::db::CachedApp> = cached
             .into_iter()
@@ -351,12 +351,12 @@ pub fn merge_and_save_cache(conn: &rusqlite::Connection, device_id: &str, apps: 
                     app.safety_level = c.safety_level.clone();
                     app.safety_reason = c.safety_reason.clone();
                 }
-                if !c.label.is_empty() && c.label != c.package_name {
-                    if app.label == pretty_label(&app.package_name)
-                        || app.label == app.package_name
-                    {
-                        app.label = c.label.clone();
-                    }
+                if !c.label.is_empty()
+                    && c.label != c.package_name
+                    && (app.label == pretty_label(&app.package_name)
+                        || app.label == app.package_name)
+                {
+                    app.label = c.label.clone();
                 }
                 if !c.size.is_empty() && app.size.is_empty() {
                     app.size = c.size.clone();
