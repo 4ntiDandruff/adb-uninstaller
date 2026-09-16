@@ -12,7 +12,6 @@ import {
   MessageSquare,
   ShieldCheck,
   Loader2,
-  Smartphone,
   Sparkles,
   X,
 } from "lucide-react";
@@ -257,11 +256,11 @@ Format output persis (maksimal 15 kata per poin, tanpa markdown tebal):
   if (!deviceId) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[460px] p-8 text-center text-dim gap-3 w-full max-w-lg mx-auto">
-        <div className="w-16 h-16 rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] flex items-center justify-center text-primary shadow-sm">
-          <Smartphone size={32} />
+        <div className="empty-icon-wrap">
+          <HardDrive size={30} />
         </div>
-        <div className="font-semibold text-base text-[var(--text)]">{t("storage.title")}</div>
-        <p className="text-xs text-dim text-pretty">
+        <div className="font-semibold text-lg text-[var(--text)]">{t("storage.title")}</div>
+        <p className="text-xs text-dim text-pretty max-w-md">
           {t("sidebar.connect_hint")}
         </p>
       </div>

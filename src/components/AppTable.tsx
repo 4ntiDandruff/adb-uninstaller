@@ -162,12 +162,17 @@ export function AppTable({
               <tr>
                 <td colSpan={6}>
                   <div className="empty">
-                    <PackageSearch size={36} className="text-faint" />
-                    <div className="text-sm">
+                    <div className="empty-icon-wrap">
+                      <PackageSearch size={28} />
+                    </div>
+                    <div className="text-base font-semibold text-[var(--text)]">
                       {apps.length === 0 ? t("table.empty") : t("table.no_result")}
                     </div>
+                    <div className="text-xs text-dim max-w-sm">
+                      {apps.length === 0 ? "Hubungkan smartphone Android via kabel USB dan aktifkan USB Debugging." : "Coba ubah kata kunci pencarian atau filter keamanan."}
+                    </div>
                     {apps.length === 0 && onScan && (
-                      <button className="btn btn-primary btn-sm mt-2" onClick={onScan}>
+                      <button className="btn btn-primary mt-3" onClick={onScan}>
                         {t("topbar.scan_device")}
                       </button>
                     )}
