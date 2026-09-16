@@ -220,13 +220,25 @@ body,
   font-weight: 500;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: background 0.12s, border-color 0.12s, opacity 0.12s;
+  transition: background 0.12s, border-color 0.12s, opacity 0.12s, transform 0.08s ease-out;
   white-space: nowrap;
   user-select: none;
 }
 .btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+.text-balance {
+  text-wrap: balance;
+}
+.text-pretty {
+  text-wrap: pretty;
 }
 .btn-primary {
   background: var(--primary);

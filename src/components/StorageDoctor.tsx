@@ -13,6 +13,7 @@ import {
   MessageSquare,
   ShieldCheck,
   Loader2,
+  Smartphone,
 } from "lucide-react";
 import { api, toast } from "./api";
 import type { AppInfo, DeviceInfo, StorageStats, TrashItem } from "../types";
@@ -202,6 +203,20 @@ export function StorageDoctor({ deviceId, deviceInfo, installedApps, t, lang }: 
     }
   };
 
+  if (!deviceId) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[460px] p-8 text-center text-dim gap-3 w-full max-w-lg mx-auto">
+        <div className="w-16 h-16 rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] flex items-center justify-center text-primary shadow-sm">
+          <Smartphone size={32} />
+        </div>
+        <div className="font-semibold text-base text-[var(--text)]">{t("storage.title")}</div>
+        <p className="text-xs text-dim text-pretty">
+          {t("sidebar.connect_hint")}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4 p-4 max-w-7xl mx-auto w-full">
       {/* Header Title */}
@@ -222,7 +237,7 @@ export function StorageDoctor({ deviceId, deviceInfo, installedApps, t, lang }: 
             <HardDrive size={16} className="text-dim" />
           </div>
           <div className="my-3">
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold tabular-nums tracking-tight">
               {stats?.free_formatted ?? "—"}{" "}
               <span className="text-xs font-normal text-dim">tersedia</span>
             </div>
@@ -261,7 +276,7 @@ export function StorageDoctor({ deviceId, deviceInfo, installedApps, t, lang }: 
           </div>
           <div className="my-3">
             <div className="flex items-center gap-2">
-              <span className="text-2xl font-bold">
+              <span className="text-2xl font-bold tabular-nums tracking-tight">
                 {stats?.emmc_write_speed_mbps ? `${stats.emmc_write_speed_mbps} MB/s` : "—"}
               </span>
               <span
@@ -305,7 +320,7 @@ export function StorageDoctor({ deviceId, deviceInfo, installedApps, t, lang }: 
             <Trash2 size={16} className="text-dim" />
           </div>
           <div className="my-3">
-            <div className="text-2xl font-bold text-emerald-400">
+            <div className="text-2xl font-bold tabular-nums tracking-tight text-emerald-400">
               {formatBytesLocal(selectedSize)}
             </div>
             <div className="text-xs text-dim mt-1">
@@ -424,7 +439,7 @@ export function StorageDoctor({ deviceId, deviceInfo, installedApps, t, lang }: 
               {filteredItems.map((item) => (
                 <tr
                   key={item.id}
-                  className={selectedIds.has(item.id) ? "selected" : ""}
+                  className={`cursor-pointer transition-colors duration-100 hover:bg-[var(--bg-hover)] ${selectedIds.has(item.id) ? "selected" : ""}`}
                   onClick={() => toggleItem(item.id)}
                 >
                   <td
@@ -451,7 +466,19 @@ export function StorageDoctor({ deviceId, deviceInfo, installedApps, t, lang }: 
                     </div>
                   </td>
                   <td>
-                    <span className="badge badge-system capitalize">{item.category}</span>
+                    <span
+                      className={`badge capitalize ${
+                        item.category === "whatsapp"
+                          ? "badge-safe"
+                          : item.category === "orphan"
+                          ? "badge-system"
+                          : item.category === "apk"
+                          ? "badge-risky"
+                          : "badge-user"
+                      }`}
+                    >
+                      {item.category}
+                    </span>
                   </td>
                   <td>
                     <span
