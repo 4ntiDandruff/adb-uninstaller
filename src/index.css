@@ -472,6 +472,45 @@ body,
   color: var(--text);
 }
 
+.search-wrap-sm {
+  position: relative;
+  width: 220px;
+}
+.search-wrap-sm .input {
+  height: 28px;
+  padding-left: 28px;
+  padding-right: 26px;
+  font-size: 12px;
+  border-radius: 7px;
+}
+.search-wrap-sm .search-icon {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-faint);
+  pointer-events: none;
+}
+.search-wrap-sm .search-clear {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  padding: 3px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.search-wrap-sm .search-clear:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
 /* ===== Tabs ===== */
 .tabs {
   display: flex;

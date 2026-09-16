@@ -667,28 +667,25 @@ Format output persis (maksimal 15 kata per poin, tanpa markdown tebal):
           </div>
 
           {/* Quick Search on Junk Items */}
-          <div className="flex items-center gap-2 ml-auto">
-            <div className="relative flex items-center">
-              <Search size={12} className="absolute left-2.5 text-dim pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Cari folder sampah..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="input input-sm pl-7 pr-7 text-xs"
-                style={{ width: 190, height: 28 }}
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  className="absolute right-1.5 p-1 rounded hover:bg-[var(--bg-hover)] text-dim hover:text-[var(--text)] transition-colors"
-                  onClick={() => setSearchQuery("")}
-                  title="Hapus pencarian"
-                >
-                  <X size={12} />
-                </button>
-              )}
-            </div>
+          <div className="search-wrap-sm ml-auto">
+            <Search size={13} className="search-icon" />
+            <input
+              type="text"
+              placeholder="Cari folder sampah..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="input"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                className="search-clear"
+                onClick={() => setSearchQuery("")}
+                title="Hapus pencarian"
+              >
+                <X size={13} />
+              </button>
+            )}
           </div>
         </div>
 
