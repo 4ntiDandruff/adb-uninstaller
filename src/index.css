@@ -300,17 +300,23 @@ body,
   line-height: 1;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: background 0.12s, border-color 0.12s, opacity 0.12s, transform 0.08s ease-out;
+  transition-property: background-color, border-color, box-shadow, transform, opacity;
+  transition-duration: 0.12s;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
   white-space: nowrap;
   user-select: none;
   flex-shrink: 0;
+}
+.btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 .btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
 .btn:active:not(:disabled) {
-  transform: scale(0.97);
+  transform: scale(0.96);
 }
 .tabular-nums {
   font-variant-numeric: tabular-nums;
@@ -337,14 +343,21 @@ body,
   background: var(--danger);
   color: #fff;
   font-weight: 600;
+  box-shadow: 0 2px 8px rgba(244, 63, 94, 0.2);
 }
 .btn-danger:hover:not(:disabled) {
-  background: #d63a3a;
+  background: #e11d48;
+  box-shadow: 0 4px 14px rgba(244, 63, 94, 0.35);
 }
 .btn-success {
   background: var(--success);
   color: #ffffff;
   font-weight: 600;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+}
+.btn-success:hover:not(:disabled) {
+  background: #059669;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
 }
 .btn-ghost {
   background: var(--bg-card);
@@ -354,6 +367,7 @@ body,
 .btn-ghost:hover:not(:disabled) {
   background: var(--bg-hover);
   border-color: var(--border-strong);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 .btn-sm {
   height: 28px;
@@ -492,7 +506,11 @@ body,
   color: var(--text-faint);
 }
 .tab.active .tab-count {
-  background: rgba(59, 130, 246, 0.18);
+  background: rgba(34, 211, 238, 0.16);
+  color: var(--primary);
+}
+[data-theme="light"] .tab.active .tab-count {
+  background: rgba(0, 113, 227, 0.12);
   color: var(--primary);
 }
 
@@ -539,7 +557,11 @@ table.app-table tbody tr:hover {
   background: var(--bg-hover);
 }
 table.app-table tbody tr.selected {
-  background: rgba(59, 130, 246, 0.12);
+  background: rgba(34, 211, 238, 0.08);
+  box-shadow: inset 3px 0 0 0 var(--primary);
+}
+[data-theme="light"] table.app-table tbody tr.selected {
+  background: rgba(0, 113, 227, 0.08);
   box-shadow: inset 3px 0 0 0 var(--primary);
 }
 .mono {
@@ -660,12 +682,17 @@ table.app-table tbody tr.selected {
 
 /* ===== Checkbox ===== */
 input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
+  width: 17px;
+  height: 17px;
   accent-color: var(--primary);
   cursor: pointer;
   margin: 0;
   vertical-align: middle;
+  border-radius: 4px;
+  transition: transform 0.1s cubic-bezier(0.16, 1, 0.3, 1);
+}
+input[type="checkbox"]:active {
+  transform: scale(0.88);
 }
 
 /* Sel checkbox: seluruh area sel jadi tombol tekan (bukan cuma kotak kecil) */
@@ -1315,14 +1342,33 @@ td.cell-check, th.cell-check {
   align-items: center;
   gap: 8px;
   padding: 6px 14px;
-  background: rgba(15, 23, 42, 0.9);
+  background: rgba(15, 23, 42, 0.92);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border: 1px solid rgba(34, 211, 238, 0.35);
   border-radius: 9999px;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), 0 0 24px rgba(34, 211, 238, 0.15);
-  animation: dockSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: dockSlideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1);
   user-select: none;
+  transition-property: box-shadow, border-color;
+  transition-duration: 0.2s;
+  transition-timing-function: ease-out;
+}
+.floating-batch-dock:hover {
+  border-color: rgba(34, 211, 238, 0.5);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.55), 0 0 32px rgba(34, 211, 238, 0.22);
+}
+.floating-batch-dock .btn {
+  border-radius: 9999px;
+  transition-property: transform, background-color, border-color, box-shadow, color;
+  transition-duration: 0.14s;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+.floating-batch-dock .btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+.floating-batch-dock .btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.96);
 }
 
 @keyframes dockSlideUp {
