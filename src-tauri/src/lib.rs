@@ -1,6 +1,7 @@
 mod adb;
 mod ai;
 mod db;
+mod storage;
 
 use tauri::Emitter;
 
@@ -203,6 +204,34 @@ async fn save_app_size(
         .map_err(|e| format!("[DB-012] Save size gagal: {e}"))
 }
 
+#[tauri::command]
+async fn get_storage_stats(device_id: String) -> Result<storage::StorageStats, String> {
+    storage::get_storage_stats(device_id).await
+}
+
+#[tauri::command]
+async fn trim_caches(device_id: String) -> CommandResult {
+    storage::trim_caches(device_id).await
+}
+
+#[tauri::command]
+async fn benchmark_storage(device_id: String) -> Result<storage::StorageStats, String> {
+    storage::benchmark_storage(device_id).await
+}
+
+#[tauri::command]
+async fn scan_storage_junk(
+    device_id: String,
+    installed_packages: Vec<String>,
+) -> Result<Vec<storage::TrashItem>, String> {
+    storage::scan_storage_junk(device_id, installed_packages).await
+}
+
+#[tauri::command]
+async fn delete_junk_items(device_id: String, paths: Vec<String>) -> Result<usize, String> {
+    storage::delete_junk_items(device_id, paths).await
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let db_conn = db::init_db().expect("Gagal init database");
@@ -239,6 +268,11 @@ pub fn run() {
             clear_device_cache,
             save_ai_results,
             save_app_size,
+            get_storage_stats,
+            trim_caches,
+            benchmark_storage,
+            scan_storage_junk,
+            delete_junk_items,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

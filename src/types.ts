@@ -89,3 +89,28 @@ export interface LogEntry {
   detail?: string;
   duration_ms?: number;
 }
+
+export interface StorageStats {
+  total_bytes: number;
+  used_bytes: number;
+  free_bytes: number;
+  percent_used: number;
+  total_formatted: string;
+  used_formatted: string;
+  free_formatted: string;
+  emmc_write_speed_mbps: number;
+  emmc_latency_ms: number;
+  emmc_health: "good" | "warning" | "critical" | "unknown" | string;
+}
+
+export interface TrashItem {
+  id: string;
+  category: "whatsapp" | "orphan" | "apk" | "cache" | string;
+  path: string;
+  name: string;
+  size_bytes: number;
+  size_formatted: string;
+  safety_level: "safe" | "review" | "critical" | string;
+  description_id: string;
+  description_en: string;
+}

@@ -4,6 +4,25 @@ Semua perubahan penting dicatat di file ini.
 
 Format mirip [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.3.0] — 2026-09-16
+
+Major update: Modul Storage Doctor & Deep Cleaner, fast cache trim, benchmark kesehatan flash memory eMMC/UFS, sekring anti-shell injection, dan proteksi hard-whitelist launcher OEM.
+
+### Added
+- `storage.rs` — Modul dedicated Storage Doctor: integrasi `pm trim-caches 999G`, WhatsApp pruner (Sent, .Statuses, msgstore lama), APK mentah download, dan orphan folder detector.
+- `storage.rs` — Benchmark dual-layer performa flash memory eMMC/UFS (`dumpsys diskstats` + fallback micro-benchmark fisik `dd oflag=dsync`) dengan estimasi throughput MB/s dan latensi ms.
+- `storage.rs` — Sekring blacklist mutlak penghapusan folder sistem dan media vital (`/`, `/sdcard`, `DCIM`, `Pictures`, `Documents`, dll.).
+- `StorageDoctor.tsx` — UI Bento Cards: visual progress kapasitas storage `/data`, gauge status kesehatan flash memory, tabel temuan sampah multi-kategori, dan dialog konfirmasi dry-run.
+- `StorageDoctor.tsx` — Generator 1-klik laporan servis WhatsApp siap kirim ke pelanggan meja servis.
+- `App.tsx` — Tab switcher di topbar utama: navigasi instan antara `[Aplikasi & Debloat]` dan `[Storage Doctor]`.
+- `i18n.ts` — Dukungan bahasa penuh (ID & EN) untuk modul Storage Doctor.
+
+### Security
+- `adb.rs` — Validasi regex nama package Android (`is_valid_package_name`) untuk memblokir celah metakarakter shell injection ke daemon ADB.
+- `adb.rs` — `VITAL_SYSTEM_WHITELIST` di level core Rust: blokir mutlak penghapusan SystemUI, Settings, PackageInstaller, dan seluruh Launcher OEM (Samsung One UI, MIUI, ColorOS, Vivo, Infinix XOS, Tecno HiOS, Huawei).
+- `db.rs` — Inisialisasi SQLite WAL fortified dengan `PRAGMA busy_timeout=5000;`.
+- `tauri.conf.json` — Pengetatan CSP (Content Security Policy).
+
 ## [2.2.4] — 2026-08-07
 
 ### Packaging & System Integration

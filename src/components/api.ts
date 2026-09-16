@@ -8,6 +8,8 @@ import type {
   DeviceInfo,
   LogEntry,
   SafetyAnalysis,
+  StorageStats,
+  TrashItem,
 } from "../types";
 
 let logId = 0;
@@ -59,6 +61,16 @@ export const api = {
   loadSettings: () => invoke<AppSettings>("load_settings"),
   saveSettings: (settings: AppSettings) =>
     invoke<void>("save_settings", { settings }),
+  getStorageStats: (deviceId: string) =>
+    invoke<StorageStats>("get_storage_stats", { deviceId }),
+  trimCaches: (deviceId: string) =>
+    invoke<CommandResult>("trim_caches", { deviceId }),
+  benchmarkStorage: (deviceId: string) =>
+    invoke<StorageStats>("benchmark_storage", { deviceId }),
+  scanStorageJunk: (deviceId: string, installedPackages: string[]) =>
+    invoke<TrashItem[]>("scan_storage_junk", { deviceId, installedPackages }),
+  deleteJunkItems: (deviceId: string, paths: string[]) =>
+    invoke<number>("delete_junk_items", { deviceId, paths }),
 };
 
 export { toast };

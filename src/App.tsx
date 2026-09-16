@@ -11,6 +11,8 @@ import {
   Sun,
   Moon,
   X,
+  HardDrive,
+  Package,
 } from "lucide-react";
 import type { AppInfo, AppSettings, Device, DeviceInfo, LogEntry, SafetyLevel } from "./types";
 import { api, makeLog, toast } from "./components/api";
@@ -30,6 +32,7 @@ import { enrichApps, classifyPackage } from "./lib/safety-tags";
 import { translate, type Lang } from "./i18n";
 import { humanizeError } from "./errorMessages";
 import { exportPreset } from "./lib/exportPreset";
+import { StorageDoctor } from "./components/StorageDoctor";
 
 type OpKind = "uninstall" | "disable" | "enable" | "force_stop" | "clear_data";
 
@@ -58,6 +61,7 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [levelFilter, setLevelFilter] = useState<SafetyLevel | "all">("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [mainTab, setMainTab] = useState<"apps" | "storage">("apps");
   const [detail, setDetail] = useState<AppInfo | null>(null);
   const [rightOpen, setRightOpen] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -660,7 +664,23 @@ export default function App() {
       <div className="main">
         {/* Topbar */}
         <div className="topbar">
-          <div className="topbar-title">{t("topbar.title")}</div>
+          <div className="flex items-center gap-2">
+            <div className="topbar-title">{t("topbar.title")}</div>
+            <div className="flex items-center gap-1 bg-[var(--bg-card)] p-0.5 rounded-lg border border-[var(--border)]">
+              <button
+                className={`btn btn-sm text-xs ${mainTab === "apps" ? "btn-primary" : "btn-ghost"}`}
+                onClick={() => setMainTab("apps")}
+              >
+                <Package size={13} /> {t("topbar.tab_apps")}
+              </button>
+              <button
+                className={`btn btn-sm text-xs ${mainTab === "storage" ? "btn-primary" : "btn-ghost"}`}
+                onClick={() => setMainTab("storage")}
+              >
+                <HardDrive size={13} /> {t("topbar.tab_storage")}
+              </button>
+            </div>
+          </div>
           <div className="topbar-spacer" />
 
           <div className="topbar-group">
@@ -728,7 +748,19 @@ export default function App() {
 
         {/* Workbench */}
         <div className="workbench">
-          <div className="content">
+          {mainTab === "storage" ? (
+            <div className="content overflow-y-auto w-full">
+              <StorageDoctor
+                deviceId={deviceId}
+                deviceInfo={deviceInfo}
+                installedApps={apps}
+                t={t}
+                lang={lang}
+              />
+              <LogDrawer logs={logs} onClear={() => setLogs([])} />
+            </div>
+          ) : (
+            <div className="content">
             <div className="toolbar">
               <SearchBar value={query} onChange={setQuery} onClear={() => setQuery("")} placeholder={t("toolbar.search")} />
               <select
@@ -820,9 +852,10 @@ export default function App() {
 
             <LogDrawer logs={logs} onClear={() => setLogs([])} />
           </div>
+          )}
 
           {/* Right panel: detail atau AI */}
-          {rightOpen && (
+          {mainTab === "apps" && rightOpen && (
               <DetailPanel
                 app={detail}
                 onClose={() => setRightOpen(false)}

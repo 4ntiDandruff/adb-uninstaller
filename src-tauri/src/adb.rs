@@ -61,7 +61,7 @@ async fn run_adb(args: &[&str]) -> Result<(String, String, i32), String> {
     Ok((stdout, stderr, code))
 }
 
-async fn run_adb_device(device_id: &str, args: &[&str]) -> Result<(String, String, i32), String> {
+pub(crate) async fn run_adb_device(device_id: &str, args: &[&str]) -> Result<(String, String, i32), String> {
     let mut full = vec!["-s", device_id];
     full.extend_from_slice(args);
     run_adb(&full).await
@@ -114,7 +114,7 @@ pub fn is_valid_package_name(pkg: &str) -> bool {
     })
 }
 
-fn timed_result(
+pub(crate) fn timed_result(
     start: Instant,
     success: bool,
     output: String,
@@ -523,7 +523,7 @@ pub async fn get_app_size(device_id: String, package: String) -> Result<String, 
     Ok(format_bytes(total_bytes))
 }
 
-fn format_bytes(b: u64) -> String {
+pub(crate) fn format_bytes(b: u64) -> String {
     const KB: f64 = 1024.0;
     const MB: f64 = KB * 1024.0;
     const GB: f64 = MB * 1024.0;
