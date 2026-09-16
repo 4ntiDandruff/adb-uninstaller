@@ -16,6 +16,7 @@ pub struct StorageStats {
     pub emmc_write_speed_mbps: f64,
     pub emmc_latency_ms: u64,
     pub emmc_health: String, // "good", "warning", "critical", "unknown"
+    pub storage_type: String, // "UFS", "eMMC", "Flash"
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -118,6 +119,38 @@ pub fn is_safe_to_delete(path: &str) -> Result<(), String> {
     Ok(())
 }
 
+pub async fn detect_storage_type(device_id: &str) -> String {
+    // 1. Cek boot devices dari ro.boot.boot_devices atau ro.boot.bootdevice
+    if let Ok((out, _, 0)) = run_adb_device(device_id, &["shell", "getprop", "ro.boot.boot_devices"]).await {
+        let lower = out.to_lowercase();
+        if lower.contains("ufs") {
+            return "UFS".to_string();
+        } else if lower.contains("mmc") {
+            return "eMMC".to_string();
+        }
+    }
+    if let Ok((out, _, 0)) = run_adb_device(device_id, &["shell", "getprop", "ro.boot.bootdevice"]).await {
+        let lower = out.to_lowercase();
+        if lower.contains("ufs") {
+            return "UFS".to_string();
+        } else if lower.contains("mmc") {
+            return "eMMC".to_string();
+        }
+    }
+
+    // 2. Cek block devices di /sys/block/
+    if let Ok((out, _, 0)) = run_adb_device(device_id, &["shell", "ls -l /sys/block/ 2>/dev/null"]).await {
+        let lower = out.to_lowercase();
+        if lower.contains("ufshci") || lower.contains("ufs") {
+            return "UFS".to_string();
+        } else if lower.contains("mmcblk") || lower.contains("mmc") {
+            return "eMMC".to_string();
+        }
+    }
+
+    "Flash".to_string()
+}
+
 pub async fn get_storage_stats(device_id: String) -> Result<StorageStats, String> {
     // df -k /data untuk membaca partisi data pengguna
     let (out, err, code) = run_adb_device(&device_id, &["shell", "df", "-k", "/data"]).await?;
@@ -165,6 +198,7 @@ pub async fn get_storage_stats(device_id: String) -> Result<StorageStats, String
         emmc_write_speed_mbps: 0.0,
         emmc_latency_ms: 0,
         emmc_health: "unknown".into(),
+        storage_type: detect_storage_type(&device_id).await,
     })
 }
 
@@ -192,41 +226,55 @@ pub async fn trim_caches(device_id: String) -> CommandResult {
 pub async fn benchmark_storage(device_id: String) -> Result<StorageStats, String> {
     let mut stats = get_storage_stats(device_id.clone()).await?;
 
-    // Micro-benchmark fisik via dd: tulis 8MB dengan oflag=dsync (bypass RAM cache)
-    let cmd = "dd if=/dev/zero of=/sdcard/.megapass_bench bs=1M count=8 oflag=dsync 2>&1 && rm -f /sdcard/.megapass_bench";
+    // Micro-benchmark fisik via dd: tulis 8MB dengan conv=fsync (kompatibel penuh dengan Toybox Android)
+    let cmd = "dd if=/dev/zero of=/sdcard/.megapass_bench bs=1M count=8 conv=fsync 2>&1 && rm -f /sdcard/.megapass_bench";
     let start = Instant::now();
-    let (out, _, _) = run_adb_device(&device_id, &["shell", cmd]).await
+    let (out, _, code) = run_adb_device(&device_id, &["shell", cmd]).await
         .unwrap_or_default();
     let elapsed_ms = start.elapsed().as_millis() as u64;
 
-    // Parsing kecepatan dari output dd: contoh "8388608 bytes (...) copied, 0.21 s, 39.9 MB/s"
+    // Parsing kecepatan dari output dd:
+    // Format Toybox Android: "8388608 bytes (8.0 M) copied, 0.049 s, 163 M/s"
+    // Format GNU dd: "8388608 bytes (8.4 MB, 8.0 MiB) copied, 0.21 s, 39.9 MB/s"
     let mut speed_mbps = 0.0;
     for part in out.split(',') {
         let p = part.trim();
-        if p.ends_with("MB/s") {
-            if let Some(num_str) = p.strip_suffix("MB/s") {
-                speed_mbps = num_str.trim().parse::<f64>().unwrap_or(0.0);
-            }
-        } else if p.ends_with("kB/s") {
-            if let Some(num_str) = p.strip_suffix("kB/s") {
-                speed_mbps = num_str.trim().parse::<f64>().unwrap_or(0.0) / 1024.0;
-            }
+        if let Some(num_str) = p.strip_suffix("GB/s").or_else(|| p.strip_suffix("G/s")) {
+            speed_mbps = num_str.trim().parse::<f64>().unwrap_or(0.0) * 1024.0;
+        } else if let Some(num_str) = p.strip_suffix("MB/s").or_else(|| p.strip_suffix("M/s")) {
+            speed_mbps = num_str.trim().parse::<f64>().unwrap_or(0.0);
+        } else if let Some(num_str) = p.strip_suffix("kB/s").or_else(|| p.strip_suffix("KB/s")).or_else(|| p.strip_suffix("k/s")).or_else(|| p.strip_suffix("K/s")) {
+            speed_mbps = num_str.trim().parse::<f64>().unwrap_or(0.0) / 1024.0;
         }
     }
 
-    // Jika dd tidak cetak MB/s, hitung manual dari 8MB / elapsed
-    if speed_mbps == 0.0 && elapsed_ms > 0 {
+    // Jika dd berhasil tapi tidak cetak speed rate, hitung manual dari 8MB / elapsed
+    if speed_mbps == 0.0 && elapsed_ms > 0 && (code == 0 || out.contains("copied")) {
         speed_mbps = (8.0 / (elapsed_ms as f64 / 1000.0) * 10.0).round() / 10.0;
     }
 
-    let health = if speed_mbps >= 25.0 {
-        "good".to_string()
-    } else if speed_mbps >= 8.0 {
-        "warning".to_string()
-    } else if speed_mbps > 0.0 {
-        "critical".to_string()
+    // Evaluasi kesehatan adaptif: UFS vs eMMC
+    let is_ufs = stats.storage_type.to_uppercase().contains("UFS");
+    let health = if is_ufs {
+        if speed_mbps >= 60.0 {
+            "good".to_string()
+        } else if speed_mbps >= 25.0 {
+            "warning".to_string()
+        } else if speed_mbps > 0.0 {
+            "critical".to_string()
+        } else {
+            "unknown".to_string()
+        }
     } else {
-        "unknown".to_string()
+        if speed_mbps >= 25.0 {
+            "good".to_string()
+        } else if speed_mbps >= 8.0 {
+            "warning".to_string()
+        } else if speed_mbps > 0.0 {
+            "critical".to_string()
+        } else {
+            "unknown".to_string()
+        }
     };
 
     stats.emmc_write_speed_mbps = (speed_mbps * 10.0).round() / 10.0;

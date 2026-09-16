@@ -101,6 +101,7 @@ export interface StorageStats {
   emmc_write_speed_mbps: number;
   emmc_latency_ms: number;
   emmc_health: "good" | "warning" | "critical" | "unknown" | string;
+  storage_type?: string;
 }
 
 export interface TrashItem {

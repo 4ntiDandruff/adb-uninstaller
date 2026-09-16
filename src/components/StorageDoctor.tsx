@@ -510,7 +510,9 @@ Format output persis (maksimal 15 kata per poin, tanpa markdown tebal):
         {/* Card 2: eMMC / UFS Speed Benchmark */}
         <div className="card-bento">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-dim">{t("storage.card_emmc")}</span>
+            <span className="text-xs font-semibold text-dim">
+              {stats?.storage_type ? `${t("storage.card_flash")} (${stats.storage_type})` : t("storage.card_emmc")}
+            </span>
             <Activity size={16} className="text-dim" />
           </div>
           <div className="my-2.5">
@@ -539,24 +541,34 @@ Format output persis (maksimal 15 kata per poin, tanpa markdown tebal):
               </span>
             </div>
             <div className="text-xs text-dim mt-1">
-              Latensi: {stats?.emmc_latency_ms ? `${stats.emmc_latency_ms} ms` : "—"} · Micro-test 8MB dsync
+              Latensi: {stats?.emmc_latency_ms ? `${stats.emmc_latency_ms} ms` : "—"} · Micro-test 8MB fsync
             </div>
           </div>
           <div className="flex items-center justify-between border-t border-[var(--border)] pt-2 mt-1">
             <div className="text-[11px] text-faint">
-              {stats?.emmc_write_speed_mbps && stats.emmc_write_speed_mbps >= 45
-                ? "Chip UFS berkinerja tinggi (sangat responsif)"
-                : stats?.emmc_write_speed_mbps && stats.emmc_write_speed_mbps >= 15
-                ? "Kondisi eMMC 5.1 standar (sehat)"
-                : stats?.emmc_write_speed_mbps && stats.emmc_write_speed_mbps > 0
-                ? "Kecepatan rendah, kemungkinan chip aus"
-                : "Klik uji speed untuk diagnosa fisik"}
+              {stats?.emmc_write_speed_mbps ? (
+                stats.storage_type?.toUpperCase().includes("UFS") ? (
+                  stats.emmc_write_speed_mbps >= 60
+                    ? "Throughput UFS prima (streaming storage stabil)"
+                    : stats.emmc_write_speed_mbps >= 25
+                    ? "Throughput UFS menurun (indikasi thermal/IO throttle)"
+                    : "Throughput UFS sangat rendah (degradasi I/O parah)"
+                ) : (
+                  stats.emmc_write_speed_mbps >= 25
+                    ? "Kondisi eMMC 5.1 standar (sehat)"
+                    : stats.emmc_write_speed_mbps >= 8
+                    ? "Kondisi eMMC lambat (mulai terdegradasi)"
+                    : "Kecepatan eMMC sangat rendah (indikasi bad block/aus)"
+                )
+              ) : (
+                "Klik uji speed untuk diagnosa I/O fisik"
+              )}
             </div>
             <button
               className="btn btn-ghost btn-sm text-xs shrink-0"
               onClick={runBenchmark}
               disabled={!deviceId || benchmarking}
-              title="Uji kecepatan tulis fisik flash memory (dd oflag=dsync)"
+              title="Uji kecepatan tulis fisik flash memory (dd conv=fsync)"
             >
               {benchmarking ? (
                 <Loader2 size={12} className="animate-spin" />
