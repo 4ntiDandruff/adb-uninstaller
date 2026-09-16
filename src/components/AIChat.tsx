@@ -111,7 +111,7 @@ export function AIChat({ context, msgs, setMsgs, pos, setPos, minimized, onClose
       setMsgs((m) => [...m, { role: "assistant", content: reply }]);
     } catch (e) {
       toast.error(`Chat AI gagal`);
-      setMsgs((m) => [...m, { role: "assistant", content: `⚠️ ${e}` }]);
+      setMsgs((m) => [...m, { role: "assistant", content: `[!] Gagal: ${e}` }]);
     } finally {
       setBusy(false);
     }

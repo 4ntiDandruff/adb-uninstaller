@@ -144,10 +144,18 @@ function StatBar({ label, count, total, color }: { label: string; count: number;
   return (
     <div className="flex items-center gap-2 py-0.5">
       <span className="w-12 text-faint text-xs">{label}</span>
-      <div className="flex-1 h-1.5 rounded-full" style={{ background: "var(--bg-card)" }}>
-        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color, minWidth: count > 0 ? 4 : 0 }} />
+      <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--bg-card)" }}>
+        <div
+          className="h-full rounded-full"
+          style={{
+            width: `${pct}%`,
+            background: color,
+            minWidth: count > 0 ? 4 : 0,
+            transition: "width 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+          }}
+        />
       </div>
-      <span className="w-8 text-right text-xs font-mono" style={{ color }}>{count}</span>
+      <span className="w-8 text-right text-xs font-mono tabular-nums" style={{ color }}>{count}</span>
     </div>
   );
 }

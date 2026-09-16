@@ -1,4 +1,4 @@
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, X } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
 
 interface Props {
@@ -36,6 +36,9 @@ export function ConfirmDialog({
             {danger && <AlertTriangle size={16} className="text-danger" />}
             <div className="modal-title">{title}</div>
           </div>
+          <button className="btn btn-ghost btn-icon btn-sm" onClick={onCancel} title="Batal">
+            <X size={15} />
+          </button>
         </div>
         <div className="modal-body">
           <div className="text-sm" style={{ whiteSpace: "pre-wrap" }}>{message}</div>

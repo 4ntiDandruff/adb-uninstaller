@@ -1563,3 +1563,22 @@ td.cell-check, th.cell-check {
 [data-theme="light"] .dock-sep {
   background: rgba(0, 0, 0, 0.1);
 }
+
+/* High-Contrast Light Theme Overrides for Accents (WCAG AA/AAA) */
+[data-theme="light"] .text-cyan-400 {
+  color: #0284c7 !important;
+}
+[data-theme="light"] .text-cyan-400:hover,
+[data-theme="light"] .hover\:text-cyan-300:hover {
+  color: #0369a1 !important;
+}
+[data-theme="light"] .text-amber-400 {
+  color: #b45309 !important;
+}
+[data-theme="light"] .text-amber-400:hover,
+[data-theme="light"] .hover\:text-amber-300:hover {
+  color: #92400e !important;
+}
+[data-theme="light"] .text-red-300 {
+  color: #b91c1c !important;
+}

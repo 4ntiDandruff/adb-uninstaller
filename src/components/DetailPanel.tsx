@@ -79,7 +79,7 @@ export function DetailPanel({
             </dl>
             {app.safety_level === "critical" && (
               <div className="mt-3 rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-300">
-                Package CRITICAL — operasi uninstall/disable diblokir demi keamanan sistem.
+                Package CRITICAL: operasi uninstall/disable diblokir demi keamanan sistem.
               </div>
             )}
           </div>

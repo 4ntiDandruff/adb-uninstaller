@@ -769,7 +769,7 @@ export default function App() {
         );
         setChatMsgs((prev) => [...prev, { role: "assistant", content: reply }]);
       } catch (e) {
-        setChatMsgs((prev) => [...prev, { role: "assistant", content: `⚠️ ${e}` }]);
+        setChatMsgs((prev) => [...prev, { role: "assistant", content: `[!] ${e}` }]);
       }
     },
     [deviceInfo, deviceId, chatMsgs, chatContext],
@@ -1111,7 +1111,13 @@ export default function App() {
       {presetsOpen && (
         <div className="modal-overlay" onClick={() => setPresetsOpen(false)}>
           <div className="modal" style={{ maxWidth: 640 }} onClick={(e) => e.stopPropagation()}>
-            <DebloatPresets installedApps={apps} onExecute={(pkgs) => { setPresetsOpen(false); runBatch(pkgs); }} busy={busy} t={t} />
+            <DebloatPresets
+              installedApps={apps}
+              onExecute={(pkgs) => { setPresetsOpen(false); runBatch(pkgs); }}
+              onClose={() => setPresetsOpen(false)}
+              busy={busy}
+              t={t}
+            />
           </div>
         </div>
       )}
@@ -1155,12 +1161,12 @@ export default function App() {
                   onClick={() => applyTimeout(o.ms)}
                   style={{ justifyContent: "flex-start" }}
                 >
-                  {curTimeout === o.ms ? "✓ " : ""}{o.label}
+                  {curTimeout === o.ms && <CheckCircle2 size={13} className="mr-1 shrink-0" />}{o.label}
                 </button>
               ))}
             </div>
             <p className="text-xs text-faint mt-3">
-              Kalau HP terpasang Device Admin (app kantor/keamanan), angka bisa ditolak sistem — hasil nyata ditampilkan di atas setelah set.
+              Kalau HP terpasang Device Admin (app kantor/keamanan), angka bisa ditolak sistem: hasil nyata ditampilkan di atas setelah set.
             </p>
             </div>
           </div>

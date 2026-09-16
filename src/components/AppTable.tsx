@@ -124,8 +124,13 @@ export function AppTable({
         <table className="app-table">
           <thead>
             <tr>
-              <th className="w-10">
-                <input type="checkbox" checked={allChecked} onChange={() => onToggleAll(filtered)} />
+              <th className="cell-check w-10">
+                <input
+                  type="checkbox"
+                  checked={allChecked}
+                  onChange={() => onToggleAll(filtered)}
+                  aria-label="Pilih semua"
+                />
               </th>
               <th onClick={() => toggleSort("label")} className="cursor-pointer select-none">
                 <span className="inline-flex items-center gap-1.5">
