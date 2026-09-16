@@ -47,9 +47,12 @@ pub struct DeviceInfo {
 }
 
 async fn run_adb(args: &[&str]) -> Result<(String, String, i32), String> {
+    let mut cmd = Command::new("adb");
+    cmd.args(args);
+    cmd.kill_on_drop(true);
     let output = tokio::time::timeout(
         std::time::Duration::from_secs(30),
-        Command::new("adb").args(args).output(),
+        cmd.output(),
     )
     .await
     .map_err(|_| "[ADB-1001] ADB timeout (30s)".to_string())?
@@ -913,12 +916,13 @@ pub async fn extract_apk(
     let local_dest = backup_dir.join(&file_name);
     let local_dest_str = local_dest.to_string_lossy().to_string();
 
-    // 4. Jalankan adb pull dengan timeout 120 detik
+    // 4. Jalankan adb pull dengan timeout 120 detik & sekring kill_on_drop
+    let mut pull_cmd = Command::new("adb");
+    pull_cmd.args(["-s", &device_id, "pull", &remote_apk, &local_dest_str]);
+    pull_cmd.kill_on_drop(true);
     let pull_res = tokio::time::timeout(
         std::time::Duration::from_secs(120),
-        Command::new("adb")
-            .args(["-s", &device_id, "pull", &remote_apk, &local_dest_str])
-            .output(),
+        pull_cmd.output(),
     )
     .await;
 
