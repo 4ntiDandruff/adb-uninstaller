@@ -1,4 +1,4 @@
-import { Copy, Sparkles, X } from "lucide-react";
+import { Copy, Sparkles, X, Trash2, Ban, CheckCircle2, PowerOff, Eraser } from "lucide-react";
 import type { AppInfo } from "../types";
 import { toast } from "./api";
 
@@ -79,10 +79,12 @@ export function DetailPanel({
               disabled={busy || app.safety_level === "critical"}
               onClick={() => onUninstall(app)}
             >
+              <Trash2 size={13} />
               {t("detail.uninstall")}
             </button>
             {app.is_disabled ? (
               <button className="btn btn-success" disabled={busy} onClick={() => onEnable(app)}>
+                <CheckCircle2 size={13} />
                 {t("detail.enable")}
               </button>
             ) : (
@@ -91,13 +93,16 @@ export function DetailPanel({
                 disabled={busy || app.safety_level === "critical"}
                 onClick={() => onDisable(app)}
               >
+                <Ban size={13} />
                 {t("detail.disable")}
               </button>
             )}
             <button className="btn btn-ghost" disabled={busy} onClick={() => onForceStop(app)}>
+              <PowerOff size={13} />
               {t("detail.force_stop")}
             </button>
             <button className="btn btn-ghost" disabled={busy} onClick={() => onClearData(app)}>
+              <Eraser size={13} />
               {t("detail.clear_data")}
             </button>
             <button

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, Minus, Send, Sparkles, Trash2, X } from "lucide-react";
+import { Loader2, Minus, Send, Sparkles, Trash2, X, Zap, ShieldCheck, Cpu } from "lucide-react";
 import { api, toast } from "./api";
 
 export interface Msg {
@@ -20,19 +20,23 @@ interface Props {
 
 const QUICK_CHIPS = [
   {
-    label: "⚡ Rekomendasi Debloat",
+    icon: Zap,
+    label: "Rekomendasi Debloat",
     prompt: "Rekomendasi package apa saja yang paling aman di-debloat untuk perangkat ini tanpa merusak fungsionalitas utama?",
   },
   {
-    label: "🛡️ Cek Google Services",
+    icon: ShieldCheck,
+    label: "Cek Google Services",
     prompt: "Apakah aman menonaktifkan Google Play Services dan Google Apps di HP ini dan apa efek sampingnya?",
   },
   {
-    label: "🧹 Bloatware Vendor Aman",
+    icon: Trash2,
+    label: "Bloatware Vendor Aman",
     prompt: "Daftar bloatware bawaan vendor yang aman dinonaktifkan tanpa risiko bootloop?",
   },
   {
-    label: "🚀 Tips Hemat RAM",
+    icon: Cpu,
+    label: "Tips Hemat RAM",
     prompt: "Berikan tips teknisi servis untuk meringankan beban RAM dan baterai pada perangkat ini melalui ADB.",
   },
 ];
@@ -156,16 +160,20 @@ export function AIChat({ context, msgs, setMsgs, pos, setPos, minimized, onClose
                 Aksi Cepat Teknisi
               </div>
               <div className="flex flex-col gap-1.5">
-                {QUICK_CHIPS.map((chip, idx) => (
-                  <button
-                    key={idx}
-                    className="text-left text-xs px-2.5 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-dim hover:text-[var(--text-main)] transition-colors"
-                    onClick={() => send(chip.prompt)}
-                    disabled={busy}
-                  >
-                    {chip.label}
-                  </button>
-                ))}
+                {QUICK_CHIPS.map((chip, idx) => {
+                  const Icon = chip.icon;
+                  return (
+                    <button
+                      key={idx}
+                      className="btn btn-ghost btn-sm justify-start text-xs text-dim hover:text-[var(--text)] w-full"
+                      onClick={() => send(chip.prompt)}
+                      disabled={busy}
+                    >
+                      <Icon size={13} className="text-primary flex-shrink-0" />
+                      <span>{chip.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}

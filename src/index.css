@@ -292,15 +292,18 @@ body,
   align-items: center;
   justify-content: center;
   gap: 6px;
+  height: 32px;
   border-radius: 8px;
-  padding: 7px 12px;
+  padding: 0 12px;
   font-size: 13px;
   font-weight: 500;
+  line-height: 1;
   border: 1px solid transparent;
   cursor: pointer;
   transition: background 0.12s, border-color 0.12s, opacity 0.12s, transform 0.08s ease-out;
   white-space: nowrap;
   user-select: none;
+  flex-shrink: 0;
 }
 .btn:disabled {
   opacity: 0.45;
@@ -333,13 +336,15 @@ body,
 .btn-danger {
   background: var(--danger);
   color: #fff;
+  font-weight: 600;
 }
 .btn-danger:hover:not(:disabled) {
   background: #d63a3a;
 }
 .btn-success {
   background: var(--success);
-  color: #06281a;
+  color: #ffffff;
+  font-weight: 600;
 }
 .btn-ghost {
   background: var(--bg-card);
@@ -351,12 +356,37 @@ body,
   border-color: var(--border-strong);
 }
 .btn-sm {
-  padding: 5px 9px;
+  height: 28px;
+  padding: 0 10px;
   font-size: 12px;
   border-radius: 7px;
+  gap: 5px;
 }
 .btn-icon {
-  padding: 7px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.btn-icon.btn-sm {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+}
+.btn-icon.btn-xs {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+}
+.select-dark.btn-sm {
+  height: 28px;
+  padding: 0 22px 0 8px;
+  font-size: 12px;
+  border-radius: 7px;
+  background-position: right 0.45rem center;
 }
 
 /* ===== Inputs ===== */

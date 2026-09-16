@@ -13,6 +13,11 @@ import {
   X,
   HardDrive,
   Package,
+  Ban,
+  CheckCircle2,
+  PowerOff,
+  Eraser,
+  Download,
 } from "lucide-react";
 import type { AppInfo, AppSettings, Device, DeviceInfo, LogEntry, SafetyLevel } from "./types";
 import { api, makeLog, toast } from "./components/api";
@@ -727,14 +732,14 @@ export default function App() {
             <button className="btn btn-ghost btn-sm" onClick={() => { setChatOpen((o) => !o); setChatMinimized(false); }} title={t("chat.title")}>
               <MessageSquare size={14} /> AI Chat
             </button>
-            <button className="btn btn-ghost btn-sm" onClick={() => setAboutOpen(true)} title={t("topbar.about")}><Info size={14} /></button>
+            <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setAboutOpen(true)} title={t("topbar.about")}><Info size={14} /></button>
           </div>
 
           <div className="topbar-sep" />
 
           <div className="topbar-group">
             <button
-              className="btn btn-ghost btn-sm"
+              className="btn btn-ghost btn-icon btn-sm"
               onClick={() => {
                 const next = settings?.theme === "light" ? "dark" : "light";
                 if (next === "light") { document.documentElement.setAttribute("data-theme", "light"); }
@@ -816,6 +821,7 @@ export default function App() {
               {selected.size > 0 && (
                 <div className="ml-auto flex items-center gap-1.5 pl-3" style={{borderLeft: "1px solid var(--border)"}}>
                   <button className="btn btn-danger btn-sm" disabled={busy} onClick={() => runBatch([...selected])}>
+                    <Trash2 size={13} />
                     {t("toolbar.uninstall")} {selected.size}
                   </button>
                   <button
@@ -824,6 +830,7 @@ export default function App() {
                     onClick={() => runBatchOp("disable", [...selected])}
                     title={t("toolbar.disable")}
                   >
+                    <Ban size={13} />
                     {t("toolbar.disable")}
                   </button>
                   <button
@@ -832,6 +839,7 @@ export default function App() {
                     onClick={() => runBatchOp("enable", [...selected])}
                     title={t("toolbar.enable")}
                   >
+                    <CheckCircle2 size={13} />
                     {t("toolbar.enable")}
                   </button>
                   <button
@@ -840,6 +848,7 @@ export default function App() {
                     onClick={() => runBatchOp("force_stop", [...selected])}
                     title={t("toolbar.stop")}
                   >
+                    <PowerOff size={13} />
                     {t("toolbar.stop")}
                   </button>
                   <button
@@ -848,6 +857,7 @@ export default function App() {
                     onClick={() => runBatchOp("clear_data", [...selected])}
                     title={t("toolbar.clear")}
                   >
+                    <Eraser size={13} />
                     {t("toolbar.clear")}
                   </button>
                   <button
@@ -856,7 +866,8 @@ export default function App() {
                     onClick={() => exportPreset(apps, selected, deviceInfo?.model)}
                     title="Export preset debloat"
                   >
-                    💾 Export
+                    <Download size={13} />
+                    Export
                   </button>
                 </div>
               )}
