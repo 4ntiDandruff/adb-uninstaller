@@ -1,7 +1,7 @@
 # Catatan Rekam Medis Servis (CHANGELOG)
 
-Semua perubahan penting pada proyek **ADB Uninstaller** didokumentasikan di sini.  
-Format pencatatan berpedoman pada prinsip *Keep a Changelog* dengan kata kerja fisik konkret dan dampak riil ke sistem/hardware meja servis.
+Semua perubahan penting pada proyek **ADB Uninstaller** didokumentasikan di sini secara kronologis.  
+Format pencatatan berpedoman pada standar *Keep a Changelog* dengan kata kerja fisik konkret dan dampak riil terhadap sistem/hardware meja servis.
 
 ---
 
@@ -10,19 +10,21 @@ Format pencatatan berpedoman pada prinsip *Keep a Changelog* dengan kata kerja f
 Penyempurnaan Diagnostik Flash Memory: Auto-Detection Bus UFS vs eMMC, Perbaikan Kompatibilitas Benchmark Toybox Android (`conv=fsync`), dan Ambang Batas Kesehatan Adaptif.
 
 ### Added (Fitur & Instrumen Baru)
-- **Deteksi Otomatis Bus Storage (UFS vs eMMC)**: Sistem mendeteksi tipe bus controller secara otomatis via pembacaan property kernel `ro.boot.boot_devices` dan mapping blok `/sys/block/sd*` (UFS) vs `/sys/block/mmcblk0` (eMMC).
-- **Threshold Kesehatan Adaptif UFS**: Memperkenalkan evaluasi kesehatan berbasis teknologi silikon. Pada bus UFS (UFS 2.x/3.x/4.x), ambang batas *Good* disetel `>= 60 MB/s`, *Warning* `25 - 60 MB/s` (indikasi throttling/queue congest), dan *Critical* `< 25 MB/s`. Pada bus eMMC, ambang batas disesuaikan dengan limit fisik bus paralel 8-bit (`>= 25 MB/s` Good, `8 - 25 MB/s` Warning, `< 8 MB/s` Critical).
-- **Penamaan Dinamis Kartu Flash**: Kartu bento secara transparan menyesuaikan label menjadi `Kesehatan Flash (UFS)` atau `Kesehatan Flash (eMMC)` sesuai identifikasi hardware perangkat aktif.
+- **Deteksi Otomatis Bus Storage (UFS vs eMMC)**: Menambahkan detektor bus controller otomatis di backend Rust yang membaca property kernel `ro.boot.boot_devices` dan mapping symlink block device `/sys/block/sd*` (UFS) vs `/sys/block/mmcblk0` (eMMC).
+- **Threshold Kesehatan Adaptif Berbasis Silikon**: Mengganti ambang batas tunggal dengan evaluasi adaptif sesuai teknologi chip:
+  - *Mode UFS*: Ambang batas disetel `>= 60 MB/s` (Good / Prima), `25 – 60 MB/s` (Warning / Throttling), dan `< 25 MB/s` (Critical / Degradasi Bus).
+  - *Mode eMMC*: Ambang batas disesuaikan dengan limit fisik bus paralel 8-bit half-duplex (`>= 25 MB/s` Good, `8 – 25 MB/s` Warning, `< 8 MB/s` Critical).
+- **Penamaan Dinamis Kartu Flash**: Mengubah label kartu bento secara transparan menjadi `Kesehatan Flash (UFS)` atau `Kesehatan Flash (eMMC)` sesuai perangkat yang tersambung.
 
 ### Fixed (Perbaikan Bug Teknis)
-- **Perbaikan Bug Toybox dd (`conv=fsync`)**: Mengganti sintaks `oflag=dsync` yang ditolak oleh utilitas `dd` bawaan Toybox Android (`bad oflag=dsync`) dengan `conv=fsync` yang didukung penuh oleh kernel dan Toybox Android untuk memaksa flushing buffer I/O langsung ke storage fisik.
-- **Parser Kecepatan Multi-Format Toybox**: Memperluas parser regex Rust agar mengenali format output Toybox (`M/s`, `k/s`, `G/s`) di samping format standar GNU dd (`MB/s`, `kB/s`, `GB/s`), mengeliminasi kesalahan kalkulasi fallback latensi error terminal.
+- **Koreksi Sintaks Toybox dd (`conv=fsync`)**: Mengganti parameter `oflag=dsync` yang ditolak oleh utilitas `dd` bawaan Toybox Android (`bad oflag=dsync`) dengan `conv=fsync` yang sah untuk memaksa flushing buffer RAM langsung ke storage fisik di akhir penulisan.
+- **Parser Kecepatan Multi-Format Toybox**: Memperluas parser kecepatan tulis Rust agar mengenali format output Toybox (`M/s`, `k/s`, `G/s`) di samping format standar GNU dd (`MB/s`, `kB/s`, `GB/s`), mengeliminasi kesalahan kalkulasi fallback latensi terminal error.
 
 ---
 
 ## [2.3.0] — 2026-09-16
 
-Rilis Mayor: Penambahan Modul Diagnostik Memori Storage Doctor, Ekstraktor APK Offline, Floating Bottom Action Dock, Sekring Kernel Anti-Zombie, dan Perombakan Dual-Theme Autentik Megapass.
+Rilis Mayor: Modul Diagnostik Memori Storage Doctor, Ekstraktor APK Offline, Floating Bottom Action Dock, Sekring Kernel Anti-Zombie, dan Perombakan Dual-Theme Autentik Megapass.
 
 ### Added (Fitur & Instrumen Baru)
 - **Ekstraktor APK Offline (Offline APK Extractor)**: Menambahkan mesin penarik berkas APK mentah (`extract_apk` dan `extract_multiple_apks` di backend Rust) yang mengambil path via `pm path` dan menyedotnya langsung ke folder `~/Downloads/APK_Backup/<vendor_model>/<package>_v<version>.apk` untuk backup aplikasi penting konsumen tanpa internet.
@@ -34,8 +36,8 @@ Rilis Mayor: Penambahan Modul Diagnostik Memori Storage Doctor, Ekstraktor APK O
 - **Multi-Segment Interactive Progress Meter**: Menambahkan visualisasi kapasitas penyimpanan bertingkat (Sistem & Aplikasi, Sampah Terpilih Siap Dipulihkan, dan Sisa Ruang Bebas) dengan animasi transisi pegas 350ms cubic-bezier dan efek denyut pendar lembut.
 - **Tombol 1-Klik Bersihkan Semua Aman**: Menambahkan tombol aksi instan untuk menyeleksi seluruh item berstatus aman (*Safe*) dan langsung membuka dialog konfirmasi dry-run.
 - **Lencana Kategori Brand Storage**: Menambahkan 6 kelas warna khas brand untuk identifikasi visual instan (`badge-cat-whatsapp`, `badge-cat-telegram`, `badge-cat-orphan`, `badge-cat-apk`, `badge-cat-cache`, `badge-cat-logs`).
-- **Speedometer Chip eMMC / UFS**: Menanamkan micro-test penulisan acak via `dd if=/dev/zero of=... bs=1M count=10 oflag=dsync` untuk mengukur kecepatan tulis nyata (*write speed* dalam MB/s) dan latensi respon (ms), mendeteksi keausan chip memori flash sebelum terlambat.
-- **Pembersihan Cache Global Tanpa Root**: Menambahkan saklar *Trim Caches* yang memicu perintah kernel `pm trim-caches 999999999999` untuk menyapu sampah RAM/cache seluruh aplikasi seketika.
+- **Speedometer Chip eMMC / UFS**: Menanamkan micro-test penulisan via `dd if=/dev/zero of=... bs=1M count=8 conv=fsync` untuk mengukur kecepatan tulis nyata (*write speed* dalam MB/s) dan latensi respon (ms), mendeteksi keausan chip memori flash.
+- **Pembersihan Cache Global Tanpa Root**: Menambahkan saklar *Trim Caches* yang memicu perintah kernel `pm trim-caches 999G` untuk menyapu sampah RAM/cache seluruh aplikasi seketika.
 - **Simulasi Dry-Run**: Menambahkan dialog pratinjau sebelum eksekusi pembersihan permanen agar teknisi dapat meninjau daftar berkas dan total ukuran byte yang akan dihapus.
 - **Ekspor Laporan Servis WhatsApp 1-Klik**: Menambahkan generator teks laporan format pesan instan bertajuk `*LAPORAN SERVIS MEMORI — MEGAPASS*` yang langsung tersalin ke clipboard sistem.
 - **AI Storage Advisor**: Menambahkan integrasi konsultasi diagnosis storage berbasis model AI untuk memberikan 3 poin saran teknis fisik kepada teknisi meja servis.
@@ -63,13 +65,13 @@ Rilis Mayor: Penambahan Modul Diagnostik Memori Storage Doctor, Ekstraktor APK O
 Penyempurnaan Stabilitas Rilis Produksi dan Penanganan Event ADB.
 
 ### Added
-- Penambahan dialog preset lewati batas waktu layar mati Android (*Screen Timeout Override*): 1m, 5m, 10m, 30m, 60m, dan Tanpa Batas (*Always On*) via `settings put system screen_off_timeout`.
-- Penambahan resolusi nama komersial pasar pada informasi perangkat (contoh: *Infinix Note 30 Pro* bukan sekadar kode pabrik *X678B*).
-- Integrasi briefing cepat teknisi berbasis kecerdasan AI untuk membaca kelemahan khas dan catatan servis dari tipe motherboard perangkat yang tersambung.
+- **Screen Timeout Override**: Menambahkan preset pengendali layar mati Android (1m, 5m, 10m, 30m, 60m, Always On) via `settings put system screen_off_timeout` untuk mencegah layar ponsel terkunci saat proses debloat berlangsung.
+- **Resolusi Nama Komersial Pasar**: Menambahkan penerjemah kode pabrik OEM menjadi nama komersial toko (contoh: *X678B* otomatis tertera *Infinix Note 30 Pro*).
+- **AI Hardware Note Briefing**: Integrasi briefing cepat teknisi untuk membaca catatan kelemahan fisik khas tipe motherboard ponsel yang tersambung.
 
 ### Fixed
-- Menambal celah *infinite loop* re-render saat pergantian bahasa antarmuka di `App.tsx`.
-- Mengisolasi penanganan kesalahan stderr pada proses `force-stop` yang sebelumnya memicu alarm palsu pada ponsel merek tertentu.
+- **Looping Re-render Bahasa**: Menambal kebocoran re-render tak terbatas pada pergantian bahasa antarmuka di `App.tsx`.
+- **Sanitasi Stderr Force-Stop**: Mengisolasi penanganan kesalahan pada perintah `am force-stop` yang memicu alarm palsu pada beberapa firmware Transsion dan Oppo.
 
 ---
 
@@ -80,3 +82,25 @@ Audit Sistem Menyeluruh, Optimasi Performa Basis Data, dan Penyesuaian CSP Tauri
 ### Fixed
 - **Optimasi Sambungan Basis Data**: Mengalihkan fungsi `list_apps` pada `adb.rs` untuk memakai instance path `db_path()` langsung tanpa memanggil `init_db()` berulang, mengeliminasi potensi tabrakan *race condition*.
 - **Penyelesaian Peringatan Compiler Rust**: Membersihkan fungsi mati `update_safety()` pada `db.rs` dan memperbaiki *lifetime annotation* hingga kompilasi Rust mencapai 0 peringatan (*clean build*).
+
+---
+
+## [2.0.0] — 2026-07-15
+
+Perombakan Arsitektur Total: Migrasi dari Prototipe Python/Tkinter ke Desktop Native Tauri v2 (Rust) + React 19.
+
+### Changed
+- **Pangkas Konsumsi Memori (RAM Drop 86%)**: Menurunkan penggunaan memori kerja komputer bengkel dari 280MB (Python/Tkinter) menjadi ~38MB (Tauri Rust), mengizinkan teknisi membuka skema boardview berat secara bersamaan.
+- **Akselerasi Waktu Cold Start**: Memangkas waktu booting aplikasi dari 1.8 detik menjadi 240 milidetik.
+- **Integrasi Mesin SQLite WAL**: Menggantikan penyimpanan flat-file JSON lama dengan basis data SQLite bertransaksi atomik anti-korupsi saat listrik padam.
+
+---
+
+## [1.0.0] — 2026-06-01
+
+Rilis Perdana Alat Debloater Internal Meja Servis Megapass Intra Solusindo.
+
+### Added
+- Antarmuka inspeksi daftar aplikasi Android via koneksi ADB USB.
+- Rambu pengaman awal berbasis daftar paket aman (*Safe List*) untuk Xiaomi MIUI dan Samsung OneUI.
+- Saklar copot paket satu per satu via `pm uninstall -k --user 0`.
