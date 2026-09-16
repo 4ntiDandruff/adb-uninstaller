@@ -50,8 +50,10 @@ export function StorageDoctor({ deviceId, deviceInfo, installedApps, t, lang }: 
   }, [deviceId]);
 
   useEffect(() => {
+    setItems([]);
+    setSelectedIds(new Set());
     loadStats();
-  }, [loadStats]);
+  }, [deviceId, loadStats]);
 
   // Scan junk items
   const runScan = useCallback(async () => {

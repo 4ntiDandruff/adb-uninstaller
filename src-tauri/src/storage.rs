@@ -59,14 +59,42 @@ pub const PROTECTED_FOLDERS: &[&str] = &[
     "Podcasts",
 ];
 
+pub fn escape_shell_path(path: &str) -> String {
+    format!("'{}'", path.replace('\'', "'\\''"))
+}
+
 pub fn is_safe_to_delete(path: &str) -> Result<(), String> {
     let clean = path.trim().trim_end_matches('/');
     if clean.is_empty() {
         return Err("[SEC-301] Path target kosong".into());
     }
+    // Wajib berada di storage publik pengguna (/sdcard/ atau /storage/emulated/0/)
+    if !clean.starts_with("/sdcard/") && !clean.starts_with("/storage/emulated/0/") {
+        return Err(format!("[SEC-305] Ditolak: target harus berada di dalam /sdcard/ ({clean})"));
+    }
     for root in FORBIDDEN_ROOTS {
         if clean == root.trim_end_matches('/') {
             return Err(format!("[SEC-302] Ditolak: dilarang menghapus root directory ({path})"));
+        }
+    }
+    // Proteksi direktori induk WhatsApp / WA Business
+    let protected_wa = [
+        "/sdcard/WhatsApp",
+        "/storage/emulated/0/WhatsApp",
+        "/sdcard/WhatsApp Business",
+        "/storage/emulated/0/WhatsApp Business",
+        "/sdcard/Android/media/com.whatsapp",
+        "/storage/emulated/0/Android/media/com.whatsapp",
+        "/sdcard/Android/media/com.whatsapp/WhatsApp",
+        "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp",
+        "/sdcard/Android/media/com.whatsapp.w4b",
+        "/storage/emulated/0/Android/media/com.whatsapp.w4b",
+        "/sdcard/Android/media/com.whatsapp.w4b/WhatsApp Business",
+        "/storage/emulated/0/Android/media/com.whatsapp.w4b/WhatsApp Business",
+    ];
+    for wa in protected_wa {
+        if clean == wa {
+            return Err(format!("[SEC-306] Ditolak: direktori induk WhatsApp dilindungi ({clean})"));
         }
     }
     for protected in PROTECTED_FOLDERS {
@@ -202,7 +230,8 @@ pub async fn benchmark_storage(device_id: String) -> Result<StorageStats, String
 
 async fn get_path_size_bytes(device_id: &str, path: &str) -> u64 {
     // Jalankan du -sk <path> (output dalam KB)
-    if let Ok((out, _, 0)) = run_adb_device(device_id, &["shell", "du", "-sk", path]).await {
+    let quoted = escape_shell_path(path);
+    if let Ok((out, _, 0)) = run_adb_device(device_id, &["shell", "du", "-sk", &quoted]).await {
         if let Some(first) = out.split_whitespace().next() {
             if let Ok(kb) = first.parse::<u64>() {
                 return kb * 1024;
@@ -221,11 +250,13 @@ pub async fn scan_storage_junk(
 
     // 1. WhatsApp Pruner
     let wa_bases = [
-        "/sdcard/Android/media/com.whatsapp/WhatsApp",
-        "/sdcard/WhatsApp",
+        ("/sdcard/Android/media/com.whatsapp/WhatsApp", "WhatsApp"),
+        ("/sdcard/WhatsApp", "WhatsApp"),
+        ("/sdcard/Android/media/com.whatsapp.w4b/WhatsApp Business", "WhatsApp Business"),
+        ("/sdcard/WhatsApp Business", "WhatsApp Business"),
     ];
 
-    for wa in wa_bases {
+    for (wa, wa_label) in wa_bases {
         // Cek Sent Videos
         let sent_video = format!("{wa}/Media/WhatsApp Video/Sent");
         let sz_vid = get_path_size_bytes(&device_id, &sent_video).await;
@@ -234,7 +265,7 @@ pub async fn scan_storage_junk(
                 id: format!("wa_sent_video_{}", items.len()),
                 category: "whatsapp".into(),
                 path: sent_video,
-                name: "WhatsApp Video Sent".into(),
+                name: format!("{wa_label} Video Sent"),
                 size_bytes: sz_vid,
                 size_formatted: format_bytes(sz_vid),
                 safety_level: "safe".into(),
@@ -251,7 +282,7 @@ pub async fn scan_storage_junk(
                 id: format!("wa_sent_img_{}", items.len()),
                 category: "whatsapp".into(),
                 path: sent_img,
-                name: "WhatsApp Images Sent".into(),
+                name: format!("{wa_label} Images Sent"),
                 size_bytes: sz_img,
                 size_formatted: format_bytes(sz_img),
                 safety_level: "safe".into(),
@@ -268,7 +299,7 @@ pub async fn scan_storage_junk(
                 id: format!("wa_statuses_{}", items.len()),
                 category: "whatsapp".into(),
                 path: statuses,
-                name: "WhatsApp Status Cache".into(),
+                name: format!("{wa_label} Status Cache"),
                 size_bytes: sz_stat,
                 size_formatted: format_bytes(sz_stat),
                 safety_level: "safe".into(),
@@ -279,7 +310,8 @@ pub async fn scan_storage_junk(
 
         // Cek Daily Backups Databases (msgstore-*.db.crypt*)
         let db_dir = format!("{wa}/Databases");
-        if let Ok((out, _, 0)) = run_adb_device(&device_id, &["shell", "ls", "-1", &db_dir]).await {
+        let quoted_db = escape_shell_path(&db_dir);
+        if let Ok((out, _, 0)) = run_adb_device(&device_id, &["shell", "ls", "-1", &quoted_db]).await {
             let mut backup_files: Vec<String> = out
                 .lines()
                 .map(|l| l.trim().to_string())
@@ -425,7 +457,8 @@ pub async fn delete_junk_items(device_id: String, paths: Vec<String>) -> Result<
     }
 
     for path in paths {
-        let (out, err, code) = run_adb_device(&device_id, &["shell", "rm", "-rf", &path]).await
+        let quoted = escape_shell_path(&path);
+        let (out, err, code) = run_adb_device(&device_id, &["shell", "rm", "-rf", &quoted]).await
             .map_err(|e| format!("[STOR-2001] Gagal eksekusi hapus: {e}"))?;
         if code != 0 {
             return Err(format!("[STOR-2002] Gagal hapus {path}: {err} {out}"));
@@ -440,6 +473,12 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_escape_shell_path() {
+        assert_eq!(escape_shell_path("/sdcard/WhatsApp/Media/WhatsApp Video/Sent"), "'/sdcard/WhatsApp/Media/WhatsApp Video/Sent'");
+        assert_eq!(escape_shell_path("/sdcard/test'quote"), "'/sdcard/test'\\''quote'");
+    }
+
+    #[test]
     fn test_is_safe_to_delete_blocks_dangerous_roots() {
         assert!(is_safe_to_delete("/").is_err());
         assert!(is_safe_to_delete("/sdcard").is_err());
@@ -448,6 +487,10 @@ mod tests {
         assert!(is_safe_to_delete("/sdcard/DCIM").is_err());
         assert!(is_safe_to_delete("/sdcard/Pictures").is_err());
         assert!(is_safe_to_delete("/sdcard/Documents").is_err());
+        assert!(is_safe_to_delete("/sdcard/WhatsApp").is_err());
+        assert!(is_safe_to_delete("/sdcard/WhatsApp Business").is_err());
+        assert!(is_safe_to_delete("/sdcard/Android/media/com.whatsapp").is_err());
+        assert!(is_safe_to_delete("/data/app").is_err());
         assert!(is_safe_to_delete("/sdcard/foo/../DCIM").is_err());
 
         // Allowed paths
