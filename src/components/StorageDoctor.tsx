@@ -282,7 +282,7 @@ Format output persis (maksimal 15 kata per poin, tanpa markdown tebal):
       {/* Bento Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {/* Card 1: Kapasitas Internal */}
-        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-4 flex flex-col justify-between">
+        <div className="card-bento">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-dim">{t("storage.card_capacity")}</span>
             <HardDrive size={16} className="text-dim" />
@@ -318,7 +318,7 @@ Format output persis (maksimal 15 kata per poin, tanpa markdown tebal):
         </div>
 
         {/* Card 2: eMMC / UFS Health */}
-        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-4 flex flex-col justify-between">
+        <div className="card-bento">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-dim">{t("storage.card_emmc")}</span>
             <Activity size={16} className="text-dim" />
@@ -368,7 +368,7 @@ Format output persis (maksimal 15 kata per poin, tanpa markdown tebal):
         </div>
 
         {/* Card 3: Aksi Cepat & Sampah */}
-        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-4 flex flex-col justify-between">
+        <div className="card-bento">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-dim">{t("storage.card_reclaimable")}</span>
             <Trash2 size={16} className="text-dim" />
@@ -459,34 +459,40 @@ Format output persis (maksimal 15 kata per poin, tanpa markdown tebal):
       {/* Category Tabs & Table Header */}
       <div className="flex flex-col gap-2 mt-2">
         <div className="flex items-center gap-2 border-b border-[var(--border)] pb-2 flex-wrap">
-          {(
-            [
-              { key: "all", label: t("storage.cat_all"), icon: HardDrive },
-              { key: "whatsapp", label: t("storage.cat_whatsapp"), icon: MessageSquare },
-              { key: "orphan", label: t("storage.cat_orphan"), icon: FolderMinus },
-              { key: "apk", label: t("storage.cat_apk"), icon: FileCode },
-              { key: "cache", label: t("storage.cat_cache"), icon: ShieldCheck },
-            ] as const
-          ).map((cat) => {
-            const Icon = cat.icon;
-            const count =
-              cat.key === "all" ? items.length : items.filter((i) => i.category === cat.key).length;
-            return (
-              <button
-                key={cat.key}
-                className={`btn btn-sm text-xs ${
-                  filter === cat.key ? "btn-primary" : "btn-ghost"
-                }`}
-                onClick={() => setFilter(cat.key)}
-              >
-                <Icon size={13} />
-                <span>{cat.label}</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[var(--bg-active)] tabular-nums">
-                  {count}
-                </span>
-              </button>
-            );
-          })}
+          <div className="segmented-pill">
+            {(
+              [
+                { key: "all", label: t("storage.cat_all"), icon: HardDrive },
+                { key: "whatsapp", label: t("storage.cat_whatsapp"), icon: MessageSquare },
+                { key: "orphan", label: t("storage.cat_orphan"), icon: FolderMinus },
+                { key: "apk", label: t("storage.cat_apk"), icon: FileCode },
+                { key: "cache", label: t("storage.cat_cache"), icon: ShieldCheck },
+              ] as const
+            ).map((cat) => {
+              const Icon = cat.icon;
+              const count =
+                cat.key === "all" ? items.length : items.filter((i) => i.category === cat.key).length;
+              return (
+                <button
+                  key={cat.key}
+                  className={`segmented-tab ${filter === cat.key ? "active" : ""}`}
+                  onClick={() => setFilter(cat.key)}
+                >
+                  <Icon size={13} />
+                  <span>{cat.label}</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded-full tabular-nums ${
+                      filter === cat.key
+                        ? "bg-white/20 text-white"
+                        : "bg-[var(--bg-active)] text-dim"
+                    }`}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
 
           <div className="ml-auto flex items-center gap-2">
             {selectedIds.size > 0 && (

@@ -694,15 +694,15 @@ export default function App() {
         <div className="topbar">
           <div className="flex items-center gap-2">
             <div className="topbar-title">{t("topbar.title")}</div>
-            <div className="flex items-center gap-1 bg-[var(--bg-card)] p-0.5 rounded-lg border border-[var(--border)]">
+            <div className="segmented-pill">
               <button
-                className={`btn btn-sm text-xs ${mainTab === "apps" ? "btn-primary" : "btn-ghost"}`}
+                className={`segmented-tab ${mainTab === "apps" ? "active" : ""}`}
                 onClick={() => setMainTab("apps")}
               >
                 <Package size={13} /> {t("topbar.tab_apps")}
               </button>
               <button
-                className={`btn btn-sm text-xs ${mainTab === "storage" ? "btn-primary" : "btn-ghost"}`}
+                className={`segmented-tab ${mainTab === "storage" ? "active" : ""}`}
                 onClick={() => setMainTab("storage")}
               >
                 <HardDrive size={13} /> {t("topbar.tab_storage")}
