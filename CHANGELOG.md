@@ -5,6 +5,21 @@ Format pencatatan berpedoman pada prinsip *Keep a Changelog* dengan kata kerja f
 
 ---
 
+## [2.3.1] — 2026-09-16
+
+Penyempurnaan Diagnostik Flash Memory: Auto-Detection Bus UFS vs eMMC, Perbaikan Kompatibilitas Benchmark Toybox Android (`conv=fsync`), dan Ambang Batas Kesehatan Adaptif.
+
+### Added (Fitur & Instrumen Baru)
+- **Deteksi Otomatis Bus Storage (UFS vs eMMC)**: Sistem mendeteksi tipe bus controller secara otomatis via pembacaan property kernel `ro.boot.boot_devices` dan mapping blok `/sys/block/sd*` (UFS) vs `/sys/block/mmcblk0` (eMMC).
+- **Threshold Kesehatan Adaptif UFS**: Memperkenalkan evaluasi kesehatan berbasis teknologi silikon. Pada bus UFS (UFS 2.x/3.x/4.x), ambang batas *Good* disetel `>= 60 MB/s`, *Warning* `25 - 60 MB/s` (indikasi throttling/queue congest), dan *Critical* `< 25 MB/s`. Pada bus eMMC, ambang batas disesuaikan dengan limit fisik bus paralel 8-bit (`>= 25 MB/s` Good, `8 - 25 MB/s` Warning, `< 8 MB/s` Critical).
+- **Penamaan Dinamis Kartu Flash**: Kartu bento secara transparan menyesuaikan label menjadi `Kesehatan Flash (UFS)` atau `Kesehatan Flash (eMMC)` sesuai identifikasi hardware perangkat aktif.
+
+### Fixed (Perbaikan Bug Teknis)
+- **Perbaikan Bug Toybox dd (`conv=fsync`)**: Mengganti sintaks `oflag=dsync` yang ditolak oleh utilitas `dd` bawaan Toybox Android (`bad oflag=dsync`) dengan `conv=fsync` yang didukung penuh oleh kernel dan Toybox Android untuk memaksa flushing buffer I/O langsung ke storage fisik.
+- **Parser Kecepatan Multi-Format Toybox**: Memperluas parser regex Rust agar mengenali format output Toybox (`M/s`, `k/s`, `G/s`) di samping format standar GNU dd (`MB/s`, `kB/s`, `GB/s`), mengeliminasi kesalahan kalkulasi fallback latensi error terminal.
+
+---
+
 ## [2.3.0] — 2026-09-16
 
 Rilis Mayor: Penambahan Modul Diagnostik Memori Storage Doctor, Ekstraktor APK Offline, Floating Bottom Action Dock, Sekring Kernel Anti-Zombie, dan Perombakan Dual-Theme Autentik Megapass.

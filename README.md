@@ -143,7 +143,7 @@ Jika modul instrumen ini dipesan melalui agensi software house komersial:
 * **Nilai Tambah Meja Servis**: Memungkinkan teknisi mencadangkan aplikasi perbankan, dokumen, atau game penting milik pelanggan sebelum ponsel di-reset pabrik.
 
 ### 4. Modul Storage Doctor (Spesialis Memori & Chip Flash)
-* **Speedometer eMMC / UFS**: Menguji kecepatan tulis fisik chip memori HP via mikro-benchmark `dd dsync`. Menampilkan angka *Write Speed* (MB/s) dan latensi respon (ms) untuk memvonis apakah chip flash HP sudah aus (*IC EMMC lemah/aging*).
+* **Speedometer eMMC / UFS Adaptif**: Mendeteksi bus controller secara otomatis (`UFS` vs `eMMC`). Menguji kecepatan tulis nyata via Toybox `conv=fsync` 8MB di partisi pengguna. Menampilkan angka *Write Speed* (MB/s), latensi respon (ms), serta vonis kesehatan adaptif sesuai teknologi chip (UFS: Good >=60 MB/s; eMMC: Good >=25 MB/s).
 * **Multi-Segment Interactive Progress Meter**: Visualisasi berlapis kapasitas penyimpanan (OS & Aplikasi, Sampah Terpilih yang Siap Dipulihkan, dan Sisa Ruang Bebas) dengan animasi transisi pegas 350ms dan efek pendar lembut.
 * **Pembersihan Cache Global Tanpa Root**: Eksekusi perintah kernel `pm trim-caches` untuk memangkas sampah sistem secara instan.
 * **Deteksi Sampah Multi-Kategori Meja Servis**:
