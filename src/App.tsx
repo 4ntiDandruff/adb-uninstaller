@@ -527,6 +527,119 @@ export default function App() {
     }
   }, [deviceId, undoStack, loadApps, log]);
 
+  const handleExtractApk = useCallback(
+    async (app: AppInfo) => {
+      if (!deviceId) return;
+      setBusy(true);
+      log({ level: "info", source: "adb", message: `Mulai ekstraksi APK: ${app.package_name}` });
+      try {
+        const res = await api.extractApk(deviceId, app.package_name, app.label);
+        if (res.success) {
+          log({
+            level: "success",
+            source: "adb",
+            message: `APK berhasil ditarik: ${app.package_name}`,
+            detail: res.output,
+            duration_ms: res.duration_ms,
+          });
+          toast.success(`APK ${app.label || app.package_name} berhasil ditarik!`, {
+            action: {
+              label: "Buka Folder",
+              onClick: () => api.openFolder(res.output),
+            },
+            duration: 8000,
+          });
+        } else {
+          log({
+            level: "error",
+            source: "adb",
+            message: `Gagal tarik APK: ${app.package_name}`,
+            detail: res.error ?? res.output,
+            duration_ms: res.duration_ms,
+          });
+          toast.error(`Gagal tarik APK: ${res.error ?? "Unknown error"}`);
+        }
+      } catch (e) {
+        log({
+          level: "error",
+          source: "adb",
+          message: `Exception tarik APK: ${app.package_name}`,
+          detail: humanizeError(String(e)),
+        });
+        toast.error(`Error tarik APK: ${humanizeError(String(e))}`);
+      } finally {
+        setBusy(false);
+      }
+    },
+    [deviceId, log],
+  );
+
+  const handleBatchExtractApk = useCallback(
+    async (packages: string[]) => {
+      if (!deviceId || packages.length === 0) return;
+      setBusy(true);
+      let success = 0;
+      let fail = 0;
+      let lastPath = "";
+      toast.info(`Memulai ekstraksi ${packages.length} APK...`);
+      for (let i = 0; i < packages.length; i++) {
+        const pkg = packages[i];
+        const app = apps.find((a) => a.package_name === pkg);
+        log({
+          level: "info",
+          source: "adb",
+          message: `[${i + 1}/${packages.length}] Menarik APK: ${pkg}`,
+        });
+        try {
+          const res = await api.extractApk(deviceId, pkg, app?.label);
+          if (res.success) {
+            success++;
+            lastPath = res.output;
+            log({
+              level: "success",
+              source: "adb",
+              message: `APK OK: ${pkg}`,
+              detail: res.output,
+              duration_ms: res.duration_ms,
+            });
+          } else {
+            fail++;
+            log({
+              level: "error",
+              source: "adb",
+              message: `Gagal tarik APK: ${pkg}`,
+              detail: res.error ?? res.output,
+            });
+          }
+        } catch (e) {
+          fail++;
+          log({
+            level: "error",
+            source: "adb",
+            message: `Exception tarik APK: ${pkg}`,
+            detail: humanizeError(String(e)),
+          });
+        }
+      }
+      setBusy(false);
+      if (success > 0) {
+        toast.success(`Batch Ekstraksi: ${success} sukses, ${fail} gagal`, {
+          action: lastPath
+            ? {
+                label: "Buka Folder",
+                onClick: () => api.openFolder(lastPath),
+              }
+            : undefined,
+          duration: 8000,
+        });
+      } else {
+        toast.error(`Batch Ekstraksi gagal untuk semua paket.`);
+      }
+    },
+    [deviceId, apps, log],
+  );
+
+
   const analyzeUnknown = useCallback(async () => {
     const unknown = apps.filter((a) => a.safety_level === "unknown").slice(0, 50);
     if (unknown.length === 0) {
@@ -902,6 +1015,7 @@ export default function App() {
                 onEnable={(a) => runOp("enable", a.package_name)}
                 onForceStop={(a) => runOp("force_stop", a.package_name)}
                 onClearData={(a) => runOp("clear_data", a.package_name)}
+                onExtractApk={handleExtractApk}
                 onAskAi={handleAskAiForApp}
                 busy={busy}
                 t={t}
@@ -909,6 +1023,76 @@ export default function App() {
           )}
         </div>
       </div>
+
+
+      {/* Floating Bottom Action Dock - Kenyamanan seleksi jempol & batch actions */}
+      {mainTab === "apps" && selected.size > 0 && (
+        <div className="floating-batch-dock">
+          <div className="dock-badge">
+            <span className="tabular-nums">{selected.size}</span> {t("dock.selected")}
+          </div>
+
+          <div className="dock-sep" />
+
+          <div className="dock-actions">
+            <button
+              className="btn btn-danger btn-sm"
+              disabled={busy}
+              onClick={() => runBatch([...selected])}
+              title={`${t("toolbar.uninstall")} ${selected.size} paket`}
+            >
+              <Trash2 size={13} />
+              {t("toolbar.uninstall")}
+            </button>
+            <button
+              className="btn btn-ghost btn-sm"
+              disabled={busy}
+              onClick={() => runBatchOp("disable", [...selected])}
+              title={t("toolbar.disable")}
+            >
+              <Ban size={13} />
+              {t("toolbar.disable")}
+            </button>
+            <button
+              className="btn btn-ghost btn-sm"
+              disabled={busy}
+              onClick={() => runBatchOp("enable", [...selected])}
+              title={t("toolbar.enable")}
+            >
+              <CheckCircle2 size={13} />
+              {t("toolbar.enable")}
+            </button>
+            <button
+              className="btn btn-ghost btn-sm text-cyan-400 hover:text-cyan-300"
+              disabled={busy}
+              onClick={() => handleBatchExtractApk([...selected])}
+              title="Ekstraksi paket terpilih ke direktori ~/Downloads/APK_Backup"
+            >
+              <Download size={13} />
+              {t("dock.extract")}
+            </button>
+            <button
+              className="btn btn-ghost btn-sm"
+              disabled={busy}
+              onClick={() => exportPreset(apps, selected, deviceInfo?.model)}
+              title="Export paket terpilih ke file preset debloat JSON"
+            >
+              <Download size={13} />
+              Export
+            </button>
+          </div>
+
+          <div className="dock-sep" />
+
+          <button
+            className="btn btn-ghost btn-icon btn-sm"
+            onClick={() => setSelected(new Set())}
+            title={t("dock.clear")}
+          >
+            <X size={13} />
+          </button>
+        </div>
+      )}
 
       {chatOpen && (
         <AIChat

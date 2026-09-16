@@ -232,6 +232,21 @@ async fn delete_junk_items(device_id: String, paths: Vec<String>) -> Result<usiz
     storage::delete_junk_items(device_id, paths).await
 }
 
+
+#[tauri::command]
+async fn extract_apk(
+    device_id: String,
+    package: String,
+    app_name: Option<String>,
+) -> CommandResult {
+    adb::extract_apk(device_id, package, app_name).await
+}
+
+#[tauri::command]
+async fn open_folder(path: String) -> Result<(), String> {
+    adb::open_folder(path).await
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let db_conn = db::init_db().expect("Gagal init database");
@@ -273,6 +288,8 @@ pub fn run() {
             benchmark_storage,
             scan_storage_junk,
             delete_junk_items,
+            extract_apk,
+            open_folder,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

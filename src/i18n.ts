@@ -68,6 +68,10 @@ export const t: Record<Lang, Record<string, string>> = {
     "detail.force_stop": "Force Stop",
     "detail.clear_data": "Hapus Data",
     "detail.ask_ai": "Tanya AI",
+    "detail.extract_apk": "Tarik APK",
+    "dock.selected": "paket terpilih",
+    "dock.extract": "Tarik APK",
+    "dock.clear": "Batal seleksi",
     
     // AI Chat
     "chat.title": "Asisten AI",
@@ -207,6 +211,10 @@ export const t: Record<Lang, Record<string, string>> = {
     "detail.force_stop": "Force Stop",
     "detail.clear_data": "Clear Data",
     "detail.ask_ai": "Ask AI",
+    "detail.extract_apk": "Extract APK",
+    "dock.selected": "selected packages",
+    "dock.extract": "Extract APK",
+    "dock.clear": "Clear selection",
     
     // AI Chat
     "chat.title": "AI Assistant",

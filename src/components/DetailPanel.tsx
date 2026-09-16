@@ -1,4 +1,4 @@
-import { Copy, Sparkles, X, Trash2, Ban, CheckCircle2, PowerOff, Eraser } from "lucide-react";
+import { Copy, Sparkles, X, Trash2, Ban, CheckCircle2, PowerOff, Eraser, Download } from "lucide-react";
 import type { AppInfo } from "../types";
 import { toast } from "./api";
 
@@ -10,6 +10,7 @@ interface Props {
   onEnable: (app: AppInfo) => void;
   onForceStop: (app: AppInfo) => void;
   onClearData: (app: AppInfo) => void;
+  onExtractApk: (app: AppInfo) => void;
   onAskAi?: (app: AppInfo) => void;
   busy: boolean;
   t: (key: string) => string;
@@ -23,7 +24,17 @@ const LEVEL_BADGE: Record<string, string> = {
 };
 
 export function DetailPanel({
-  app, onClose, onUninstall, onDisable, onEnable, onForceStop, onClearData, onAskAi, busy, t,
+  app,
+  onClose,
+  onUninstall,
+  onDisable,
+  onEnable,
+  onForceStop,
+  onClearData,
+  onExtractApk,
+  onAskAi,
+  busy,
+  t,
 }: Props) {
   function copyPkg() {
     if (!app) return;
@@ -104,6 +115,15 @@ export function DetailPanel({
             <button className="btn btn-ghost" disabled={busy} onClick={() => onClearData(app)}>
               <Eraser size={13} />
               {t("detail.clear_data")}
+            </button>
+            <button
+              className="btn btn-ghost text-cyan-400 hover:text-cyan-300"
+              disabled={busy}
+              onClick={() => onExtractApk(app)}
+              title="Ekstraksi file APK mentah ke ~/Downloads/APK_Backup"
+            >
+              <Download size={13} />
+              {t("detail.extract_apk")}
             </button>
             <button
               className="btn btn-ghost text-amber-400 hover:text-amber-300"

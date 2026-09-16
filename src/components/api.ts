@@ -71,6 +71,10 @@ export const api = {
     invoke<TrashItem[]>("scan_storage_junk", { deviceId, installedPackages }),
   deleteJunkItems: (deviceId: string, paths: string[]) =>
     invoke<number>("delete_junk_items", { deviceId, paths }),
+  extractApk: (deviceId: string, pkg: string, appName?: string) =>
+    invoke<CommandResult>("extract_apk", { deviceId, package: pkg, appName }),
+  openFolder: (path: string) =>
+    invoke<void>("open_folder", { path }),
 };
 
 export { toast };

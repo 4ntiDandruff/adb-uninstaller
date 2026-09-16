@@ -823,6 +823,202 @@ pub async fn check_adb_available() -> Result<bool, String> {
 }
 
 
+
+pub async fn extract_apk(
+    device_id: String,
+    package: String,
+    app_name: Option<String>,
+) -> CommandResult {
+    let start = Instant::now();
+    if !is_valid_package_name(&package) {
+        return timed_result(
+            start,
+            false,
+            String::new(),
+            Some(format!("[SEC-002] Format package name tidak valid: {package}")),
+        );
+    }
+
+    // 1. Dapatkan remote path APK dari pm path
+    let (pm_out, pm_err, pm_code) = match run_adb_device(&device_id, &["shell", "pm", "path", &package]).await {
+        Ok(res) => res,
+        Err(e) => return timed_result(start, false, String::new(), Some(e)),
+    };
+
+    if pm_code != 0 || pm_out.trim().is_empty() {
+        return timed_result(
+            start,
+            false,
+            String::new(),
+            Some(format!(
+                "[ADB-4001] Package path tidak ditemukan: {}",
+                if pm_err.is_empty() { "Aplikasi mungkin tidak terpasang" } else { &pm_err }
+            )),
+        );
+    }
+
+    let mut remote_path: Option<String> = None;
+    for line in pm_out.lines() {
+        let trimmed = line.trim();
+        if let Some(stripped) = trimmed.strip_prefix("package:") {
+            let p = stripped.trim().to_string();
+            if p.ends_with("base.apk") {
+                remote_path = Some(p);
+                break;
+            } else if remote_path.is_none() && p.ends_with(".apk") {
+                remote_path = Some(p);
+            }
+        }
+    }
+
+    let remote_apk = match remote_path {
+        Some(p) => p,
+        None => {
+            return timed_result(
+                start,
+                false,
+                String::new(),
+                Some(format!("[ADB-4001] Gagal menemukan file .apk pada output: {pm_out}")),
+            );
+        }
+    };
+
+    // 2. Tentukan direktori penyimpanan lokal: ~/Downloads/APK_Backup
+    let backup_dir = dirs::download_dir()
+        .or_else(dirs::home_dir)
+        .map(|p| p.join("Downloads").join("APK_Backup"))
+        .unwrap_or_else(|| std::path::PathBuf::from("/tmp/APK_Backup"));
+
+    if let Err(e) = tokio::fs::create_dir_all(&backup_dir).await {
+        return timed_result(
+            start,
+            false,
+            String::new(),
+            Some(format!("[FS-001] Gagal membuat direktori backup: {e}")),
+        );
+    }
+
+    // 3. Nama file rapi: [AppLabel]_[package].apk
+    let raw_label = app_name
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty() && s != &package)
+        .unwrap_or_else(|| pretty_label(&package));
+
+    let safe_label: String = raw_label
+        .chars()
+        .map(|c| if c.is_alphanumeric() || c == '_' || c == '-' { c } else { '_' })
+        .collect();
+
+    let file_name = format!("{}_{}.apk", safe_label, package);
+    let local_dest = backup_dir.join(&file_name);
+    let local_dest_str = local_dest.to_string_lossy().to_string();
+
+    // 4. Jalankan adb pull dengan timeout 120 detik
+    let pull_res = tokio::time::timeout(
+        std::time::Duration::from_secs(120),
+        Command::new("adb")
+            .args(&["-s", &device_id, "pull", &remote_apk, &local_dest_str])
+            .output(),
+    )
+    .await;
+
+    match pull_res {
+        Ok(Ok(output)) => {
+            let stdout_str = String::from_utf8_lossy(&output.stdout).to_string();
+            let stderr_str = String::from_utf8_lossy(&output.stderr).to_string();
+            if output.status.success() && local_dest.exists() {
+                let file_size = std::fs::metadata(&local_dest)
+                    .map(|m| m.len())
+                    .unwrap_or(0);
+                if file_size > 0 {
+                    timed_result(start, true, local_dest_str, None)
+                } else {
+                    timed_result(
+                        start,
+                        false,
+                        String::new(),
+                        Some("[ADB-4004] File APK hasil ekstraksi kosong (0 bytes)".to_string()),
+                    )
+                }
+            } else {
+                timed_result(
+                    start,
+                    false,
+                    String::new(),
+                    Some(format!(
+                        "[ADB-4003] Gagal pull APK: {}",
+                        if !stderr_str.is_empty() { stderr_str } else { stdout_str }
+                    )),
+                )
+            }
+        }
+        Ok(Err(e)) => timed_result(
+            start,
+            false,
+            String::new(),
+            Some(format!("[ADB-4002] Gagal eksekusi perintah adb pull: {e}")),
+        ),
+        Err(_) => timed_result(
+            start,
+            false,
+            String::new(),
+            Some("[ADB-4005] Ekstraksi APK timeout (120 detik)".to_string()),
+        ),
+    }
+}
+
+pub async fn open_folder(path: String) -> Result<(), String> {
+    let p = std::path::PathBuf::from(&path);
+    let target_dir = if p.is_file() {
+        p.parent().unwrap_or(&p).to_path_buf()
+    } else if p.exists() {
+        p
+    } else if let Some(parent) = p.parent() {
+        if parent.exists() {
+            parent.to_path_buf()
+        } else {
+            p
+        }
+    } else {
+        p
+    };
+
+    let dir_str = target_dir.to_string_lossy().to_string();
+
+    #[cfg(target_os = "linux")]
+    {
+        let status = tokio::process::Command::new("xdg-open")
+            .arg(&dir_str)
+            .status()
+            .await
+            .map_err(|e| format!("Gagal menjalankan xdg-open: {e}"))?;
+        if !status.success() {
+            return Err("xdg-open mengembalikan status error".to_string());
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        tokio::process::Command::new("explorer")
+            .arg(&dir_str)
+            .status()
+            .await
+            .map_err(|e| format!("Gagal menjalankan explorer: {e}"))?;
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        tokio::process::Command::new("open")
+            .arg(&dir_str)
+            .status()
+            .await
+            .map_err(|e| format!("Gagal menjalankan open: {e}"))?;
+    }
+
+    Ok(())
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -876,4 +1072,12 @@ mod tests {
         // Double generic → ambil segment ke-3 dari belakang
         assert_eq!(pretty_label("com.vivo.browser.provider"), "Vivo");
     }
+
+    #[tokio::test]
+    async fn test_extract_apk_validates_package_name() {
+        let res = extract_apk("dummy_dev".into(), "invalid;injection".into(), None).await;
+        assert!(!res.success);
+        assert!(res.error.unwrap().contains("[SEC-002]"));
+    }
+
 }
