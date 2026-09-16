@@ -67,6 +67,53 @@ async fn run_adb_device(device_id: &str, args: &[&str]) -> Result<(String, Strin
     run_adb(&full).await
 }
 
+
+pub const VITAL_SYSTEM_WHITELIST: &[&str] = &[
+    "android",
+    "com.android.systemui",
+    "com.android.settings",
+    "com.android.packageinstaller",
+    "com.google.android.packageinstaller",
+    "com.android.providers.telephony",
+    "com.android.providers.settings",
+    "com.android.providers.media",
+    "com.android.shell",
+    "com.android.keychain",
+    "com.android.certinstaller",
+    "com.google.android.gms",
+    "com.google.android.gsf",
+    // OEM Launchers
+    "com.android.launcher3",
+    "com.sec.android.app.launcher",
+    "com.miui.home",
+    "com.oppo.launcher",
+    "com.coloros.home",
+    "com.bbk.launcher2",
+    "com.transsion.XOSLauncher",
+    "com.transsion.hilauncher",
+    "com.huawei.android.launcher",
+];
+
+pub fn is_vital_system_package(pkg: &str) -> bool {
+    VITAL_SYSTEM_WHITELIST.contains(&pkg)
+}
+
+pub fn is_valid_package_name(pkg: &str) -> bool {
+    if pkg.is_empty() || pkg.len() > 256 {
+        return false;
+    }
+    if pkg == "android" {
+        return true;
+    }
+    let parts: Vec<&str> = pkg.split('.').collect();
+    if parts.len() < 2 {
+        return false;
+    }
+    parts.iter().all(|part| {
+        !part.is_empty() && part.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+    })
+}
+
 fn timed_result(
     start: Instant,
     success: bool,
@@ -417,6 +464,9 @@ pub async fn list_apps(device_id: String) -> Result<Vec<AppInfo>, String> {
 }
 
 pub async fn get_app_size(device_id: String, package: String) -> Result<String, String> {
+    if !is_valid_package_name(&package) {
+        return Err(format!("[SEC-002] Format package name tidak valid: {package}"));
+    }
     // Pakai `pm path` lalu jumlahkan ukuran semua file APK (base + splits).
     let (out, err, code) = run_adb_device(&device_id, &["shell", "pm", "path", &package]).await?;
     if code != 0 {
@@ -491,6 +541,22 @@ fn format_bytes(b: u64) -> String {
 
 pub async fn uninstall_package(device_id: String, package: String) -> CommandResult {
     let start = Instant::now();
+    if !is_valid_package_name(&package) {
+        return timed_result(
+            start,
+            false,
+            String::new(),
+            Some(format!("[SEC-002] Format package name tidak valid: {package}")),
+        );
+    }
+    if is_vital_system_package(&package) {
+        return timed_result(
+            start,
+            false,
+            String::new(),
+            Some(format!("[SEC-001] Ditolak: {package} adalah package vital sistem Android")),
+        );
+    }
     match run_adb_device(
         &device_id,
         &["shell", "pm", "uninstall", "--user", "0", &package],
@@ -520,6 +586,22 @@ pub async fn uninstall_package(device_id: String, package: String) -> CommandRes
 
 pub async fn disable_package(device_id: String, package: String) -> CommandResult {
     let start = Instant::now();
+    if !is_valid_package_name(&package) {
+        return timed_result(
+            start,
+            false,
+            String::new(),
+            Some(format!("[SEC-002] Format package name tidak valid: {package}")),
+        );
+    }
+    if is_vital_system_package(&package) {
+        return timed_result(
+            start,
+            false,
+            String::new(),
+            Some(format!("[SEC-001] Ditolak: {package} adalah package vital sistem Android")),
+        );
+    }
     match run_adb_device(
         &device_id,
         &["shell", "pm", "disable-user", "--user", "0", &package],
@@ -546,6 +628,14 @@ pub async fn disable_package(device_id: String, package: String) -> CommandResul
 
 pub async fn enable_package(device_id: String, package: String) -> CommandResult {
     let start = Instant::now();
+    if !is_valid_package_name(&package) {
+        return timed_result(
+            start,
+            false,
+            String::new(),
+            Some(format!("[SEC-002] Format package name tidak valid: {package}")),
+        );
+    }
     match run_adb_device(&device_id, &["shell", "pm", "enable", &package]).await {
         Ok((out, err, code)) => {
             let success =
@@ -567,6 +657,14 @@ pub async fn enable_package(device_id: String, package: String) -> CommandResult
 
 pub async fn restore_package(device_id: String, package: String) -> CommandResult {
     let start = Instant::now();
+    if !is_valid_package_name(&package) {
+        return timed_result(
+            start,
+            false,
+            String::new(),
+            Some(format!("[SEC-002] Format package name tidak valid: {package}")),
+        );
+    }
     match run_adb_device(
         &device_id,
         &["shell", "cmd", "package", "install-existing", &package],
@@ -592,6 +690,14 @@ pub async fn restore_package(device_id: String, package: String) -> CommandResul
 
 pub async fn force_stop_package(device_id: String, package: String) -> CommandResult {
     let start = Instant::now();
+    if !is_valid_package_name(&package) {
+        return timed_result(
+            start,
+            false,
+            String::new(),
+            Some(format!("[SEC-002] Format package name tidak valid: {package}")),
+        );
+    }
     match run_adb_device(&device_id, &["shell", "am", "force-stop", &package]).await {
         Ok((out, err, code)) => {
             // ponytail: force-stop returns stderr on some devices even on success — check exit code only
@@ -613,6 +719,22 @@ pub async fn force_stop_package(device_id: String, package: String) -> CommandRe
 
 pub async fn clear_app_data(device_id: String, package: String) -> CommandResult {
     let start = Instant::now();
+    if !is_valid_package_name(&package) {
+        return timed_result(
+            start,
+            false,
+            String::new(),
+            Some(format!("[SEC-002] Format package name tidak valid: {package}")),
+        );
+    }
+    if is_vital_system_package(&package) {
+        return timed_result(
+            start,
+            false,
+            String::new(),
+            Some(format!("[SEC-001] Ditolak: {package} adalah package vital sistem Android")),
+        );
+    }
     match run_adb_device(&device_id, &["shell", "pm", "clear", &package]).await {
         Ok((out, err, code)) => {
             let success = code == 0 && out.to_lowercase().contains("success");
@@ -704,6 +826,39 @@ pub async fn check_adb_available() -> Result<bool, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn test_is_valid_package_name() {
+        assert!(is_valid_package_name("com.whatsapp"));
+        assert!(is_valid_package_name("com.android.settings"));
+        assert!(is_valid_package_name("android"));
+        assert!(is_valid_package_name("com.example.my_app123"));
+
+        // Metacharacters / injection attempts
+        assert!(!is_valid_package_name(""));
+        assert!(!is_valid_package_name("com.whatsapp; rm -rf /data"));
+        assert!(!is_valid_package_name("com.whatsapp`id`"));
+        assert!(!is_valid_package_name("com.whatsapp$(whoami)"));
+        assert!(!is_valid_package_name("com.whatsapp | ls"));
+        assert!(!is_valid_package_name("invalid"));
+        assert!(!is_valid_package_name(".com.whatsapp"));
+        assert!(!is_valid_package_name("com.whatsapp."));
+    }
+
+    #[tokio::test]
+    async fn test_vital_whitelist_blocks_uninstall_and_disable() {
+        let res = uninstall_package("dummy_dev".into(), "com.android.systemui".into()).await;
+        assert!(!res.success);
+        assert!(res.error.unwrap().contains("[SEC-001]"));
+
+        let res2 = disable_package("dummy_dev".into(), "com.sec.android.app.launcher".into()).await;
+        assert!(!res2.success);
+        assert!(res2.error.unwrap().contains("[SEC-001]"));
+
+        let res3 = uninstall_package("dummy_dev".into(), "com.bad;rm".into()).await;
+        assert!(!res3.success);
+        assert!(res3.error.unwrap().contains("[SEC-002]"));
+    }
+
 
     #[test]
     fn pretty_label_picks_descriptive_segment() {

@@ -20,6 +20,14 @@ const tags: Record<string, SafetyTag> = {
   "com.google.android.gms":                   { level: "critical", reason: "Google Play Services",        reasonEn: "Google Play Services" },
   "com.google.android.gsf":                   { level: "critical", reason: "Google Services Framework",   reasonEn: "Google Services Framework" },
   "com.android.launcher3":                    { level: "critical", reason: "Launcher sistem",             reasonEn: "Launcher" },
+  "com.sec.android.app.launcher":             { level: "critical", reason: "Launcher Samsung One UI",     reasonEn: "Samsung One UI launcher" },
+  "com.oppo.launcher":                        { level: "critical", reason: "Launcher OPPO",               reasonEn: "OPPO launcher" },
+  "com.coloros.home":                         { level: "critical", reason: "Launcher ColorOS",            reasonEn: "ColorOS launcher" },
+  "com.bbk.launcher2":                        { level: "critical", reason: "Launcher Vivo",               reasonEn: "Vivo launcher" },
+  "com.transsion.XOSLauncher":                { level: "critical", reason: "Launcher Infinix XOS",        reasonEn: "Infinix XOS launcher" },
+  "com.transsion.hilauncher":                 { level: "critical", reason: "Launcher Tecno HiOS",         reasonEn: "Tecno HiOS launcher" },
+  "com.huawei.android.launcher":             { level: "critical", reason: "Launcher Huawei",             reasonEn: "Huawei launcher" },
+  "com.samsung.android.honeyboard":           { level: "risky",    reason: "Keyboard Samsung",            reasonEn: "Samsung Keyboard" },
   "com.android.inputmethod.latin":            { level: "risky",    reason: "Keyboard bawaan",             reasonEn: "Keyboard" },
   "com.google.android.inputmethod.latin":     { level: "risky",    reason: "Gboard",                      reasonEn: "Gboard" },
   "com.android.bluetooth":                    { level: "critical", reason: "Stack Bluetooth",             reasonEn: "Bluetooth stack" },
@@ -96,6 +104,20 @@ export function classifyPackage(packageName: string, lang = "id"): SafetyTag {
   if (tag) {
     return lang === "id" ? tag : { ...tag, reason: tag.reasonEn };
   }
+  // Sekring deteksi launcher OEM otomatis
+  const lower = packageName.toLowerCase();
+  if (
+    (lower.includes("launcher") || lower.endsWith(".home")) &&
+    !lower.includes("gamehome") &&
+    !lower.includes("carlauncher")
+  ) {
+    return {
+      level: "critical",
+      reason: lang === "id" ? "Launcher sistem — hati-hati" : "System launcher — caution",
+      reasonEn: "System launcher — caution",
+    };
+  }
+
   // ponytail: hanya flag critical kalau BUKAN package yang sudah di-map di tags dict
   if (
     (packageName.startsWith("com.android.") ||

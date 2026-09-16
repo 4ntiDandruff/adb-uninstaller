@@ -30,7 +30,7 @@ pub fn db_path() -> Result<PathBuf, String> {
 pub fn init_db() -> Result<Connection, String> {
     let path = db_path()?;
     let conn = Connection::open(path).map_err(|e| format!("[DB-003] Gagal buka database: {e}"))?;
-    conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;")
+    conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA busy_timeout=5000;")
         .map_err(|e| format!("[DB-003b] WAL mode gagal: {e}"))?;
 
     conn.execute(
