@@ -482,7 +482,7 @@ Format output persis (maksimal 15 kata per poin, tanpa markdown tebal):
                   <span
                     className={`text-[10px] px-1.5 py-0.2 rounded-full tabular-nums ${
                       filter === cat.key
-                        ? "bg-white/20 text-white"
+                        ? "bg-black/15 text-inherit font-semibold"
                         : "bg-[var(--bg-active)] text-dim"
                     }`}
                   >
