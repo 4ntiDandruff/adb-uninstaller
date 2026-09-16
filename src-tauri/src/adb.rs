@@ -917,7 +917,7 @@ pub async fn extract_apk(
     let pull_res = tokio::time::timeout(
         std::time::Duration::from_secs(120),
         Command::new("adb")
-            .args(&["-s", &device_id, "pull", &remote_apk, &local_dest_str])
+            .args(["-s", &device_id, "pull", &remote_apk, &local_dest_str])
             .output(),
     )
     .await;

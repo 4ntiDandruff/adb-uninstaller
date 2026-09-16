@@ -18,6 +18,7 @@ import {
   PowerOff,
   Eraser,
   Download,
+  FileDown,
 } from "lucide-react";
 import type { AppInfo, AppSettings, Device, DeviceInfo, LogEntry, SafetyLevel } from "./types";
 import { api, makeLog, toast } from "./components/api";
@@ -979,7 +980,7 @@ export default function App() {
                     onClick={() => exportPreset(apps, selected, deviceInfo?.model)}
                     title="Export preset debloat"
                   >
-                    <Download size={13} />
+                    <FileDown size={13} />
                     Export
                   </button>
                 </div>
@@ -1077,7 +1078,7 @@ export default function App() {
               onClick={() => exportPreset(apps, selected, deviceInfo?.model)}
               title="Export paket terpilih ke file preset debloat JSON"
             >
-              <Download size={13} />
+              <FileDown size={13} />
               Export
             </button>
           </div>
