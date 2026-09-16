@@ -32,6 +32,44 @@ interface Props {
 
 type CategoryFilter = "all" | "whatsapp" | "telegram" | "orphan" | "apk" | "cache" | "logs";
 
+const getCategoryBadgeClass = (cat: string) => {
+  switch (cat) {
+    case "whatsapp":
+      return "badge-cat-whatsapp";
+    case "telegram":
+      return "badge-cat-telegram";
+    case "orphan":
+      return "badge-cat-orphan";
+    case "apk":
+      return "badge-cat-apk";
+    case "cache":
+      return "badge-cat-cache";
+    case "logs":
+      return "badge-cat-logs";
+    default:
+      return "badge-system";
+  }
+};
+
+const getCategoryLabel = (cat: string) => {
+  switch (cat) {
+    case "whatsapp":
+      return "WhatsApp";
+    case "telegram":
+      return "Telegram";
+    case "orphan":
+      return "Orphan";
+    case "apk":
+      return "APK";
+    case "cache":
+      return "Cache";
+    case "logs":
+      return "Logs";
+    default:
+      return cat.toUpperCase();
+  }
+};
+
 export function StorageDoctor({ deviceId, deviceInfo, installedApps, t, lang }: Props) {
   const [stats, setStats] = useState<StorageStats | null>(null);
   const [items, setItems] = useState<TrashItem[]>([]);
@@ -424,21 +462,21 @@ Format output persis (maksimal 15 kata per poin, tanpa markdown tebal):
             </div>
 
             {/* Multi-segment Interactive Progress Bar */}
-            <div className="w-full bg-[var(--bg-active)] h-2.5 rounded-full mt-2.5 overflow-hidden flex shadow-inner">
+            <div className="storage-meter mt-2.5">
               <div
-                className="h-full bg-primary/80 transition-all duration-300"
+                className="storage-segment storage-segment-system"
                 style={{ width: `${segmentStats.systemAndAppsPct}%` }}
                 title={`Sistem & Apps: ${formatBytesLocal(segmentStats.systemBytes)}`}
               />
               {selectedSize > 0 && (
                 <div
-                  className="h-full bg-emerald-400 transition-all duration-300 animate-pulse"
+                  className="storage-segment storage-segment-reclaimable"
                   style={{ width: `${segmentStats.reclaimablePct}%` }}
                   title={`Sampah Terpilih: ${formatBytesLocal(selectedSize)}`}
                 />
               )}
               <div
-                className="h-full bg-[var(--bg-hover)] transition-all duration-300"
+                className="storage-segment storage-segment-free"
                 style={{ width: `${segmentStats.freePct}%` }}
                 title={`Ruang Bebas: ${stats?.free_formatted ?? "—"}`}
               />
@@ -451,8 +489,8 @@ Format output persis (maksimal 15 kata per poin, tanpa markdown tebal):
                 <span>OS & App</span>
               </div>
               {selectedSize > 0 && (
-                <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                <div className="flex items-center gap-1.5 text-reclaimable font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-current" />
                   <span>+{formatBytesLocal(selectedSize)} pulih</span>
                 </div>
               )}
@@ -537,7 +575,7 @@ Format output persis (maksimal 15 kata per poin, tanpa markdown tebal):
             <Trash2 size={16} className="text-dim" />
           </div>
           <div className="my-2.5">
-            <div className="text-2xl font-bold tabular-nums tracking-tight text-emerald-400">
+            <div className="text-2xl font-bold tabular-nums tracking-tight text-reclaimable">
               {formatBytesLocal(selectedSize)}
             </div>
             <div className="text-xs text-dim mt-1">
@@ -614,7 +652,7 @@ Format output persis (maksimal 15 kata per poin, tanpa markdown tebal):
                   <Icon size={13} />
                   <span>{cat.label}</span>
                   <span
-                    className={`text-[10px] px-1.5 py-0.2 rounded-full tabular-nums ${
+                    className={`text-[10px] px-1.5 py-0.5 rounded-full tabular-nums font-mono leading-none ${
                       filter === cat.key
                         ? "bg-black/15 text-inherit font-semibold"
                         : "bg-[var(--bg-active)] text-dim"
@@ -630,20 +668,22 @@ Format output persis (maksimal 15 kata per poin, tanpa markdown tebal):
 
           {/* Quick Search on Junk Items */}
           <div className="flex items-center gap-2 ml-auto">
-            <div className="relative">
+            <div className="relative flex items-center">
+              <Search size={12} className="absolute left-2.5 text-dim pointer-events-none" />
               <input
                 type="text"
                 placeholder="Cari folder sampah..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="input input-sm pl-7 text-xs"
-                style={{ width: 180, height: 28 }}
+                className="input input-sm pl-7 pr-7 text-xs"
+                style={{ width: 190, height: 28 }}
               />
-              <Search size={12} className="absolute left-2 top-2 text-dim pointer-events-none" />
               {searchQuery && (
                 <button
-                  className="absolute right-1.5 top-1.5 text-dim hover:text-[var(--text)]"
+                  type="button"
+                  className="absolute right-1.5 p-1 rounded hover:bg-[var(--bg-hover)] text-dim hover:text-[var(--text)] transition-colors"
                   onClick={() => setSearchQuery("")}
+                  title="Hapus pencarian"
                 >
                   <X size={12} />
                 </button>
@@ -653,11 +693,11 @@ Format output persis (maksimal 15 kata per poin, tanpa markdown tebal):
         </div>
 
         {/* Junk Items Table */}
-        <div className="table-wrap">
-          <table className="table">
+        <div className="table-scroll rounded-xl border border-[var(--border)] bg-[var(--bg-panel)] overflow-hidden">
+          <table className="app-table">
             <thead>
               <tr>
-                <th style={{ width: 36 }}>
+                <th className="cell-check w-10">
                   <input
                     type="checkbox"
                     checked={
@@ -666,18 +706,19 @@ Format output persis (maksimal 15 kata per poin, tanpa markdown tebal):
                     }
                     onChange={toggleAllVisible}
                     disabled={filteredItems.length === 0}
+                    aria-label="Pilih semua"
                   />
                 </th>
                 <th>Target Pembersihan</th>
-                <th style={{ width: 110 }}>Kategori</th>
-                <th style={{ width: 90 }}>Tingkat</th>
-                <th style={{ width: 90, textAlign: "right" }}>Ukuran</th>
+                <th style={{ width: 120 }}>Kategori</th>
+                <th style={{ width: 95 }}>Tingkat</th>
+                <th style={{ width: 95, textAlign: "right" }}>Ukuran</th>
               </tr>
             </thead>
             <tbody>
               {filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-8 text-dim text-xs">
+                  <td colSpan={5} className="text-center py-12 text-dim text-xs">
                     {items.length === 0
                       ? t("storage.empty_scan")
                       : searchQuery
@@ -687,12 +728,23 @@ Format output persis (maksimal 15 kata per poin, tanpa markdown tebal):
                 </tr>
               ) : (
                 filteredItems.map((item) => (
-                  <tr key={item.id} onClick={() => toggleItem(item.id)} className="cursor-pointer">
-                    <td onClick={(e) => e.stopPropagation()}>
+                  <tr
+                    key={item.id}
+                    onClick={() => toggleItem(item.id)}
+                    className={`cursor-pointer ${selectedIds.has(item.id) ? "selected" : ""}`}
+                  >
+                    <td
+                      className="cell-check"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleItem(item.id);
+                      }}
+                    >
                       <input
                         type="checkbox"
                         checked={selectedIds.has(item.id)}
-                        onChange={() => toggleItem(item.id)}
+                        onChange={() => {}}
+                        aria-label={`Pilih ${item.name}`}
                       />
                     </td>
                     <td>
@@ -705,8 +757,8 @@ Format output persis (maksimal 15 kata per poin, tanpa markdown tebal):
                       </div>
                     </td>
                     <td>
-                      <span className="badge badge-system uppercase text-[10px]">
-                        {item.category}
+                      <span className={`badge ${getCategoryBadgeClass(item.category)} font-medium text-[10px]`}>
+                        {getCategoryLabel(item.category)}
                       </span>
                     </td>
                     <td>
@@ -764,7 +816,7 @@ Format output persis (maksimal 15 kata per poin, tanpa markdown tebal):
               </div>
               <div className="flex justify-between items-center text-xs mt-2 pt-2 border-t border-[var(--border)]">
                 <span className="text-dim">Total Ruang Dibebaskan:</span>
-                <span className="font-bold text-sm text-emerald-400">
+                <span className="font-bold text-sm text-reclaimable">
                   {formatBytesLocal(selectedSize)}
                 </span>
               </div>
