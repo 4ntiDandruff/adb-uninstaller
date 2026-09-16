@@ -6,7 +6,6 @@ import {
   Zap,
   RotateCcw,
   Copy,
-  
   AlertTriangle,
   FileCode,
   FolderMinus,
@@ -14,6 +13,8 @@ import {
   ShieldCheck,
   Loader2,
   Smartphone,
+  Sparkles,
+  X,
 } from "lucide-react";
 import { api, toast } from "./api";
 import type { AppInfo, DeviceInfo, StorageStats, TrashItem } from "../types";
@@ -38,6 +39,8 @@ export function StorageDoctor({ deviceId, deviceInfo, installedApps, t, lang }: 
   const [benchmarking, setBenchmarking] = useState(false);
   const [dryRunOpen, setDryRunOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [aiAdvice, setAiAdvice] = useState<string | null>(null);
+  const [aiConsulting, setAiConsulting] = useState(false);
 
   // Load storage capacity saat device aktif
   const loadStats = useCallback(async () => {
@@ -53,6 +56,7 @@ export function StorageDoctor({ deviceId, deviceInfo, installedApps, t, lang }: 
   useEffect(() => {
     setItems([]);
     setSelectedIds(new Set());
+    setAiAdvice(null);
     loadStats();
   }, [deviceId, loadStats]);
 
@@ -165,21 +169,25 @@ export function StorageDoctor({ deviceId, deviceInfo, installedApps, t, lang }: 
         ? "Kritis"
         : "Normal";
 
-    const report = [
+    const reportLines = [
       `*LAPORAN SERVIS MEMORI — MEGAPASS*`,
       `Perangkat: ${model}`,
       `• Memori Tersedia: ${freeBefore}`,
       `• Total Sampah Terdeteksi: ${formatBytesLocal(selectedSize)}`,
       `• Kondisi Flash Memory: ${healthLabel} (${speed})`,
       `• Status: Siap dibersihkan`,
-      ``,
-      `_Megapass Intra Solusindo — Servis Cepat & Transparan_`,
-    ].join("\n");
+    ];
 
-    navigator.clipboard.writeText(report).then(() => {
+    if (aiAdvice) {
+      reportLines.push(``, `*Diagnosa AI Teknisi:*`, aiAdvice.trim());
+    }
+
+    reportLines.push(``, `_Megapass Intra Solusindo — Servis Cepat & Transparan_`);
+
+    navigator.clipboard.writeText(reportLines.join("\n")).then(() => {
       toast.success(t("storage.report_copied"));
     });
-  }, [deviceInfo, stats, selectedSize, t]);
+  }, [deviceInfo, stats, selectedSize, aiAdvice, t]);
 
   // Eksekusi Hapus dari Dry-Run Modal
   const executeDelete = async () => {
@@ -202,6 +210,49 @@ export function StorageDoctor({ deviceId, deviceInfo, installedApps, t, lang }: 
       setDeleting(false);
     }
   };
+
+  // Konsultasi AI Storage Advisor
+  const runAiConsultation = useCallback(async () => {
+    if (!deviceId) return;
+    setAiConsulting(true);
+    try {
+      const junkSummary = items.reduce((acc, it) => {
+        acc[it.category] = (acc[it.category] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      const junkSummaryStr =
+        Object.entries(junkSummary)
+          .map(([k, v]) => `${k}: ${v} item`)
+          .join(", ") || "Belum scan sampah";
+
+      const devName = deviceInfo
+        ? `${deviceInfo.manufacturer} ${deviceInfo.market_name || deviceInfo.model}`
+        : deviceId;
+
+      const prompt = `Sebagai teknisi servis HP meja kerja ruko, berikan diagnosa singkat 3 poin untuk kondisi penyimpanan HP ini:
+Perangkat: ${devName}
+Kapasitas: Terpakai ${stats?.used_formatted ?? "?"} dari ${stats?.total_formatted ?? "?"} (${stats?.percent_used ?? 0}%), Sisa Bebas: ${stats?.free_formatted ?? "?"}
+Flash eMMC/UFS: Kecepatan Tulis ${stats?.emmc_write_speed_mbps ?? "?"} MB/s, Status: ${stats?.emmc_health ?? "belum diuji"}
+Sampah Terdeteksi: ${items.length} item (Kategori: ${junkSummaryStr})
+
+Format output persis (maksimal 15 kata per poin, tanpa markdown tebal):
+• STATUS FLASH: <kondisi chip eMMC/UFS & risiko keausan>
+• SUMBER BEBAN: <penyebab utama ruang penyimpanan menipis>
+• SOLUSI SERVIS: <langkah rekomendasi teknisi>`;
+
+      const reply = await api.chat(
+        [{ role: "user", content: prompt }],
+        `Device Storage Context for ${devName}`
+      );
+      setAiAdvice(reply);
+      toast.success("Diagnosa AI Storage siap");
+    } catch (e) {
+      toast.error(`Konsultasi AI gagal: ${e}`);
+    } finally {
+      setAiConsulting(false);
+    }
+  }, [deviceId, deviceInfo, stats, items]);
 
   if (!deviceId) {
     return (
@@ -248,46 +299,44 @@ export function StorageDoctor({ deviceId, deviceInfo, installedApps, t, lang }: 
             {/* Progress Bar */}
             <div className="w-full bg-[var(--bg-active)] h-2 rounded-full mt-2 overflow-hidden">
               <div
-                className={`h-full transition-all duration-500 ${
+                className={`h-full transition-all duration-300 ${
                   (stats?.percent_used ?? 0) > 90
                     ? "bg-red-500"
                     : (stats?.percent_used ?? 0) > 75
                     ? "bg-amber-500"
-                    : "bg-emerald-500"
+                    : "bg-primary"
                 }`}
                 style={{ width: `${stats?.percent_used ?? 0}%` }}
               />
             </div>
           </div>
-          <button
-            className="btn btn-ghost btn-sm text-xs self-start"
-            onClick={loadStats}
-            disabled={!deviceId}
-          >
-            <RotateCcw size={12} /> Refresh Kapasitas
-          </button>
+          <div className="text-[11px] text-faint">
+            {stats && stats.percent_used > 85
+              ? "Penyimpanan hampir penuh. Bersihkan cache & sampah."
+              : "Kapasitas ruang internal dalam batas aman."}
+          </div>
         </div>
 
-        {/* Card 2: Kesehatan Flash eMMC */}
+        {/* Card 2: eMMC / UFS Health */}
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-dim">{t("storage.card_emmc")}</span>
             <Activity size={16} className="text-dim" />
           </div>
           <div className="my-3">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl font-bold tabular-nums tracking-tight">
+            <div className="flex items-baseline gap-2">
+              <div className="text-2xl font-bold tabular-nums tracking-tight">
                 {stats?.emmc_write_speed_mbps ? `${stats.emmc_write_speed_mbps} MB/s` : "—"}
-              </span>
+              </div>
               <span
-                className={`badge ${
+                className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                   stats?.emmc_health === "good"
-                    ? "badge-safe"
+                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                     : stats?.emmc_health === "warning"
-                    ? "badge-risky"
+                    ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
                     : stats?.emmc_health === "critical"
-                    ? "badge-critical"
-                    : "badge-unknown"
+                    ? "bg-red-500/10 text-red-400 border border-red-500/20"
+                    : "bg-slate-500/10 text-slate-400 border border-slate-500/20"
                 }`}
               >
                 {stats?.emmc_health === "good"
@@ -300,15 +349,20 @@ export function StorageDoctor({ deviceId, deviceInfo, installedApps, t, lang }: 
               </span>
             </div>
             <div className="text-xs text-dim mt-1">
-              Latensi Write: {stats?.emmc_latency_ms ? `${stats.emmc_latency_ms} ms` : "—"}
+              Latensi: {stats?.emmc_latency_ms ? `${stats.emmc_latency_ms} ms` : "—"}
             </div>
           </div>
           <button
             className="btn btn-ghost btn-sm text-xs self-start"
             onClick={runBenchmark}
             disabled={!deviceId || benchmarking}
+            title="Benchmark eMMC write speed dengan dd dsync micro-test"
           >
-            {benchmarking ? <Loader2 size={12} className="animate-spin" /> : <Activity size={12} />}
+            {benchmarking ? (
+              <Loader2 size={12} className="animate-spin" />
+            ) : (
+              <RotateCcw size={12} />
+            )}
             {t("storage.btn_bench")}
           </button>
         </div>
@@ -346,6 +400,15 @@ export function StorageDoctor({ deviceId, deviceInfo, installedApps, t, lang }: 
               {t("storage.btn_trim")}
             </button>
             <button
+              className="btn btn-ghost btn-sm text-xs text-amber-400 hover:text-amber-300"
+              onClick={runAiConsultation}
+              disabled={!deviceId || aiConsulting}
+              title="Konsultasi AI: Analisa kondisi storage & rekomendasi teknisi"
+            >
+              {aiConsulting ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+              {aiConsulting ? t("storage.ai_analyzing") : t("storage.btn_ai_advisor")}
+            </button>
+            <button
               className="btn btn-ghost btn-sm text-xs"
               onClick={copyWaReport}
               disabled={!deviceId}
@@ -357,6 +420,41 @@ export function StorageDoctor({ deviceId, deviceInfo, installedApps, t, lang }: 
           </div>
         </div>
       </div>
+
+      {/* AI Storage Advisor Diagnosis Card */}
+      {aiAdvice && (
+        <div className="bg-[var(--bg-card)] border border-amber-500/30 rounded-xl p-4 relative overflow-hidden">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-2 text-xs font-semibold text-amber-400">
+              <Sparkles size={14} />
+              <span>{t("storage.ai_advisor_title")}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                className="btn btn-ghost btn-sm text-xs"
+                onClick={() => {
+                  navigator.clipboard.writeText(aiAdvice);
+                  toast.success(t("storage.ai_copy_success"));
+                }}
+                title="Salin saran ke clipboard"
+              >
+                <Copy size={12} />
+                <span>{t("storage.ai_copy")}</span>
+              </button>
+              <button
+                className="btn btn-ghost btn-icon btn-sm"
+                onClick={() => setAiAdvice(null)}
+                title="Tutup"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          </div>
+          <div className="text-xs text-[var(--text-main)] whitespace-pre-line leading-relaxed font-sans">
+            {aiAdvice}
+          </div>
+        </div>
+      )}
 
       {/* Category Tabs & Table Header */}
       <div className="flex flex-col gap-2 mt-2">
@@ -382,30 +480,34 @@ export function StorageDoctor({ deviceId, deviceInfo, installedApps, t, lang }: 
                 onClick={() => setFilter(cat.key)}
               >
                 <Icon size={13} />
-                {cat.label}
-                <span className="tab-count ml-1">{count}</span>
+                <span>{cat.label}</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[var(--bg-active)] tabular-nums">
+                  {count}
+                </span>
               </button>
             );
           })}
 
           <div className="ml-auto flex items-center gap-2">
-            <button
-              className="btn btn-danger btn-sm"
-              disabled={selectedIds.size === 0 || deleting}
-              onClick={() => setDryRunOpen(true)}
-            >
-              <Trash2 size={14} />
-              {t("storage.btn_clean")} ({selectedIds.size})
-            </button>
+            {selectedIds.size > 0 && (
+              <button
+                className="btn btn-danger btn-sm text-xs"
+                onClick={() => setDryRunOpen(true)}
+                disabled={deleting}
+              >
+                <Trash2 size={12} />
+                {t("storage.btn_clean")} ({formatBytesLocal(selectedSize)})
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Tabel Temuan Sampah */}
-        <div className="table-scroll border border-[var(--border)] rounded-xl overflow-hidden">
-          <table className="app-table">
+        {/* Junk Items Table */}
+        <div className="table-wrap">
+          <table className="table">
             <thead>
               <tr>
-                <th className="w-10">
+                <th style={{ width: 36 }}>
                   <input
                     type="checkbox"
                     checked={
@@ -413,87 +515,69 @@ export function StorageDoctor({ deviceId, deviceInfo, installedApps, t, lang }: 
                       filteredItems.every((i) => selectedIds.has(i.id))
                     }
                     onChange={toggleAllVisible}
+                    disabled={filteredItems.length === 0}
                   />
                 </th>
-                <th>Item / Folder</th>
-                <th className="w-28">Kategori</th>
-                <th className="w-24">Keamanan</th>
-                <th className="w-28 text-right">Ukuran</th>
+                <th>Target Pembersihan</th>
+                <th style={{ width: 100 }}>Kategori</th>
+                <th style={{ width: 90 }}>Tingkat</th>
+                <th style={{ width: 90, textAlign: "right" }}>Ukuran</th>
               </tr>
             </thead>
             <tbody>
-              {filteredItems.length === 0 && (
+              {filteredItems.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="text-center py-8 text-dim text-xs">
-                    {scanning ? (
-                      <div className="flex items-center justify-center gap-2">
-                        <Loader2 size={16} className="animate-spin" />
-                        Scanning partisi storage...
+                    {items.length === 0 ? t("storage.empty_scan") : "Tidak ada item pada kategori ini."}
+                  </td>
+                </tr>
+              ) : (
+                filteredItems.map((item) => (
+                  <tr key={item.id} onClick={() => toggleItem(item.id)} className="cursor-pointer">
+                    <td onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(item.id)}
+                        onChange={() => toggleItem(item.id)}
+                      />
+                    </td>
+                    <td>
+                      <div className="font-medium text-sm">{item.name}</div>
+                      <div className="text-xs text-dim">
+                        {lang === "id" ? item.description_id : item.description_en}
                       </div>
-                    ) : (
-                      t("storage.empty_scan")
-                    )}
-                  </td>
-                </tr>
+                      <div className="mono text-[11px] text-faint truncate max-w-lg mt-0.5">
+                        {item.path}
+                      </div>
+                    </td>
+                    <td>
+                      <span className="badge badge-system uppercase text-[10px]">
+                        {item.category}
+                      </span>
+                    </td>
+                    <td>
+                      <span
+                        className={`badge ${
+                          item.safety_level === "safe"
+                            ? "badge-safe"
+                            : item.safety_level === "review"
+                            ? "badge-risky"
+                            : "badge-critical"
+                        }`}
+                      >
+                        {item.safety_level === "safe"
+                          ? "Aman"
+                          : item.safety_level === "review"
+                          ? "Periksa"
+                          : "Hati-hati"}
+                      </span>
+                    </td>
+                    <td style={{ textAlign: "right" }} className="tabular-nums font-mono text-xs">
+                      {item.size_formatted}
+                    </td>
+                  </tr>
+                ))
               )}
-              {filteredItems.map((item) => (
-                <tr
-                  key={item.id}
-                  className={`cursor-pointer transition-colors duration-100 hover:bg-[var(--bg-hover)] ${selectedIds.has(item.id) ? "selected" : ""}`}
-                  onClick={() => toggleItem(item.id)}
-                >
-                  <td
-                    className="cell-check"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleItem(item.id);
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.has(item.id)}
-                      onChange={() => toggleItem(item.id)}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </td>
-                  <td>
-                    <div className="font-medium text-sm">{item.name}</div>
-                    <div className="text-xs text-dim">
-                      {lang === "id" ? item.description_id : item.description_en}
-                    </div>
-                    <div className="mono text-[11px] text-faint truncate max-w-lg mt-0.5">
-                      {item.path}
-                    </div>
-                  </td>
-                  <td>
-                    <span
-                      className={`badge capitalize ${
-                        item.category === "whatsapp"
-                          ? "badge-safe"
-                          : item.category === "orphan"
-                          ? "badge-system"
-                          : item.category === "apk"
-                          ? "badge-risky"
-                          : "badge-user"
-                      }`}
-                    >
-                      {item.category}
-                    </span>
-                  </td>
-                  <td>
-                    <span
-                      className={`badge ${
-                        item.safety_level === "safe" ? "badge-safe" : "badge-risky"
-                      }`}
-                    >
-                      {item.safety_level === "safe" ? "Aman" : "Tinjau"}
-                    </span>
-                  </td>
-                  <td className="text-right font-medium text-xs mono">
-                    {item.size_formatted}
-                  </td>
-                </tr>
-              ))}
             </tbody>
           </table>
         </div>

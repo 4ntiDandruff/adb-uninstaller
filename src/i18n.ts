@@ -67,6 +67,7 @@ export const t: Record<Lang, Record<string, string>> = {
     "detail.enable": "Aktifkan",
     "detail.force_stop": "Force Stop",
     "detail.clear_data": "Hapus Data",
+    "detail.ask_ai": "Tanya AI",
     
     // AI Chat
     "chat.title": "Asisten AI",
@@ -133,6 +134,11 @@ export const t: Record<Lang, Record<string, string>> = {
     "storage.dryrun_confirm": "Eksekusi Hapus",
     "storage.report_copied": "Laporan WhatsApp disalin ke clipboard",
     "storage.trim_success": "Global cache berhasil di-trim",
+    "storage.btn_ai_advisor": "Konsultasi AI",
+    "storage.ai_analyzing": "Diagnosa AI...",
+    "storage.ai_advisor_title": "AI Storage Advisor · Rekomendasi Teknisi",
+    "storage.ai_copy": "Salin Saran",
+    "storage.ai_copy_success": "Saran AI berhasil disalin",
   },
   en: {
     // Topbar
@@ -200,6 +206,7 @@ export const t: Record<Lang, Record<string, string>> = {
     "detail.enable": "Enable",
     "detail.force_stop": "Force Stop",
     "detail.clear_data": "Clear Data",
+    "detail.ask_ai": "Ask AI",
     
     // AI Chat
     "chat.title": "AI Assistant",
@@ -266,6 +273,11 @@ export const t: Record<Lang, Record<string, string>> = {
     "storage.dryrun_confirm": "Execute Clean",
     "storage.report_copied": "WhatsApp report copied to clipboard",
     "storage.trim_success": "Global cache trimmed successfully",
+    "storage.btn_ai_advisor": "AI Advisor",
+    "storage.ai_analyzing": "Diagnosing...",
+    "storage.ai_advisor_title": "AI Storage Advisor · Technician Triage",
+    "storage.ai_copy": "Copy Advice",
+    "storage.ai_copy_success": "AI advice copied to clipboard",
   },
 };
 

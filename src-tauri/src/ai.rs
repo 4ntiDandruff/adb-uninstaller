@@ -273,6 +273,46 @@ pub async fn test_ai_connection(
     })
 }
 
+
+async fn post_chat_completion_with_retry(
+    client: &reqwest::Client,
+    base: &str,
+    api_key: &str,
+    body: &serde_json::Value,
+) -> Result<String, String> {
+    let url = format!("{base}/chat/completions");
+    let mut attempt = 0;
+    loop {
+        attempt += 1;
+        let resp = client
+            .post(&url)
+            .header("Authorization", format!("Bearer {api_key}"))
+            .header("Content-Type", "application/json")
+            .json(body)
+            .send()
+            .await
+            .map_err(|e| format!("[ADB-4002] Koneksi AI gagal: {e}"))?;
+
+        let status = resp.status();
+        let text = resp
+            .text()
+            .await
+            .map_err(|e| format!("[ADB-4003] Baca response gagal: {e}"))?;
+
+        // Fail-safe retry on transient 429 (rate limit) or 503 (service unavailable)
+        if (status.as_u16() == 429 || status.as_u16() == 503) && attempt <= 2 {
+            tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
+            continue;
+        }
+
+        if !status.is_success() {
+            return Err(format!("[ADB-4004] HTTP {status}: {text}"));
+        }
+
+        return Ok(text);
+    }
+}
+
 pub async fn analyze_apps_batch(packages: Vec<String>) -> Result<Vec<SafetyAnalysis>, String> {
     let settings = load_settings()?;
     if settings.ai_api_key.trim().is_empty() {
@@ -311,23 +351,7 @@ pub async fn analyze_apps_batch(packages: Vec<String>) -> Result<Vec<SafetyAnaly
         "stream": false
     });
 
-    let resp = client
-        .post(format!("{base}/chat/completions"))
-        .header("Authorization", format!("Bearer {}", settings.ai_api_key))
-        .header("Content-Type", "application/json")
-        .json(&body)
-        .send()
-        .await
-        .map_err(|e| format!("[ADB-4002] Koneksi AI gagal: {e}"))?;
-
-    let status = resp.status();
-    let text = resp
-        .text()
-        .await
-        .map_err(|e| format!("[ADB-4003] Baca response gagal: {e}"))?;
-    if !status.is_success() {
-        return Err(format!("[ADB-4004] HTTP {status}: {text}"));
-    }
+    let text = post_chat_completion_with_retry(&client, &base, &settings.ai_api_key, &body).await?;
 
     let text = strip_sse(&text);
     let v: Value =
@@ -392,23 +416,7 @@ pub async fn analyze_device(
         "stream": false
     });
 
-    let resp = client
-        .post(format!("{base}/chat/completions"))
-        .header("Authorization", format!("Bearer {}", settings.ai_api_key))
-        .header("Content-Type", "application/json")
-        .json(&body)
-        .send()
-        .await
-        .map_err(|e| format!("[ADB-4002] Koneksi AI gagal: {e}"))?;
-
-    let status = resp.status();
-    let text = resp
-        .text()
-        .await
-        .map_err(|e| format!("[ADB-4003] Baca response gagal: {e}"))?;
-    if !status.is_success() {
-        return Err(format!("[ADB-4004] HTTP {status}: {text}"));
-    }
+    let text = post_chat_completion_with_retry(&client, &base, &settings.ai_api_key, &body).await?;
     let text = strip_sse(&text);
     let v: Value =
         serde_json::from_str(&text).map_err(|e| format!("[ADB-4007] Parse response gagal: {e}"))?;
@@ -463,23 +471,7 @@ pub async fn chat_with_ai(messages: Vec<ChatMessage>, context: String) -> Result
         "stream": false
     });
 
-    let resp = client
-        .post(format!("{base}/chat/completions"))
-        .header("Authorization", format!("Bearer {}", settings.ai_api_key))
-        .header("Content-Type", "application/json")
-        .json(&body)
-        .send()
-        .await
-        .map_err(|e| format!("[ADB-4002] Koneksi AI gagal: {e}"))?;
-
-    let status = resp.status();
-    let text = resp
-        .text()
-        .await
-        .map_err(|e| format!("[ADB-4003] Baca response gagal: {e}"))?;
-    if !status.is_success() {
-        return Err(format!("[ADB-4004] HTTP {status}: {text}"));
-    }
+    let text = post_chat_completion_with_retry(&client, &base, &settings.ai_api_key, &body).await?;
 
     let text = strip_sse(&text);
     if text.is_empty() {

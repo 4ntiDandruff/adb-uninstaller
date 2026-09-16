@@ -1,4 +1,4 @@
-import { Copy, X } from "lucide-react";
+import { Copy, Sparkles, X } from "lucide-react";
 import type { AppInfo } from "../types";
 import { toast } from "./api";
 
@@ -10,6 +10,7 @@ interface Props {
   onEnable: (app: AppInfo) => void;
   onForceStop: (app: AppInfo) => void;
   onClearData: (app: AppInfo) => void;
+  onAskAi?: (app: AppInfo) => void;
   busy: boolean;
   t: (key: string) => string;
 }
@@ -22,7 +23,7 @@ const LEVEL_BADGE: Record<string, string> = {
 };
 
 export function DetailPanel({
-  app, onClose, onUninstall, onDisable, onEnable, onForceStop, onClearData, busy, t,
+  app, onClose, onUninstall, onDisable, onEnable, onForceStop, onClearData, onAskAi, busy, t,
 }: Props) {
   function copyPkg() {
     if (!app) return;
@@ -98,6 +99,15 @@ export function DetailPanel({
             </button>
             <button className="btn btn-ghost" disabled={busy} onClick={() => onClearData(app)}>
               {t("detail.clear_data")}
+            </button>
+            <button
+              className="btn btn-ghost text-amber-400 hover:text-amber-300"
+              disabled={busy}
+              onClick={() => onAskAi?.(app)}
+              title="Tanya rekomendasi teknisi AI untuk package ini"
+            >
+              <Sparkles size={13} />
+              {t("detail.ask_ai")}
             </button>
           </div>
         </>

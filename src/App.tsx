@@ -619,13 +619,41 @@ export default function App() {
     return { safe, risky, critical, unknown };
   }, [apps]);
 
-  const chatContext = useMemo(
-    () =>
-      `Device: ${deviceId ?? "-"}\nTotal apps: ${apps.length}\nSafe:${stats.safe} Risky:${stats.risky} Critical:${stats.critical} Unknown:${stats.unknown}\nSample: ${apps
-        .slice(0, 15)
-        .map((a) => a.package_name)
-        .join(", ")}`,
-    [deviceId, apps, stats],
+  const chatContext = useMemo(() => {
+    const devLine = deviceInfo
+      ? `Device: ${deviceInfo.manufacturer} ${deviceInfo.market_name || deviceInfo.model} (${deviceInfo.model_code})\nChipset: ${deviceInfo.chipset || "Unknown"}\nAndroid: ${deviceInfo.android_version} (SDK ${deviceInfo.sdk_level})\nRAM/Storage: ${deviceInfo.ram_total} RAM / ${deviceInfo.storage_free} free of ${deviceInfo.storage_total}`
+      : `Device: ${deviceId ?? "-"}`;
+    const selApp = detail
+      ? `\nSelected App: ${detail.package_name} (${detail.label || detail.package_name}) [Safety: ${detail.safety_level}, System: ${detail.is_system}, Disabled: ${detail.is_disabled}, Size: ${detail.size || "?"}]`
+      : "";
+    return `${devLine}\nTotal apps: ${apps.length}\nSafe:${stats.safe} Risky:${stats.risky} Critical:${stats.critical} Unknown:${stats.unknown}${selApp}\nSample apps: ${apps
+      .slice(0, 15)
+      .map((a) => a.package_name)
+      .join(", ")}`;
+  }, [deviceId, deviceInfo, detail, apps, stats]);
+
+  const handleAskAiForApp = useCallback(
+    async (targetApp: AppInfo) => {
+      setChatOpen(true);
+      setChatMinimized(false);
+      const devName = deviceInfo
+        ? `${deviceInfo.manufacturer} ${deviceInfo.market_name || deviceInfo.model}`
+        : deviceId ?? "perangkat ini";
+      const prompt = `Analisa teknisi untuk package ${targetApp.package_name} (${targetApp.label || targetApp.package_name}) pada ${devName}: Apakah aman di-uninstall atau di-disable? Apa dampaknya jika dimatikan?`;
+
+      setChatMsgs((prev) => [...prev, { role: "user", content: prompt }]);
+      try {
+        const history = [...chatMsgs, { role: "user" as const, content: prompt }];
+        const reply = await api.chat(
+          history.map((m) => ({ role: m.role, content: m.content })),
+          chatContext,
+        );
+        setChatMsgs((prev) => [...prev, { role: "assistant", content: reply }]);
+      } catch (e) {
+        setChatMsgs((prev) => [...prev, { role: "assistant", content: `⚠️ ${e}` }]);
+      }
+    },
+    [deviceInfo, deviceId, chatMsgs, chatContext],
   );
 
   if (adbOk === false) {
@@ -864,6 +892,7 @@ export default function App() {
                 onEnable={(a) => runOp("enable", a.package_name)}
                 onForceStop={(a) => runOp("force_stop", a.package_name)}
                 onClearData={(a) => runOp("clear_data", a.package_name)}
+                onAskAi={handleAskAiForApp}
                 busy={busy}
                 t={t}
               />

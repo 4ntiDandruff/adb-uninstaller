@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, Minus, Send, Trash2, X } from "lucide-react";
+import { Loader2, Minus, Send, Sparkles, Trash2, X } from "lucide-react";
 import { api, toast } from "./api";
 
 export interface Msg {
@@ -17,6 +17,25 @@ interface Props {
   onClose: () => void;
   onToggleMinimize: () => void;
 }
+
+const QUICK_CHIPS = [
+  {
+    label: "⚡ Rekomendasi Debloat",
+    prompt: "Rekomendasi package apa saja yang paling aman di-debloat untuk perangkat ini tanpa merusak fungsionalitas utama?",
+  },
+  {
+    label: "🛡️ Cek Google Services",
+    prompt: "Apakah aman menonaktifkan Google Play Services dan Google Apps di HP ini dan apa efek sampingnya?",
+  },
+  {
+    label: "🧹 Bloatware Vendor Aman",
+    prompt: "Daftar bloatware bawaan vendor yang aman dinonaktifkan tanpa risiko bootloop?",
+  },
+  {
+    label: "🚀 Tips Hemat RAM",
+    prompt: "Berikan tips teknisi servis untuk meringankan beban RAM dan baterai pada perangkat ini melalui ADB.",
+  },
+];
 
 export function AIChat({ context, msgs, setMsgs, pos, setPos, minimized, onClose, onToggleMinimize }: Props) {
   const [input, setInput] = useState("");
@@ -73,10 +92,10 @@ export function AIChat({ context, msgs, setMsgs, pos, setPos, minimized, onClose
     };
   }, [setPos]);
 
-  async function send() {
-    const text = input.trim();
+  async function send(overrideText?: string) {
+    const text = (overrideText ?? input).trim();
     if (!text || busy) return;
-    setInput("");
+    if (!overrideText) setInput("");
     setMsgs((m) => [...m, { role: "user", content: text }]);
     setBusy(true);
     try {
@@ -100,6 +119,7 @@ export function AIChat({ context, msgs, setMsgs, pos, setPos, minimized, onClose
     return (
       <div ref={dragRef} className="ai-float minimized" style={{ left: pos.x, top: pos.y }}>
         <div className="ai-float-head" {...headProps} onClick={onToggleMinimize} title="Klik untuk buka">
+          <Sparkles size={14} className="text-amber-400" />
           <span>AI Assistant</span>
         </div>
       </div>
@@ -109,7 +129,10 @@ export function AIChat({ context, msgs, setMsgs, pos, setPos, minimized, onClose
   return (
     <div ref={dragRef} className="ai-float" style={{ left: pos.x, top: pos.y }}>
       <div className="ai-float-head" {...headProps}>
-        <span className="font-semibold">AI Assistant</span>
+        <div className="flex items-center gap-1.5 font-semibold">
+          <Sparkles size={14} className="text-amber-400" />
+          <span>AI Assistant</span>
+        </div>
         <div className="flex items-center gap-1">
           <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setMsgs([])} title="Clear history">
             <Trash2 size={13} />
@@ -125,8 +148,25 @@ export function AIChat({ context, msgs, setMsgs, pos, setPos, minimized, onClose
       <div className="ai-panel">
         <div className="ai-messages">
           {msgs.length === 0 && (
-            <div className="text-xs text-dim">
-              Tanya seputar debloat, keamanan package, atau perintah ADB.
+            <div className="space-y-3 py-1">
+              <div className="text-xs text-dim leading-relaxed">
+                Tanya seputar debloat, keamanan package, analisa storage, atau perintah ADB.
+              </div>
+              <div className="text-[11px] font-semibold text-faint uppercase tracking-wider">
+                Aksi Cepat Teknisi
+              </div>
+              <div className="flex flex-col gap-1.5">
+                {QUICK_CHIPS.map((chip, idx) => (
+                  <button
+                    key={idx}
+                    className="text-left text-xs px-2.5 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-dim hover:text-[var(--text-main)] transition-colors"
+                    onClick={() => send(chip.prompt)}
+                    disabled={busy}
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           {msgs.map((m, i) => (
@@ -150,7 +190,7 @@ export function AIChat({ context, msgs, setMsgs, pos, setPos, minimized, onClose
             onKeyDown={(e) => e.key === "Enter" && send()}
             disabled={busy}
           />
-          <button className="btn btn-primary btn-icon" onClick={send} disabled={busy || !input.trim()}>
+          <button className="btn btn-primary btn-icon" onClick={() => send()} disabled={busy || !input.trim()}>
             <Send size={15} />
           </button>
         </div>
