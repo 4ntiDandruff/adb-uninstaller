@@ -693,7 +693,6 @@ export default function App() {
         {/* Topbar */}
         <div className="topbar">
           <div className="flex items-center gap-2">
-            <div className="topbar-title">{t("topbar.title")}</div>
             <div className="segmented-pill">
               <button
                 className={`segmented-tab ${mainTab === "apps" ? "active" : ""}`}
