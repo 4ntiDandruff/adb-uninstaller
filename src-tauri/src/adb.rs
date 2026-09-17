@@ -46,16 +46,16 @@ pub struct DeviceInfo {
     pub ram_total: String,
 }
 
-async fn run_adb(args: &[&str]) -> Result<(String, String, i32), String> {
+async fn run_adb_with_timeout(args: &[&str], timeout_secs: u64) -> Result<(String, String, i32), String> {
     let mut cmd = Command::new("adb");
     cmd.args(args);
     cmd.kill_on_drop(true);
     let output = tokio::time::timeout(
-        std::time::Duration::from_secs(30),
+        std::time::Duration::from_secs(timeout_secs),
         cmd.output(),
     )
     .await
-    .map_err(|_| "[ADB-1001] ADB timeout (30s)".to_string())?
+    .map_err(|_| format!("[ADB-1001] ADB timeout ({timeout_secs}s)"))?
     .map_err(|e| format!("[ADB-1001] ADB tidak ditemukan atau gagal dijalankan: {e}"))?;
 
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
@@ -64,10 +64,20 @@ async fn run_adb(args: &[&str]) -> Result<(String, String, i32), String> {
     Ok((stdout, stderr, code))
 }
 
+async fn run_adb(args: &[&str]) -> Result<(String, String, i32), String> {
+    run_adb_with_timeout(args, 30).await
+}
+
 pub(crate) async fn run_adb_device(device_id: &str, args: &[&str]) -> Result<(String, String, i32), String> {
     let mut full = vec!["-s", device_id];
     full.extend_from_slice(args);
     run_adb(&full).await
+}
+
+pub(crate) async fn run_adb_device_timeout(device_id: &str, args: &[&str], timeout_secs: u64) -> Result<(String, String, i32), String> {
+    let mut full = vec!["-s", device_id];
+    full.extend_from_slice(args);
+    run_adb_with_timeout(&full, timeout_secs).await
 }
 
 

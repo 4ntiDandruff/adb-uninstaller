@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::time::Instant;
 
-use crate::adb::{format_bytes, run_adb_device, timed_result, CommandResult};
+use crate::adb::{format_bytes, run_adb_device, run_adb_device_timeout, timed_result, CommandResult};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StorageStats {
@@ -587,7 +587,8 @@ pub async fn delete_junk_items(device_id: String, paths: Vec<String>) -> Result<
 
     for path in paths {
         let quoted = escape_shell_path(&path);
-        let (out, err, code) = run_adb_device(&device_id, &["shell", "rm", "-rf", &quoted]).await
+        // Timeout 180 detik untuk operasi hapus massal (WhatsApp Sent / Telegram cache berisi ribuan file FUSE)
+        let (out, err, code) = run_adb_device_timeout(&device_id, &["shell", "rm", "-rf", &quoted], 180).await
             .map_err(|e| format!("[STOR-2001] Gagal eksekusi hapus: {e}"))?;
         if code != 0 {
             return Err(format!("[STOR-2002] Gagal hapus {path}: {err} {out}"));
