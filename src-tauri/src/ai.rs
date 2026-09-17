@@ -87,8 +87,26 @@ pub fn save_settings(settings: AppSettings) -> Result<(), String> {
 }
 
 fn strip_sse(text: &str) -> String {
-    // Provider kadang return SSE: "data: {...}\ndata: {...}\ndata: [DONE]"
-    // Concat semua JSON payload, bukan cuma ambil yang pertama.
+    let trimmed = text.trim();
+    // Jika response sudah merupakan JSON object utuh (chat completion standar), langsung pakai
+    if trimmed.starts_with("{") {
+        if let Ok(v) = serde_json::from_str::<serde_json::Value>(trimmed) {
+            if v.get("choices").is_some() {
+                return trimmed.to_string();
+            }
+        }
+        // Jika provider menempelkan SSE trailer setelah JSON object ("{...}\n\ndata: ...")
+        if let Some(pos) = trimmed.find("\ndata:") {
+            let json_part = trimmed[..pos].trim();
+            if let Ok(v) = serde_json::from_str::<serde_json::Value>(json_part) {
+                if v.get("choices").is_some() {
+                    return json_part.to_string();
+                }
+            }
+        }
+    }
+
+    // Provider return pure SSE: "data: {...}\ndata: {...}\ndata: [DONE]"
     let mut parts: Vec<String> = Vec::new();
     let mut is_sse = false;
     for line in text.lines() {
@@ -299,9 +317,9 @@ async fn post_chat_completion_with_retry(
             .await
             .map_err(|e| format!("[ADB-4003] Baca response gagal: {e}"))?;
 
-        // Fail-safe retry on transient 429 (rate limit) or 503 (service unavailable)
-        if (status.as_u16() == 429 || status.as_u16() == 503) && attempt <= 2 {
-            tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
+        // Fail-safe retry on transient 429 (rate limit), 503 (service unavailable), or 504 (gateway timeout)
+        if (status.as_u16() == 429 || status.as_u16() == 503 || status.as_u16() == 504) && attempt <= 2 {
+            tokio::time::sleep(std::time::Duration::from_millis(2000)).await;
             continue;
         }
 
@@ -320,8 +338,9 @@ pub async fn analyze_apps_batch(packages: Vec<String>) -> Result<Vec<SafetyAnaly
     }
 
     let mut packages = packages;
-    if packages.len() > 50 {
-        packages.truncate(50);
+    // Limit aman per-prompt untuk mencegah 504 Gateway Timeout pada model besar
+    if packages.len() > 25 {
+        packages.truncate(25);
     }
 
     let base = normalize_base_url(&settings.ai_base_url);
@@ -556,5 +575,22 @@ mod tests {
             normalize_base_url("https://example.test/api/v1/"),
             "https://example.test/api/v1"
         );
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_live_ai_batch() {
+        let pkgs = vec![
+            "com.tranlauncher.res".to_string(),
+            "com.transsion.teop".to_string(),
+            "com.xui.xhide".to_string(),
+            "com.transsion.airtransfer".to_string(),
+            "com.cbn.dicbn".to_string(),
+        ];
+        let res = analyze_apps_batch(pkgs).await.unwrap();
+        println!("AI BATCH RESULT ({} items):", res.len());
+        for r in res {
+            println!("  {} -> [{}] {}", r.package_name, r.level, r.reason);
+        }
     }
 }

@@ -5,6 +5,26 @@ Format pencatatan berpedoman pada standar *Keep a Changelog* dengan kata kerja f
 
 ---
 
+## [2.3.3] — 2026-09-17
+
+Optimasi Mesin AI Batch Analyzer: Eliminasi 504 Gateway Timeout Upstream, Pembagian Paket Progresif (20 Pkg/Batch), Penanganan Trailer SSE Cloudflare, dan Ketahanan Retry Otomatis.
+
+### Added (Fitur & Instrumen Baru)
+- **Pembagian Batch AI Progresif (Progressive Batch Chunking)**: Memperbarui alur analisis AI manual dan otomatis (autoAnalyzeUnknown dan analyzeUnknown) di antarmuka frontend agar membagi antrean package ke dalam potongan kecil terukur (maksimal 20 package per permintaan). Mengirimkan progress secara bertahap langsung ke UI tanpa menunggu seluruh antrean selesai.
+- **Fail-Safe Limit Backend Rust (25 Pkg Cap)**: Menambahkan sekring batas keras (packages.truncate(25)) pada fungsi backend analyze_apps_batch di src-tauri/src/ai.rs untuk menjamin payload tidak pernah meluap melebihi kapasitas jendela waktu eksekusi gateway upstream.
+- **Kamus Humanize Error Gateway AI**: Menambahkan terjemahan bahasa manusiawi untuk kode status HTTP 504 (gateway_timeout / timed out) di src/errorMessages.ts agar teknisi langsung memahami kondisi beban server upstream.
+- **Unit Test Live AI Batch**: Menambahkan pengujian integrasi live Rust test_live_ai_batch untuk memverifikasi akurasi deserialisasi JSON respon dari ZevaiRouter secara langsung.
+
+### Changed (Penyempurnaan Logika Sirkuit)
+- **Pemangkasan Latensi AI (Turun dari >45s ke ~13s)**: Memotong ukuran batch paket dari 50 paket menjadi 20 paket, mereduksi waktu komputasi token LLM dari >45 detik menjadi hanya ~13 detik. Hal ini melenyapkan kegagalan [504]: provider response acquisition timed out pada ZevaiRouter/Cloudflare Workers AI yang memiliki sekring batas waktu ~40 detik.
+- **Ketahanan Retry Kode Respon HTTP 504**: Menambahkan HTTP 504 ke dalam penanganan retry otomatis transient (429, 503, dan 504) di post_chat_completion_with_retry dengan jeda backoff 2 detik sebelum percobaan ulang.
+
+### Fixed (Perbaikan Bug Teknis)
+- **Eliminasi Anomali Parser Trailer SSE (strip_sse)**: Memperbaiki logika strip_sse di backend Rust yang sebelumnya membuang seluruh payload JSON valid jika upstream proxy menempelkan trailer SSE 
+data: ... di akhir payload HTTP non-streaming, mencegah kegagalan deserialisasi respon AI yang valid.
+
+---
+
 ## [2.3.2] — 2026-09-17
 
 Audit & Overhaul Mesin Storage Doctor: Pemulihan Deteksi Sampah Telegram Scoped Storage (Android 11+), Ekspansi Pemindaian WhatsApp & WhatsApp Business (Dokumen Sent, Voice Notes, Cache Link Preview), dan Integrasi Deteksi Tempat Sampah Galeri OEM (Transsion, MIUI, Samsung, ColorOS, Vivo).

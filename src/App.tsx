@@ -192,9 +192,10 @@ export default function App() {
     const t0 = performance.now();
     let totalDone = 0;
     try {
-      for (let i = 0; i < packages.length; i += 50) {
-        const batch = packages.slice(i, i + 50);
-        log({ level: "info", source: "ai", message: `Auto AI: batch ${Math.floor(i/50)+1} (${batch.length} pkg)` });
+      const BATCH_SIZE = 20;
+      for (let i = 0; i < packages.length; i += BATCH_SIZE) {
+        const batch = packages.slice(i, i + BATCH_SIZE);
+        log({ level: "info", source: "ai", message: `Auto AI: batch ${Math.floor(i / BATCH_SIZE) + 1} (${batch.length} pkg)` });
         const results = await api.analyzeBatch(batch);
         if (loadRequestRef.current !== requestId) return;
         const map = new Map(results.map((r) => [r.package_name, r]));
@@ -642,36 +643,44 @@ export default function App() {
 
 
   const analyzeUnknown = useCallback(async () => {
-    const unknown = apps.filter((a) => a.safety_level === "unknown").slice(0, 50);
+    const unknown = apps.filter((a) => a.safety_level === "unknown");
     if (unknown.length === 0) {
       toast.info("Tidak ada package unknown");
       return;
     }
     setAnalyzing(true);
     const t0 = performance.now();
+    let totalDone = 0;
+    const BATCH_SIZE = 20;
+    const toProcess = unknown.slice(0, 40);
     try {
-      const results = await api.analyzeBatch(unknown.map((a) => a.package_name));
-      const map = new Map(results.map((r) => [r.package_name, r]));
-      setApps((prev) =>
-        prev.map((a) => {
-          const r = map.get(a.package_name);
-          return r ? { ...a, safety_level: normalizeSafety(r.level), safety_reason: r.reason, ...(r.app_name ? { label: r.app_name } : {}) } : a;
-        }),
-      );
-      // ponytail: persist manual AI results too
-      if (deviceId && results.length > 0) {
-        api.saveAiResults(deviceId, results.map((r) => ({
-          package_name: r.package_name,
-          app_name: r.app_name || "",
-          level: r.level,
-          reason: r.reason,
-        }))).catch(() => {});
+      for (let i = 0; i < toProcess.length; i += BATCH_SIZE) {
+        const batch = toProcess.slice(i, i + BATCH_SIZE);
+        log({ level: "info", source: "ai", message: `AI batch ${Math.floor(i / BATCH_SIZE) + 1} (${batch.length} pkg)` });
+        const results = await api.analyzeBatch(batch.map((a) => a.package_name));
+        const map = new Map(results.map((r) => [r.package_name, r]));
+        setApps((prev) =>
+          prev.map((a) => {
+            const r = map.get(a.package_name);
+            return r ? { ...a, safety_level: normalizeSafety(r.level), safety_reason: r.reason, ...(r.app_name ? { label: r.app_name } : {}) } : a;
+          }),
+        );
+        // ponytail: persist manual AI results too
+        if (deviceId && results.length > 0) {
+          api.saveAiResults(deviceId, results.map((r) => ({
+            package_name: r.package_name,
+            app_name: r.app_name || "",
+            level: r.level,
+            reason: r.reason,
+          }))).catch(() => {});
+        }
+        totalDone += results.length;
       }
-      toast.success(`AI analysis: ${results.length} package`);
-      log({ level: "success", source: "ai", message: `AI batch ${results.length} package`, duration_ms: Math.round(performance.now() - t0) });
+      toast.success(`AI analysis: ${totalDone} package`);
+      log({ level: "success", source: "ai", message: `AI batch selesai: ${totalDone} package`, duration_ms: Math.round(performance.now() - t0) });
     } catch (e) {
       toast.error(`AI analysis gagal`);
-      log({ level: "error", source: "ai", message: `AI batch gagal`, detail: String(e) });
+      log({ level: "error", source: "ai", message: `AI batch gagal`, detail: humanizeError(String(e)) });
     } finally {
       setAnalyzing(false);
     }

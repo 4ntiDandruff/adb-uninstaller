@@ -1,6 +1,6 @@
 <div align="center">
 
-# ADB Uninstaller (v2.3.1)
+# ADB Uninstaller (v2.3.3)
 
 ### Kokpit Meja Servis untuk Bersihkan Bloatware Android, Ekstraksi APK Offline, Diagnostik Chip UFS/eMMC & Sapu Bersih Memori HP Tanpa Root
 
@@ -23,7 +23,7 @@
 
 * **Problem (Masalah Nyata)**: Konsumen datang ke meja servis membawa HP Android yang lemot luar biasa, aplikasi perbankan sering keluar sendiri (*force-close*), memori internal mendadak penuh bertuliskan *"Ruang Penyimpanan Hampir Habis"*, dan baterai cepat panas meski ponsel cuma ditaruh di saku. Biang kerok utamanya adalah puluhan aplikasi bawaan pabrik (*bloatware* sampah) yang berjalan diam-diam menyedot RAM, tumpukan cache media Telegram dan WhatsApp puluhan gigabyte, serta berkas *crash dumps* vendor yang tersembunyi rapi di sudut filesystem.
 * **Agitate (Risiko Fatal & Meja Kerja Berantakan)**: Menghapus aplikasi lewat terminal hitam mentah via perintah `adb shell pm uninstall -k --user 0` satu per satu itu bikin mata perih dan sangat rawan salah ketik. Sekali Anda keliru mencabut paket vital sistem seperti *SystemUI*, *Android System WebView*, atau *SettingsProvider*, ponsel konsumen bisa seketika **mati total atau bootloop (mentok logo)**. Selain itu, proses ADB konvensional sering menggantung di latar belakang menjadi proses zombie yang menguras 100% CPU komputer bengkel hingga laptop servis macet saat pelanggan sedang menunggu.
-* **Solution (Solusi Meja Servis Megapass)**: **ADB Uninstaller v2.3.1** dirancang khusus sebagai stasiun kerja mandiri yang memangkas seluruh alur manual tersebut. Cukup tancapkan kabel data USB ke ponsel, klik tombol **Scan Device**, dan dalam sekejap seluruh aplikasi terpetakan dengan rambu keselamatan sirkuit 3 warna: **Hijau (Aman Dicopot)**, **Kuning (Hati-Hati)**, dan **Merah (Kritis Terkunci)**. Dilengkapi **Floating Bottom Action Dock** untuk eksekusi jempol kilat, **Offline APK Extractor** untuk mencadangkan installer mentah pelanggan sebelum ponsel di-reset, serta modul **Storage Doctor** dengan speedometer bus **UFS 2.x/3.x/4.x & eMMC 5.1** adaptif bergaransi sekring kernel anti-zombie.
+* **Solution (Solusi Meja Servis Megapass)**: **ADB Uninstaller v2.3.3** dirancang khusus sebagai stasiun kerja mandiri yang memangkas seluruh alur manual tersebut. Cukup tancapkan kabel data USB ke ponsel, klik tombol **Scan Device**, dan dalam sekejap seluruh aplikasi terpetakan dengan rambu keselamatan sirkuit 3 warna: **Hijau (Aman Dicopot)**, **Kuning (Hati-Hati)**, dan **Merah (Kritis Terkunci)**. Dilengkapi **Floating Bottom Action Dock** untuk eksekusi jempol kilat, **Offline APK Extractor** untuk mencadangkan installer mentah pelanggan sebelum ponsel di-reset, serta modul **Storage Doctor** dengan speedometer bus **UFS 2.x/3.x/4.x & eMMC 5.1** adaptif bergaransi sekring kernel anti-zombie.
 
 ---
 
@@ -81,7 +81,7 @@ Setiap komponen yang dipilih untuk membangun instrumen ini memiliki alasan fisik
 
 Pengujian dilakukan langsung pada unit kerja riil meja servis Megapass: laptop teknisi `hizam` (Kubuntu 26.04 / Ryzen 2200G) terhubung ke unit uji konsumen **Infinix NOTE 30 Pro (X678B - Helio G99 / UFS 2.2 / Android 14)**:
 
-| Parameter Pengujian | ADB Uninstaller v2.3.1 (Tauri + Rust) | Aplikasi Debloater Tradisional (Electron / Java) | Dampak Nyata di Meja Servis |
+| Parameter Pengujian | ADB Uninstaller v2.3.3 (Tauri + Rust) | Aplikasi Debloater Tradisional (Electron / Java) | Dampak Nyata di Meja Servis |
 |---|---|---|---|
 | **Konsumsi RAM Saat Diam (Idle)** | **38 MB** | 580 MB – 720 MB | **Hemat RAM 94.7%** • Laptop bengkel tidak sesak meski buka skema & boardview |
 | **Beban CPU Standby** | **0.0% – 0.2%** | 3.5% – 8.0% | **0% Beban CPU** • Kipas laptop tetap senyap, baterai laptop tidak cepat drop |

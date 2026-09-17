@@ -20,6 +20,7 @@ export function humanizeError(error: string): string {
     if (error.includes("401")) return "API key salah atau expired. Cek di Settings.";
     if (error.includes("429")) return "Rate limit AI habis. Tunggu 1 menit.";
     if (error.includes("500")) return "Server AI sedang gangguan. Coba lagi 5 menit.";
+    if (error.includes("504") || error.includes("timed out") || error.includes("gateway_timeout")) return "AI gateway timeout (beban model tinggi). Coba sesaat lagi.";
     return "Server AI error. Cek koneksi dan settings.";
   }
   if (error.includes("ADB-4005")) return "API key kosong. Isi dulu di Settings.";
