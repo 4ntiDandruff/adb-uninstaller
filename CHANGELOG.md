@@ -7,7 +7,7 @@ Format pencatatan berpedoman pada standar *Keep a Changelog* dengan kata kerja f
 
 ## [2.3.3] — 2026-09-17
 
-Optimasi Mesin AI Batch Analyzer: Eliminasi 504 Gateway Timeout Upstream, Pembagian Paket Progresif (20 Pkg/Batch), Penanganan Trailer SSE Cloudflare, dan Ketahanan Retry Otomatis.
+Kamus Universal Meja Servis (Universal Package Catalog Lintas HP), Perisai Anti-Iklan Operator (Dual-Action Disable/Uninstall & Tweak Kernel cdma_cell_broadcast_sms=0), serta Optimasi AI Batch Analyzer (20 Pkg/Chunk & Eliminasi 504 Timeout).
 
 ### Added (Fitur & Instrumen Baru)
 - **Preset Debloat Anti-Iklan & Pop-Up Operator (Universal)**: Menambahkan kategori preset khusus di baris teratas DEBLOAT_PRESETS yang memetakan paket perender popup Flash SMS & push operator (com.android.simappdialog, com.mediatek.simprocessor, com.android.cellbroadcastreceiver, com.google.android.cellbroadcastreceiver, com.android.stk, com.android.stk2, com.geniex.vsimhelper).
