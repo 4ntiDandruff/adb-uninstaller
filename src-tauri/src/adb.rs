@@ -295,7 +295,7 @@ pub async fn get_device_info(device_id: String) -> Result<DeviceInfo, String> {
     })
 }
 
-fn pretty_label(package: &str) -> String {
+pub(crate) fn pretty_label(package: &str) -> String {
     // Segment terakhir sering generic (browser, app, player, launcher, android).
     // Strategi: ambil segment paling deskriptif dari 2 terakhir.
     let segments: Vec<&str> = package.split('.').collect();
@@ -382,19 +382,23 @@ pub fn merge_and_save_cache(conn: &rusqlite::Connection, device_id: &str, apps: 
     }
     let _ = crate::db::save_apps(conn, device_id, apps);
 
-    // save_apps mewarisi verdict lintas-device ke DB; tarik lagi biar frontend tak analisa ulang
+    // save_apps mewarisi verdict & label dari Kamus Global ke DB; tarik lagi ke memory apps
     if let Ok(fresh) = crate::db::load_apps(conn, device_id) {
         let fmap: std::collections::HashMap<String, crate::db::CachedApp> = fresh
             .into_iter()
             .map(|c| (c.package_name.clone(), c))
             .collect();
         for app in apps.iter_mut() {
-            if app.safety_level == "unknown" {
-                if let Some(c) = fmap.get(&app.package_name) {
-                    if c.safety_level != "unknown" && !c.safety_level.is_empty() {
-                        app.safety_level = c.safety_level.clone();
-                        app.safety_reason = c.safety_reason.clone();
-                    }
+            if let Some(c) = fmap.get(&app.package_name) {
+                if app.safety_level == "unknown" && c.safety_level != "unknown" && !c.safety_level.is_empty() {
+                    app.safety_level = c.safety_level.clone();
+                    app.safety_reason = c.safety_reason.clone();
+                }
+                if (app.label == pretty_label(&app.package_name) || app.label == app.package_name)
+                    && !c.label.is_empty()
+                    && c.label != c.package_name
+                {
+                    app.label = c.label.clone();
                 }
             }
         }

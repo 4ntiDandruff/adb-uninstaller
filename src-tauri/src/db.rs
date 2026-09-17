@@ -30,8 +30,14 @@ pub fn db_path() -> Result<PathBuf, String> {
 pub fn init_db() -> Result<Connection, String> {
     let path = db_path()?;
     let conn = Connection::open(path).map_err(|e| format!("[DB-003] Gagal buka database: {e}"))?;
-    conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA busy_timeout=5000;")
-        .map_err(|e| format!("[DB-003b] WAL mode gagal: {e}"))?;
+    conn.execute_batch(
+        "PRAGMA journal_mode=WAL;
+         PRAGMA synchronous=NORMAL;
+         PRAGMA busy_timeout=5000;
+         PRAGMA cache_size=-64000;
+         PRAGMA temp_store=MEMORY;",
+    )
+    .map_err(|e| format!("[DB-003b] WAL mode gagal: {e}"))?;
 
     conn.execute(
         "CREATE TABLE IF NOT EXISTS app_cache (
@@ -50,13 +56,52 @@ pub fn init_db() -> Result<Connection, String> {
         )",
         [],
     )
-    .map_err(|e| format!("[DB-004] Gagal buat tabel: {e}"))?;
+    .map_err(|e| format!("[DB-004] Gagal buat tabel app_cache: {e}"))?;
 
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_app_cache_device ON app_cache(device_id)",
         [],
     )
-    .map_err(|e| format!("[DB-005] Gagal buat index: {e}"))?;
+    .map_err(|e| format!("[DB-005] Gagal buat index device: {e}"))?;
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_app_cache_pkg ON app_cache(package_name)",
+        [],
+    )
+    .map_err(|e| format!("[DB-005b] Gagal buat index package: {e}"))?;
+
+    // Kamus Universal Meja Servis (Package Catalog)
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS package_catalog (
+            package_name TEXT PRIMARY KEY,
+            label TEXT,
+            safety_level TEXT NOT NULL,
+            safety_reason TEXT,
+            updated_at TEXT NOT NULL
+        )",
+        [],
+    )
+    .map_err(|e| format!("[DB-005c] Gagal buat tabel package_catalog: {e}"))?;
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_catalog_pkg ON package_catalog(package_name)",
+        [],
+    )
+    .map_err(|e| format!("[DB-005d] Gagal buat index package_catalog: {e}"))?;
+
+    // Seed / auto-migrate dari app_cache yang sudah pernah teranalisis
+    let _ = conn.execute(
+        "INSERT OR IGNORE INTO package_catalog (package_name, label, safety_level, safety_reason, updated_at)
+         SELECT package_name,
+                label,
+                safety_level,
+                safety_reason,
+                MAX(scanned_at) as updated_at
+         FROM app_cache
+         WHERE safety_level NOT IN ('unknown', '')
+         GROUP BY package_name",
+        [],
+    );
 
     Ok(conn)
 }
@@ -78,7 +123,7 @@ pub fn save_apps(
     let tx = conn.unchecked_transaction()?;
 
     for app in apps {
-        // Ambil data lama dulu biar safety/label AI tidak ter-overwrite jadi unknown
+        // 1. Ambil data lama spesifik device jika sudah pernah discan
         let existing: Option<(String, String, String, String, String)> = tx
             .query_row(
                 "SELECT label, safety_level, safety_reason, size, version FROM app_cache WHERE package_name = ?1 AND device_id = ?2",
@@ -90,26 +135,61 @@ pub fn save_apps(
         let (old_label, old_level, old_reason, old_size, old_version) =
             existing.unwrap_or_default();
 
-        let label = if !app.label.is_empty() && app.label != app.package_name {
+        // 2. Cek Kamus Universal Meja Servis (package_catalog)
+        let catalog_entry: Option<(String, String, String)> = tx
+            .query_row(
+                "SELECT label, safety_level, safety_reason FROM package_catalog WHERE package_name = ?1",
+                rusqlite::params![app.package_name],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .ok();
+
+        let (cat_label, cat_level, cat_reason) = catalog_entry.unwrap_or_default();
+
+        // Prioritas Label:
+        // a. Jika app.label sudah bukan package name & bukan pretty slug default -> pakai app.label
+        // b. Jika old_label (cache device) ada & bukan package name -> pakai old_label
+        // c. Jika cat_label (kamus universal) ada & bukan package name -> pakai cat_label
+        // d. Fallback ke app.label
+        let label = if !app.label.is_empty()
+            && app.label != app.package_name
+            && app.label != crate::adb::pretty_label(&app.package_name)
+        {
             app.label.clone()
-        } else if !old_label.is_empty() {
+        } else if !old_label.is_empty() && old_label != app.package_name {
             old_label
+        } else if !cat_label.is_empty() && cat_label != app.package_name {
+            cat_label
         } else {
             app.label.clone()
         };
 
-        let safety_level = if app.safety_level != "unknown" && !app.safety_level.is_empty() {
-            app.safety_level.clone()
-        } else if !old_level.is_empty() {
-            old_level
+        // Prioritas Safety Level:
+        // a. Jika app.safety_level bukan unknown -> pakai
+        // b. Jika old_level bukan unknown -> pakai
+        // c. Jika cat_level bukan unknown -> pakai dari Kamus Universal!
+        // d. Fallback query lintas device lama
+        let (safety_level, safety_reason) = if app.safety_level != "unknown" && !app.safety_level.is_empty() {
+            (
+                app.safety_level.clone(),
+                if !app.safety_reason.is_empty() {
+                    app.safety_reason.clone()
+                } else {
+                    old_reason
+                },
+            )
+        } else if !old_level.is_empty() && old_level != "unknown" {
+            (old_level, old_reason)
+        } else if !cat_level.is_empty() && cat_level != "unknown" {
+            (cat_level, cat_reason)
         } else {
-            "unknown".into()
-        };
-
-        let safety_reason = if !app.safety_reason.is_empty() {
-            app.safety_reason.clone()
-        } else {
-            old_reason
+            // Fallback lintas device lain jika belum masuk catalog
+            tx.query_row(
+                "SELECT safety_level, safety_reason FROM app_cache WHERE package_name = ?1 AND safety_level NOT IN ('unknown', '') ORDER BY scanned_at DESC LIMIT 1",
+                rusqlite::params![app.package_name],
+                |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+            )
+            .unwrap_or(("unknown".into(), String::new()))
         };
 
         let size = if !app.size.is_empty() && app.size != "?" {
@@ -124,18 +204,6 @@ pub fn save_apps(
             app.version.clone()
         } else {
             old_version
-        };
-
-        // Buku induk: kalau device baru masih unknown, warisi verdict AI package sama dari device lain
-        let (safety_level, safety_reason) = if safety_level == "unknown" {
-            tx.query_row(
-                "SELECT safety_level, safety_reason FROM app_cache                  WHERE package_name = ?1 AND safety_level NOT IN ('unknown', '')                  ORDER BY scanned_at DESC LIMIT 1",
-                rusqlite::params![app.package_name],
-                |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-            )
-            .unwrap_or((safety_level, safety_reason))
-        } else {
-            (safety_level, safety_reason)
         };
 
         tx.execute(
@@ -164,7 +232,7 @@ pub fn save_apps(
 pub fn load_apps(conn: &Connection, device_id: &str) -> SqlResult<Vec<CachedApp>> {
     let mut stmt = conn.prepare(
         "SELECT package_name, label, is_system, is_disabled, safety_level, safety_reason, size, version, device_id, scanned_at
-         FROM app_cache WHERE device_id = ?1 ORDER BY package_name"
+         FROM app_cache WHERE device_id = ?1 ORDER BY package_name",
     )?;
 
     let rows = stmt.query_map([device_id], |row| {
@@ -214,7 +282,7 @@ pub fn batch_update_safety(
     let tx = conn.unchecked_transaction()?;
     let mut count = 0;
     for (pkg, app_name, level, reason) in updates {
-        // Normalize AI level casing: "Safe" / "SAFE" → "safe"
+        // Normalize AI level casing: "Safe" / "SAFE" -> "safe"
         let level = match level.to_lowercase().as_str() {
             "safe" | "risky" | "critical" | "unknown" => level.to_lowercase(),
             other if other.contains("crit") => "critical".into(),
@@ -222,7 +290,8 @@ pub fn batch_update_safety(
             other if other.contains("safe") || other.contains("ok") => "safe".into(),
             _ => "unknown".into(),
         };
-        // Update safety + label (jika app_name tidak kosong)
+
+        // 1. Update app_cache untuk device_id saat ini
         let rows = if !app_name.is_empty() {
             tx.execute(
                 "UPDATE app_cache SET label = ?1, safety_level = ?2, safety_reason = ?3, scanned_at = ?4 WHERE package_name = ?5 AND device_id = ?6",
@@ -242,6 +311,22 @@ pub fn batch_update_safety(
                 rusqlite::params![pkg, label, level, reason, device_id, now],
             )?;
         }
+
+        // 2. Simpan atau perbarui Kamus Universal Meja Servis (package_catalog)
+        if level != "unknown" {
+            let label = if !app_name.is_empty() { app_name.as_str() } else { pkg.as_str() };
+            tx.execute(
+                "INSERT INTO package_catalog (package_name, label, safety_level, safety_reason, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5)
+                 ON CONFLICT(package_name) DO UPDATE SET
+                     label = CASE WHEN ?2 != '' AND ?2 != ?1 THEN ?2 ELSE package_catalog.label END,
+                     safety_level = ?3,
+                     safety_reason = ?4,
+                     updated_at = ?5",
+                rusqlite::params![pkg, label, level, reason, now],
+            )?;
+        }
+
         count += 1;
     }
     tx.commit()?;
@@ -258,4 +343,80 @@ pub fn update_app_size(
         "UPDATE app_cache SET size = ?1 WHERE package_name = ?2 AND device_id = ?3",
         rusqlite::params![size, package_name, device_id],
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_package_catalog_cross_device_inheritance() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE app_cache (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                package_name TEXT NOT NULL,
+                label TEXT,
+                is_system INTEGER,
+                is_disabled INTEGER,
+                safety_level TEXT,
+                safety_reason TEXT,
+                size TEXT,
+                version TEXT,
+                device_id TEXT NOT NULL,
+                scanned_at TEXT NOT NULL,
+                UNIQUE(package_name, device_id)
+            );
+            CREATE TABLE package_catalog (
+                package_name TEXT PRIMARY KEY,
+                label TEXT,
+                safety_level TEXT NOT NULL,
+                safety_reason TEXT,
+                updated_at TEXT NOT NULL
+            );",
+        )
+        .unwrap();
+
+        // 1. Simpan AI result di HP-1
+        let updates = vec![(
+            "com.example.bloatware".to_string(),
+            "Contoh Bloatware".to_string(),
+            "safe".to_string(),
+            "Aman dicopot".to_string(),
+        )];
+        batch_update_safety(&conn, "DEVICE_HP1", &updates).unwrap();
+
+        // Verifikasi masuk ke catalog
+        let cat: (String, String) = conn
+            .query_row(
+                "SELECT label, safety_level FROM package_catalog WHERE package_name = ?1",
+                ["com.example.bloatware"],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!(cat.0, "Contoh Bloatware");
+        assert_eq!(cat.1, "safe");
+
+        // 2. Sekarang colok HP-2 baru yang belum pernah discan
+        let new_app = crate::adb::AppInfo {
+            package_name: "com.example.bloatware".to_string(),
+            label: crate::adb::pretty_label("com.example.bloatware"),
+            is_system: true,
+            is_disabled: false,
+            is_running: false,
+            safety_level: "unknown".to_string(),
+            safety_reason: String::new(),
+            size: String::new(),
+            version: String::new(),
+        };
+
+        save_apps(&conn, "DEVICE_HP2_BARU", &[new_app]).unwrap();
+
+        // 3. Verifikasi HP-2 otomatis mewarisi label & safety dari Kamus Universal!
+        let loaded = load_apps(&conn, "DEVICE_HP2_BARU").unwrap();
+        assert_eq!(loaded.len(), 1);
+        assert_eq!(loaded[0].label, "Contoh Bloatware");
+        assert_eq!(loaded[0].safety_level, "safe");
+        assert_eq!(loaded[0].safety_reason, "Aman dicopot");
+    }
 }

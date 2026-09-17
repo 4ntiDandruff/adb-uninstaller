@@ -272,10 +272,12 @@ export default function App() {
         setScanMessage("Memproses hasil...");
         const enriched = enrichApps(raw, lang);
         setApps(enriched);
+        const fromCatalog = raw.filter((a) => a.safety_level !== "unknown").length;
+        const unknowns = enriched.filter((a) => a.safety_level === "unknown").map((a) => a.package_name);
         log({
           level: "success",
           source: "adb",
-          message: `List apps: ${raw.length} package (fresh scan)`,
+          message: `List apps: ${raw.length} package (${fromCatalog} dikenal via Kamus Global, ${unknowns.length} perlu AI)`,
           duration_ms: Math.round(performance.now() - t0),
         });
         api.getDeviceInfo(id)
@@ -288,7 +290,6 @@ export default function App() {
         setScanProgress(100);
         setScanMessage("Selesai");
         // Auto AI untuk package unknown (spek v2: unknown LANGSUNG diproses AI)
-        const unknowns = enriched.filter((a) => a.safety_level === "unknown").map((a) => a.package_name);
         if (unknowns.length > 0) {
           // fire-and-forget, tidak block UI
           void autoAnalyzeUnknown(unknowns, id, requestId);
