@@ -19,6 +19,7 @@ Penyempurnaan Diagnostik Flash Memory: Auto-Detection Bus UFS vs eMMC, Perbaikan
 ### Fixed (Perbaikan Bug Teknis)
 - **Koreksi Sintaks Toybox dd (`conv=fsync`)**: Mengganti parameter `oflag=dsync` yang ditolak oleh utilitas `dd` bawaan Toybox Android (`bad oflag=dsync`) dengan `conv=fsync` yang sah untuk memaksa flushing buffer RAM langsung ke storage fisik di akhir penulisan.
 - **Parser Kecepatan Multi-Format Toybox**: Memperluas parser kecepatan tulis Rust agar mengenali format output Toybox (`M/s`, `k/s`, `G/s`) di samping format standar GNU dd (`MB/s`, `kB/s`, `GB/s`), mengeliminasi kesalahan kalkulasi fallback latensi terminal error.
+- **Pemulihan Scrollbar Vertikal Tabel Scan**: Mengeliminasi kelas utilitas `overflow-hidden` yang mematikan scrollbar pada kontainer hasil pemindaian sampah Storage Doctor, menggantikannya dengan `.table-scroll-doctor` yang memiliki batas tinggi terukur (`max-height: min(600px, calc(100vh - 360px))`), `overflow-y: auto`, `scrollbar-gutter: stable`, serta penataan sticky `<thead>` agar judul kolom tetap terkunci di atas saat daftar sampah di-scroll.
 
 ---
 
