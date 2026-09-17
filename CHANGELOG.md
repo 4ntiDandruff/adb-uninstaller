@@ -5,6 +5,35 @@ Format pencatatan berpedoman pada standar *Keep a Changelog* dengan kata kerja f
 
 ---
 
+## [2.3.2] — 2026-09-17
+
+Audit & Overhaul Mesin Storage Doctor: Pemulihan Deteksi Sampah Telegram Scoped Storage (Android 11+), Ekspansi Pemindaian WhatsApp & WhatsApp Business (Dokumen Sent, Voice Notes, Cache Link Preview), dan Integrasi Deteksi Tempat Sampah Galeri OEM (Transsion, MIUI, Samsung, ColorOS, Vivo).
+
+### Added (Fitur & Instrumen Baru)
+- **Pemindaian Scoped Storage Telegram Android Modern**: Menambahkan radar path direktori internal scoped storage Android 11+ (`/sdcard/Android/data/org.telegram.messenger/files/Telegram/`) yang mencakup sub-kategori:
+  - `Telegram Images` (foto unduhan ruang obrolan)
+  - `Telegram Documents` (arsip zip/dokumen unduhan)
+  - `Telegram Files` (attachment berkas unduhan)
+  - `Telegram Video`, `Telegram Audio`, dan `Telegram Stories`.
+  - Cache animasi partikel & webview internal (`.../cache`).
+  - Dukungan multi-klien Telegram: Telegram Official, Telegram Web APK, Telegram X (`org.thunderdog.challegram`), Plus Messenger (`org.telegram.plus`), dan Nekogram (`nekox.messenger`).
+- **Ekspansi Scanner WhatsApp & WhatsApp Business**:
+  - Penambahan pemindaian folder dokumen terkirim (`WhatsApp Documents/Sent`) dan rekaman audio (`WhatsApp Voice Notes`).
+  - Penambahan pembersih cache thumbnail tautan web (`Media/.Links`) dan cache pengoptimal media (`Media/.wamocache`).
+  - Penanganan paralel independen antara WhatsApp standar (`com.whatsapp`) dan WhatsApp Business (`com.whatsapp.w4b`) tanpa saling menghentikan iterasi pemindaian.
+- **Deteksi Tempat Sampah Galeri OEM (Recycle Bin Scanner)**:
+  - Membaca recycle bin tersembunyi pabrikan: Transsion Infinix/Tecno (`/sdcard/.trashBin` dan `.trashBin_File`), Xiaomi MIUI/HyperOS (`MIUI/Gallery/cloud/.trashBin`, `MIUI/trash`), Samsung One UI (`com.sec.android.gallery3d/files/trash`), OPPO/Realme/OnePlus ColorOS (`recycle`), Vivo/iQOO (`recycle`), serta direktori MTP generic (`.trashes`, `.Trash`).
+- **Pembersih Cache Gambar Pustaka LazyList**: Menambahkan pendeteksian direktori cache gambar peninggalan pustaka Android `/sdcard/LazyList` dan `/sdcard/Pictures/.thumbnails`.
+- **Ekspansi Katalog Orphan Zombie Directory**: Memperluas deteksi folder sisa aplikasi yang dicopot meliputi Visha Player (`visha`), XShare, Boomplay, Aha Games, Palm Store, LINE, Viber, Zalo, Truecaller, MX Player, dan Opera.
+- **Proteksi Sekring Keamanan Direktori Sistem & Induk**: Menambahkan barikade ketat pada `is_safe_to_delete` untuk memblokir penghapusan tidak disengaja terhadap induk sistem `/sdcard/Android`, `/sdcard/Android/data`, `/sdcard/Android/media`, `/sdcard/Android/obb`, folder media bawaan (`Audiobooks`, `Recordings`), dan folder induk aplikasi perpesanan.
+
+### Fixed (Perbaikan Bug Teknis)
+- **Eliminasi Anomali Sampah Telegram Hilang (0 Bytes)**: Memperbaiki logika scanner Telegram yang sebelumnya hanya memeriksa `/sdcard/Android/media/...` warisan lama dan melewatkan path scoped storage Android modern sehingga 100% berkas Telegram tidak terdeteksi.
+- **Eliminasi Early Break Loop WhatsApp & Telegram**: Menghapus pernyataan `break` prematur pada loop pencarian folder WhatsApp dan Telegram yang sebelumnya membatalkan pemindaian varian aplikasi lain (seperti WhatsApp Business atau instalasi multi-klien).
+- **Penanganan Timeout Eksekusi Hapus Massal (180 Detik)**: Menerapkan timeout diperpanjang 180 detik via `run_adb_device_timeout` pada pembersihan massal berkas FUSE ratusan megabyte untuk mencegah kegagalan `[STOR-2001] / [ADB-1001] ADB timeout (30s)`.
+
+---
+
 ## [2.3.1] — 2026-09-16
 
 Penyempurnaan Diagnostik Flash Memory: Auto-Detection Bus UFS vs eMMC, Perbaikan Kompatibilitas Benchmark Toybox Android (`conv=fsync`), dan Ambang Batas Kesehatan Adaptif.

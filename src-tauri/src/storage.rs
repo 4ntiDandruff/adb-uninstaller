@@ -22,7 +22,7 @@ pub struct StorageStats {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrashItem {
     pub id: String,
-    pub category: String, // "whatsapp", "orphan", "apk", "cache"
+    pub category: String, // "whatsapp", "telegram", "orphan", "apk", "cache", "logs"
     pub path: String,
     pub name: String,
     pub size_bytes: u64,
@@ -40,11 +40,20 @@ pub const FORBIDDEN_ROOTS: &[&str] = &[
     "/storage/emulated/0",
     "/storage/emulated/0/",
     "/storage",
+    "/storage/",
     "/data",
     "/system",
     "/vendor",
     "/product",
     "/apex",
+    "/sdcard/Android",
+    "/storage/emulated/0/Android",
+    "/sdcard/Android/data",
+    "/storage/emulated/0/Android/data",
+    "/sdcard/Android/media",
+    "/storage/emulated/0/Android/media",
+    "/sdcard/Android/obb",
+    "/storage/emulated/0/Android/obb",
 ];
 
 pub const PROTECTED_FOLDERS: &[&str] = &[
@@ -58,6 +67,8 @@ pub const PROTECTED_FOLDERS: &[&str] = &[
     "Alarms",
     "Notifications",
     "Podcasts",
+    "Audiobooks",
+    "Recordings",
 ];
 
 pub fn escape_shell_path(path: &str) -> String {
@@ -100,6 +111,26 @@ pub fn is_safe_to_delete(path: &str) -> Result<(), String> {
         "/storage/emulated/0/Android/media/org.telegram.messenger.web",
         "/sdcard/Android/media/org.thunderdog.challegram",
         "/storage/emulated/0/Android/media/org.thunderdog.challegram",
+        "/sdcard/Android/data/org.telegram.messenger",
+        "/storage/emulated/0/Android/data/org.telegram.messenger",
+        "/sdcard/Android/data/org.telegram.messenger/files",
+        "/storage/emulated/0/Android/data/org.telegram.messenger/files",
+        "/sdcard/Android/data/org.telegram.messenger/files/Telegram",
+        "/storage/emulated/0/Android/data/org.telegram.messenger/files/Telegram",
+        "/sdcard/Android/data/org.telegram.messenger.web",
+        "/storage/emulated/0/Android/data/org.telegram.messenger.web",
+        "/sdcard/Android/data/org.telegram.messenger.web/files",
+        "/storage/emulated/0/Android/data/org.telegram.messenger.web/files",
+        "/sdcard/Android/data/org.telegram.messenger.web/files/Telegram",
+        "/storage/emulated/0/Android/data/org.telegram.messenger.web/files/Telegram",
+        "/sdcard/Android/data/org.thunderdog.challegram",
+        "/storage/emulated/0/Android/data/org.thunderdog.challegram",
+        "/sdcard/Android/data/org.thunderdog.challegram/files",
+        "/storage/emulated/0/Android/data/org.thunderdog.challegram/files",
+        "/sdcard/Android/data/org.telegram.plus",
+        "/storage/emulated/0/Android/data/org.telegram.plus",
+        "/sdcard/Android/data/nekox.messenger",
+        "/storage/emulated/0/Android/data/nekox.messenger",
     ];
     for app_root in protected_app_roots {
         if clean == app_root {
@@ -266,7 +297,7 @@ pub async fn benchmark_storage(device_id: String) -> Result<StorageStats, String
             "unknown".to_string()
         }
     } else {
-        if speed_mbps >= 25.0 {
+        if speed_mbps >= 20.0 {
             "good".to_string()
         } else if speed_mbps >= 8.0 {
             "warning".to_string()
@@ -302,6 +333,7 @@ pub async fn scan_storage_junk(
     installed_packages: Vec<String>,
 ) -> Result<Vec<TrashItem>, String> {
     let mut items = Vec::new();
+    let mut seen_paths: HashSet<String> = HashSet::new();
     let installed_set: HashSet<String> = installed_packages.into_iter().collect();
 
     // 1. WhatsApp Pruner
@@ -313,55 +345,184 @@ pub async fn scan_storage_junk(
     ];
 
     for (wa, wa_label) in wa_bases {
-        // Cek Sent Videos
+        // Cek Sent Videos (> 1MB)
         let sent_video = format!("{wa}/Media/WhatsApp Video/Sent");
-        let sz_vid = get_path_size_bytes(&device_id, &sent_video).await;
-        if sz_vid > 1024 * 1024 {
-            items.push(TrashItem {
-                id: format!("wa_sent_video_{}", items.len()),
-                category: "whatsapp".into(),
-                path: sent_video,
-                name: format!("{wa_label} Video Sent"),
-                size_bytes: sz_vid,
-                size_formatted: format_bytes(sz_vid),
-                safety_level: "safe".into(),
-                description_id: "Duplikat video yang pernah dikirim via WhatsApp".into(),
-                description_en: "Sent videos duplicate in WhatsApp".into(),
-            });
+        if !seen_paths.contains(&sent_video) {
+            let sz_vid = get_path_size_bytes(&device_id, &sent_video).await;
+            if sz_vid > 1024 * 1024 {
+                seen_paths.insert(sent_video.clone());
+                items.push(TrashItem {
+                    id: format!("wa_sent_video_{}", items.len()),
+                    category: "whatsapp".into(),
+                    path: sent_video,
+                    name: format!("{wa_label} Video Sent"),
+                    size_bytes: sz_vid,
+                    size_formatted: format_bytes(sz_vid),
+                    safety_level: "safe".into(),
+                    description_id: "Duplikat video yang pernah dikirim via WhatsApp".into(),
+                    description_en: "Sent videos duplicate in WhatsApp".into(),
+                });
+            }
         }
 
-        // Cek Sent Images
+        // Cek Sent Images (> 1MB)
         let sent_img = format!("{wa}/Media/WhatsApp Images/Sent");
-        let sz_img = get_path_size_bytes(&device_id, &sent_img).await;
-        if sz_img > 1024 * 1024 {
-            items.push(TrashItem {
-                id: format!("wa_sent_img_{}", items.len()),
-                category: "whatsapp".into(),
-                path: sent_img,
-                name: format!("{wa_label} Images Sent"),
-                size_bytes: sz_img,
-                size_formatted: format_bytes(sz_img),
-                safety_level: "safe".into(),
-                description_id: "Duplikat foto yang pernah dikirim via WhatsApp".into(),
-                description_en: "Sent images duplicate in WhatsApp".into(),
-            });
+        if !seen_paths.contains(&sent_img) {
+            let sz_img = get_path_size_bytes(&device_id, &sent_img).await;
+            if sz_img > 1024 * 1024 {
+                seen_paths.insert(sent_img.clone());
+                items.push(TrashItem {
+                    id: format!("wa_sent_img_{}", items.len()),
+                    category: "whatsapp".into(),
+                    path: sent_img,
+                    name: format!("{wa_label} Images Sent"),
+                    size_bytes: sz_img,
+                    size_formatted: format_bytes(sz_img),
+                    safety_level: "safe".into(),
+                    description_id: "Duplikat foto yang pernah dikirim via WhatsApp".into(),
+                    description_en: "Sent images duplicate in WhatsApp".into(),
+                });
+            }
         }
 
-        // Cek Statuses Cache
+        // Cek Sent Documents (> 1MB)
+        let sent_doc = format!("{wa}/Media/WhatsApp Documents/Sent");
+        if !seen_paths.contains(&sent_doc) {
+            let sz_doc = get_path_size_bytes(&device_id, &sent_doc).await;
+            if sz_doc > 1024 * 1024 {
+                seen_paths.insert(sent_doc.clone());
+                items.push(TrashItem {
+                    id: format!("wa_sent_doc_{}", items.len()),
+                    category: "whatsapp".into(),
+                    path: sent_doc,
+                    name: format!("{wa_label} Dokumen Sent"),
+                    size_bytes: sz_doc,
+                    size_formatted: format_bytes(sz_doc),
+                    safety_level: "safe".into(),
+                    description_id: "Duplikat berkas dokumen yang pernah dikirim via WhatsApp".into(),
+                    description_en: "Sent documents duplicate in WhatsApp".into(),
+                });
+            }
+        }
+
+        // Cek Sent Audio (> 512KB)
+        let sent_aud = format!("{wa}/Media/WhatsApp Audio/Sent");
+        if !seen_paths.contains(&sent_aud) {
+            let sz_aud = get_path_size_bytes(&device_id, &sent_aud).await;
+            if sz_aud > 1024 * 512 {
+                seen_paths.insert(sent_aud.clone());
+                items.push(TrashItem {
+                    id: format!("wa_sent_aud_{}", items.len()),
+                    category: "whatsapp".into(),
+                    path: sent_aud,
+                    name: format!("{wa_label} Audio Sent"),
+                    size_bytes: sz_aud,
+                    size_formatted: format_bytes(sz_aud),
+                    safety_level: "safe".into(),
+                    description_id: "Duplikat berkas audio/musik yang pernah dikirim via WhatsApp".into(),
+                    description_en: "Sent audio duplicates in WhatsApp".into(),
+                });
+            }
+        }
+
+        // Cek Voice Notes (> 1MB)
+        let voice_notes = format!("{wa}/Media/WhatsApp Voice Notes");
+        if !seen_paths.contains(&voice_notes) {
+            let sz_vn = get_path_size_bytes(&device_id, &voice_notes).await;
+            if sz_vn > 1024 * 1024 {
+                seen_paths.insert(voice_notes.clone());
+                items.push(TrashItem {
+                    id: format!("wa_voice_notes_{}", items.len()),
+                    category: "whatsapp".into(),
+                    path: voice_notes,
+                    name: format!("{wa_label} Voice Notes"),
+                    size_bytes: sz_vn,
+                    size_formatted: format_bytes(sz_vn),
+                    safety_level: "safe".into(),
+                    description_id: "Koleksi rekaman pesan suara WhatsApp lama yang menumpuk".into(),
+                    description_en: "Old WhatsApp voice notes audio cache".into(),
+                });
+            }
+        }
+
+        // Cek Sent Animated GIFs (> 512KB)
+        let sent_gif = format!("{wa}/Media/WhatsApp Animated Gifs/Sent");
+        if !seen_paths.contains(&sent_gif) {
+            let sz_gif = get_path_size_bytes(&device_id, &sent_gif).await;
+            if sz_gif > 1024 * 512 {
+                seen_paths.insert(sent_gif.clone());
+                items.push(TrashItem {
+                    id: format!("wa_sent_gif_{}", items.len()),
+                    category: "whatsapp".into(),
+                    path: sent_gif,
+                    name: format!("{wa_label} GIF Sent"),
+                    size_bytes: sz_gif,
+                    size_formatted: format_bytes(sz_gif),
+                    safety_level: "safe".into(),
+                    description_id: "Duplikat animasi GIF yang pernah dikirim via WhatsApp".into(),
+                    description_en: "Sent animated GIFs duplicate in WhatsApp".into(),
+                });
+            }
+        }
+
+        // Cek Link Preview Cache (.Links) (> 1MB)
+        let links_cache = format!("{wa}/Media/.Links");
+        if !seen_paths.contains(&links_cache) {
+            let sz_links = get_path_size_bytes(&device_id, &links_cache).await;
+            if sz_links > 1024 * 1024 {
+                seen_paths.insert(links_cache.clone());
+                items.push(TrashItem {
+                    id: format!("wa_links_{}", items.len()),
+                    category: "whatsapp".into(),
+                    path: links_cache,
+                    name: format!("{wa_label} Link Preview Cache"),
+                    size_bytes: sz_links,
+                    size_formatted: format_bytes(sz_links),
+                    safety_level: "safe".into(),
+                    description_id: "Cache pratinjau tautan web WhatsApp yang membengkak".into(),
+                    description_en: "WhatsApp web link preview thumbnail cache".into(),
+                });
+            }
+        }
+
+        // Cek Media Optimizer Cache (.wamocache) (> 512KB)
+        let wamo_cache = format!("{wa}/Media/.wamocache");
+        if !seen_paths.contains(&wamo_cache) {
+            let sz_wamo = get_path_size_bytes(&device_id, &wamo_cache).await;
+            if sz_wamo > 1024 * 512 {
+                seen_paths.insert(wamo_cache.clone());
+                items.push(TrashItem {
+                    id: format!("wa_wamo_{}", items.len()),
+                    category: "whatsapp".into(),
+                    path: wamo_cache,
+                    name: format!("{wa_label} Media Optimizer Cache"),
+                    size_bytes: sz_wamo,
+                    size_formatted: format_bytes(sz_wamo),
+                    safety_level: "safe".into(),
+                    description_id: "Cache sementara optimasi pengiriman media WhatsApp".into(),
+                    description_en: "WhatsApp media optimizer temporary cache".into(),
+                });
+            }
+        }
+
+        // Cek Statuses Cache (> 512KB)
         let statuses = format!("{wa}/Media/.Statuses");
-        let sz_stat = get_path_size_bytes(&device_id, &statuses).await;
-        if sz_stat > 1024 * 512 {
-            items.push(TrashItem {
-                id: format!("wa_statuses_{}", items.len()),
-                category: "whatsapp".into(),
-                path: statuses,
-                name: format!("{wa_label} Status Cache"),
-                size_bytes: sz_stat,
-                size_formatted: format_bytes(sz_stat),
-                safety_level: "safe".into(),
-                description_id: "Cache status kontak WhatsApp yang sudah kedaluwarsa".into(),
-                description_en: "Expired contact WhatsApp statuses cache".into(),
-            });
+        if !seen_paths.contains(&statuses) {
+            let sz_stat = get_path_size_bytes(&device_id, &statuses).await;
+            if sz_stat > 1024 * 512 {
+                seen_paths.insert(statuses.clone());
+                items.push(TrashItem {
+                    id: format!("wa_statuses_{}", items.len()),
+                    category: "whatsapp".into(),
+                    path: statuses,
+                    name: format!("{wa_label} Status Cache"),
+                    size_bytes: sz_stat,
+                    size_formatted: format_bytes(sz_stat),
+                    safety_level: "safe".into(),
+                    description_id: "Cache status kontak WhatsApp yang sudah kedaluwarsa".into(),
+                    description_en: "Expired contact WhatsApp statuses cache".into(),
+                });
+            }
         }
 
         // Cek Daily Backups Databases (msgstore-*.db.crypt*)
@@ -382,67 +543,152 @@ pub async fn scan_storage_junk(
                 let to_remove = &backup_files[..backup_files.len() - 1];
                 for file in to_remove {
                     let file_path = format!("{db_dir}/{file}");
-                    let sz_file = get_path_size_bytes(&device_id, &file_path).await;
+                    if !seen_paths.contains(&file_path) {
+                        let sz_file = get_path_size_bytes(&device_id, &file_path).await;
+                        seen_paths.insert(file_path.clone());
+                        items.push(TrashItem {
+                            id: format!("wa_db_{}", items.len()),
+                            category: "whatsapp".into(),
+                            path: file_path,
+                            name: file.clone(),
+                            size_bytes: sz_file,
+                            size_formatted: format_bytes(sz_file),
+                            safety_level: "safe".into(),
+                            description_id: "Backup chat WhatsApp lama (backup terbaru tetap aman disimpan)".into(),
+                            description_en: "Old WhatsApp backup archive (latest backup is preserved)".into(),
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. Telegram Media & Cache Pruner
+    let tg_media_bases = [
+        // Modern scoped storage (Android 11+)
+        ("/sdcard/Android/data/org.telegram.messenger/files/Telegram", "Telegram"),
+        ("/sdcard/Android/data/org.telegram.messenger.web/files/Telegram", "Telegram Web"),
+        ("/sdcard/Android/data/org.thunderdog.challegram/files", "Telegram X"),
+        ("/sdcard/Android/data/org.telegram.plus/files/Telegram", "Telegram Plus"),
+        ("/sdcard/Android/data/nekox.messenger/files/Telegram", "Nekogram"),
+        // Scoped media
+        ("/sdcard/Android/media/org.telegram.messenger/Telegram", "Telegram"),
+        ("/sdcard/Android/media/org.telegram.messenger.web/Telegram", "Telegram Web"),
+        ("/sdcard/Android/media/org.thunderdog.challegram/Telegram", "Telegram X"),
+        // Legacy
+        ("/sdcard/Telegram", "Telegram"),
+    ];
+
+    let tg_subdirs = [
+        ("Telegram Images", "images", "Cache file foto dan gambar unduhan Telegram", 1024 * 512),
+        ("Telegram Video", "video", "Duplikat video unduhan Telegram", 1024 * 1024),
+        ("Telegram Documents", "dokumen", "File dokumen dan arsip unduhan Telegram", 1024 * 512),
+        ("Telegram Files", "files", "File attachment dan berkas unduhan Telegram", 1024 * 512),
+        ("Telegram Audio", "audio", "File audio dan rekaman suara unduhan Telegram", 1024 * 512),
+        ("Telegram Stories", "stories", "Cache preview story Telegram", 1024 * 512),
+    ];
+
+    for (tg_base, tg_label) in tg_media_bases {
+        for (sub, kind, desc, min_size) in tg_subdirs {
+            let p = format!("{tg_base}/{sub}");
+            if !seen_paths.contains(&p) {
+                let sz = get_path_size_bytes(&device_id, &p).await;
+                if sz > min_size {
+                    seen_paths.insert(p.clone());
+                    let clean_sub = sub.strip_prefix("Telegram ").unwrap_or(sub);
+                    let item_name = format!("{tg_label} {clean_sub}");
                     items.push(TrashItem {
-                        id: format!("wa_db_{}", items.len()),
-                        category: "whatsapp".into(),
-                        path: file_path,
-                        name: file.clone(),
-                        size_bytes: sz_file,
-                        size_formatted: format_bytes(sz_file),
+                        id: format!("tg_{}_{}", kind, items.len()),
+                        category: "telegram".into(),
+                        path: p,
+                        name: item_name,
+                        size_bytes: sz,
+                        size_formatted: format_bytes(sz),
                         safety_level: "safe".into(),
-                        description_id: "Backup chat WhatsApp lama (backup terbaru tetap aman disimpan)".into(),
-                        description_en: "Old WhatsApp backup archive (latest backup is preserved)".into(),
+                        description_id: desc.into(),
+                        description_en: format!("Telegram downloaded {kind} cache bloat"),
                     });
                 }
             }
         }
-        // Jika sudah ketemu salah satu path WA aktif, tidak perlu scan path lama
-        if sz_vid > 0 || sz_img > 0 || sz_stat > 0 {
-            break;
-        }
     }
 
-    // 2. Telegram Media Pruner
-    let tg_bases = [
-        ("/sdcard/Android/media/org.telegram.messenger/Telegram", "Telegram"),
-        ("/sdcard/Telegram", "Telegram"),
-        ("/sdcard/Android/media/org.thunderdog.challegram/Telegram", "Telegram X"),
-        ("/sdcard/Android/media/org.telegram.messenger.web/Telegram", "Telegram Web"),
+    // Telegram App Cache Folders (particle animation, webviews, cached thumbs)
+    let tg_cache_dirs = [
+        ("/sdcard/Android/data/org.telegram.messenger/cache", "Telegram"),
+        ("/sdcard/Android/data/org.telegram.messenger.web/cache", "Telegram Web"),
+        ("/sdcard/Android/data/org.thunderdog.challegram/cache", "Telegram X"),
+        ("/sdcard/Android/data/org.telegram.plus/cache", "Telegram Plus"),
+        ("/sdcard/Android/data/nekox.messenger/cache", "Nekogram"),
     ];
 
-    for (tg, tg_label) in tg_bases {
-        let tg_subdirs = [
-            ("Telegram Video", "video", "Duplikat video unduhan Telegram"),
-            ("Telegram Documents", "dokumen", "File dokumen/arsip unduhan Telegram"),
-            ("Telegram Audio", "audio", "File audio/voice note unduhan Telegram"),
-        ];
-
-        let mut found_tg = false;
-        for (sub, kind, desc) in tg_subdirs {
-            let p = format!("{tg}/{sub}");
-            let sz = get_path_size_bytes(&device_id, &p).await;
+    for (cache_dir, tg_label) in tg_cache_dirs {
+        if !seen_paths.contains(cache_dir) {
+            let sz = get_path_size_bytes(&device_id, cache_dir).await;
             if sz > 1024 * 1024 {
-                found_tg = true;
+                seen_paths.insert(cache_dir.to_string());
                 items.push(TrashItem {
-                    id: format!("tg_{}_{}", kind, items.len()),
+                    id: format!("tg_cache_{}", items.len()),
                     category: "telegram".into(),
-                    path: p,
-                    name: format!("{tg_label} {sub}"),
+                    path: cache_dir.to_string(),
+                    name: format!("{tg_label} App Cache"),
                     size_bytes: sz,
                     size_formatted: format_bytes(sz),
                     safety_level: "safe".into(),
-                    description_id: desc.into(),
-                    description_en: format!("Telegram downloaded {kind} cache bloat"),
+                    description_id: "Cache sementara particle animasi dan webview Telegram".into(),
+                    description_en: "Telegram temporary animation and webview cache".into(),
                 });
             }
         }
-        if found_tg {
-            break;
+    }
+
+    // 3. OEM Gallery & System Trash / Recycle Bins
+    let oem_trash_dirs = [
+        // Transsion (Infinix / Tecno / Itel)
+        ("/sdcard/.trashBin", "Tempat Sampah Galeri (Transsion)", "Foto & video yang dibuang ke recycle bin galeri Infinix/Tecno"),
+        ("/sdcard/.trashBin_File", "Tempat Sampah File (Transsion)", "Berkas file yang dibuang ke recycle bin file manager Infinix/Tecno"),
+        // Xiaomi / Poco / Redmi (MIUI & HyperOS)
+        ("/sdcard/MIUI/Gallery/cloud/.trashBin", "Tempat Sampah Galeri MIUI", "Foto & video yang dihapus ke recycle bin galeri Xiaomi"),
+        ("/sdcard/MIUI/Gallery/cloud/trashBin", "Tempat Sampah Galeri HyperOS", "Foto & video recycle bin galeri Xiaomi/Poco"),
+        ("/sdcard/MIUI/trash", "Tempat Sampah File MIUI", "Berkas file recycle bin MIUI File Manager"),
+        // Samsung One UI
+        ("/sdcard/Android/data/com.sec.android.gallery3d/files/trash", "Tempat Sampah Galeri Samsung", "Foto & video recycle bin Galeri Samsung"),
+        ("/sdcard/Android/data/com.samsung.android.video/files/trash", "Tempat Sampah Video Samsung", "Video recycle bin Samsung Video Player"),
+        ("/sdcard/Android/data/com.sec.android.app.myfiles/files/trash", "Tempat Sampah My Files Samsung", "File recycle bin Samsung My Files"),
+        // OPPO / Realme / OnePlus (ColorOS / Realme UI / OxygenOS)
+        ("/sdcard/Android/data/com.coloros.gallery3d/files/recycle", "Tempat Sampah Galeri ColorOS", "Foto & video recycle bin Galeri Oppo/Realme"),
+        ("/sdcard/Android/data/com.oplus.gallery/files/recycle", "Tempat Sampah Galeri Oplus", "Foto & video recycle bin Galeri OnePlus/Realme"),
+        ("/sdcard/Android/data/com.coloros.filemanager/files/recycle", "Tempat Sampah File ColorOS", "File recycle bin File Manager ColorOS"),
+        // Vivo / iQOO (Funtouch OS / OriginOS)
+        ("/sdcard/Android/data/com.vivo.gallery/files/recycle", "Tempat Sampah Galeri Vivo", "Foto & video recycle bin Galeri Vivo/iQOO"),
+        ("/sdcard/Android/data/com.vivo.FileManager/files/recycle", "Tempat Sampah File Vivo", "File recycle bin Vivo File Manager"),
+        // Generic Trashes
+        ("/sdcard/.trashes", "Android Trashes Directory", "Tempat sampah recycle bin eksternal"),
+        ("/sdcard/.Trash", "Linux/Android Trash Directory", "Tempat sampah recycle bin tersembunyi"),
+        ("/sdcard/.Trash-1000", "Desktop Trash MTP", "Tempat sampah sisa koneksi desktop MTP"),
+    ];
+
+    for (trash_dir, label, desc) in oem_trash_dirs {
+        if !seen_paths.contains(trash_dir) {
+            let sz = get_path_size_bytes(&device_id, trash_dir).await;
+            if sz > 1024 * 512 {
+                seen_paths.insert(trash_dir.to_string());
+                items.push(TrashItem {
+                    id: format!("trash_{}", items.len()),
+                    category: "cache".into(),
+                    path: trash_dir.to_string(),
+                    name: label.to_string(),
+                    size_bytes: sz,
+                    size_formatted: format_bytes(sz),
+                    safety_level: "safe".into(),
+                    description_id: desc.to_string(),
+                    description_en: "OEM gallery or system recycle bin cache".into(),
+                });
+            }
         }
     }
 
-    // 3. Vendor Logs & Crash Dumps
+    // 4. Vendor Logs & Crash Dumps
     let vendor_log_dirs = [
         ("/sdcard/MIUI/debug_log", "MIUI Debug Logs"),
         ("/sdcard/ColorOS/Log", "ColorOS / Realme Logs"),
@@ -453,50 +699,63 @@ pub async fn scan_storage_junk(
     ];
 
     for (ld, label) in vendor_log_dirs {
-        let sz = get_path_size_bytes(&device_id, ld).await;
-        if sz > 1024 * 512 {
-            items.push(TrashItem {
-                id: format!("log_{}", items.len()),
-                category: "logs".into(),
-                path: ld.to_string(),
-                name: label.to_string(),
-                size_bytes: sz,
-                size_formatted: format_bytes(sz),
-                safety_level: "safe".into(),
-                description_id: "Log sistem & crash dump pabrikan yang menumpuk di memori".into(),
-                description_en: "Manufacturer system logging and crash dumps".into(),
-            });
+        if !seen_paths.contains(ld) {
+            let sz = get_path_size_bytes(&device_id, ld).await;
+            if sz > 1024 * 512 {
+                seen_paths.insert(ld.to_string());
+                items.push(TrashItem {
+                    id: format!("log_{}", items.len()),
+                    category: "logs".into(),
+                    path: ld.to_string(),
+                    name: label.to_string(),
+                    size_bytes: sz,
+                    size_formatted: format_bytes(sz),
+                    safety_level: "safe".into(),
+                    description_id: "Log sistem & crash dump pabrikan yang menumpuk di memori".into(),
+                    description_en: "Manufacturer system logging and crash dumps".into(),
+                });
+            }
         }
     }
 
-    // 2. Thumbnail Cache (.thumbnails)
-    let thumb_paths = ["/sdcard/DCIM/.thumbnails", "/sdcard/.thumbnails"];
-    for tp in thumb_paths {
-        let sz = get_path_size_bytes(&device_id, tp).await;
-        if sz > 1024 * 1024 * 5 {
-            items.push(TrashItem {
-                id: format!("thumb_{}", items.len()),
-                category: "cache".into(),
-                path: tp.to_string(),
-                name: "Thumbnail Cache".into(),
-                size_bytes: sz,
-                size_formatted: format_bytes(sz),
-                safety_level: "safe".into(),
-                description_id: "Cache pratinjau thumbnail galeri yang membengkak".into(),
-                description_en: "Gallery thumbnail cache bloat".into(),
-            });
+    // 5. Thumbnail Cache & App Image Caches
+    let thumb_paths = [
+        ("/sdcard/DCIM/.thumbnails", "DCIM Thumbnail Cache", "Cache pratinjau thumbnail kamera & galeri yang membengkak"),
+        ("/sdcard/.thumbnails", "Root Thumbnail Cache", "Cache pratinjau thumbnail global Android"),
+        ("/sdcard/Pictures/.thumbnails", "Pictures Thumbnail Cache", "Cache pratinjau foto galeri"),
+        ("/sdcard/LazyList", "LazyList Image Cache", "Cache pratinjau thumbnail gambar sisa library LazyList"),
+    ];
+
+    for (tp, label, desc) in thumb_paths {
+        if !seen_paths.contains(tp) {
+            let sz = get_path_size_bytes(&device_id, tp).await;
+            if sz > 1024 * 1024 {
+                seen_paths.insert(tp.to_string());
+                items.push(TrashItem {
+                    id: format!("thumb_{}", items.len()),
+                    category: "cache".into(),
+                    path: tp.to_string(),
+                    name: label.to_string(),
+                    size_bytes: sz,
+                    size_formatted: format_bytes(sz),
+                    safety_level: "safe".into(),
+                    description_id: desc.to_string(),
+                    description_en: "Gallery thumbnail cache bloat".into(),
+                });
+            }
         }
     }
 
-    // 3. Raw APK Installers di Download Folder
+    // 6. Raw APK Installers di Download Folder
     if let Ok((out, _, 0)) = run_adb_device(&device_id, &["shell", "find", "/sdcard/Download", "-maxdepth", "2", "-name", "*.apk"]).await {
         for line in out.lines() {
             let apk_path = line.trim();
-            if apk_path.is_empty() {
+            if apk_path.is_empty() || seen_paths.contains(apk_path) {
                 continue;
             }
             let sz = get_path_size_bytes(&device_id, apk_path).await;
             let file_name = apk_path.rsplit('/').next().unwrap_or("app.apk");
+            seen_paths.insert(apk_path.to_string());
             items.push(TrashItem {
                 id: format!("apk_{}", items.len()),
                 category: "apk".into(),
@@ -511,23 +770,34 @@ pub async fn scan_storage_junk(
         }
     }
 
-    // 4. Orphan Directory Scanner di Root /sdcard/
-    let known_folder_map = [
-        ("SHAREit", "com.lenovo.anyshare.gps"),
-        ("Xender", "cn.xender"),
-        ("Snaptube", "com.snaptube.premium"),
-        ("Vidmate", "com.nemo.vidmate"),
-        ("KineMaster", "com.nexstreaming.app.kinemasterfree"),
-        ("CapCut", "com.lemon.lvoverseas"),
-        ("UCDownloads", "com.UCMobile.intl"),
-        ("cleanmaster", "com.cleanmaster.mguard"),
-        ("TikTok", "com.zhiliaoapp.musically"),
-        ("Likee", "video.like"),
-        ("Helo", "com.eterno.helo"),
-        ("DUrecorder", "com.duapps.recorder"),
-        ("InShot", "com.camerasideas.instashot"),
-        ("VivaVideo", "com.quvideo.xiaoying"),
-        ("baidu", "com.baidu.searchbox"),
+    // 7. Orphan Directory Scanner di Root /sdcard/
+    let known_folder_map: &[(&str, &[&str], &str)] = &[
+        ("SHAREit", &["com.lenovo.anyshare.gps"], "SHAREit"),
+        ("Xender", &["cn.xender"], "Xender"),
+        ("Snaptube", &["com.snaptube.premium"], "Snaptube"),
+        ("Vidmate", &["com.nemo.vidmate"], "Vidmate"),
+        ("KineMaster", &["com.nexstreaming.app.kinemasterfree"], "KineMaster"),
+        ("CapCut", &["com.lemon.lvoverseas"], "CapCut"),
+        ("UCDownloads", &["com.UCMobile.intl"], "UC Browser"),
+        ("cleanmaster", &["com.cleanmaster.mguard"], "Clean Master"),
+        ("TikTok", &["com.zhiliaoapp.musically"], "TikTok"),
+        ("Likee", &["video.like"], "Likee"),
+        ("Helo", &["com.eterno.helo"], "Helo"),
+        ("DUrecorder", &["com.duapps.recorder"], "DU Recorder"),
+        ("InShot", &["com.camerasideas.instashot"], "InShot"),
+        ("VivaVideo", &["com.quvideo.xiaoying"], "VivaVideo"),
+        ("baidu", &["com.baidu.searchbox"], "Baidu"),
+        ("visha", &["com.transsion.visha", "com.visha.video.player", "com.visha.player"], "Visha Player"),
+        ("XShare", &["com.infinix.xshare", "com.transsion.xshare"], "XShare"),
+        ("Boomplay", &["com.afmobi.boomplayer"], "Boomplay"),
+        ("AhaGames", &["com.transsion.ahagames"], "Aha Games"),
+        ("PalmStore", &["com.transsion.palmstore"], "Palm Store"),
+        ("Zalo", &["com.zing.zalo"], "Zalo"),
+        ("Viber", &["com.viber.voip"], "Viber"),
+        ("Line", &["jp.naver.line.android"], "LINE"),
+        ("Truecaller", &["com.truecaller"], "Truecaller"),
+        ("MXPlayer", &["com.mxtech.videoplayer.ad", "com.mxtech.videoplayer.pro"], "MX Player"),
+        ("Opera", &["com.opera.browser", "com.opera.mini.native"], "Opera"),
     ];
 
     if let Ok((out, _, 0)) = run_adb_device(&device_id, &["shell", "ls", "-1", "/sdcard"]).await {
@@ -546,11 +816,12 @@ pub async fn scan_storage_junk(
             let mut is_orphan = false;
             let mut matched_app = "";
 
-            for (f_name, pkg) in known_folder_map {
+            for (f_name, pkgs, app_title) in known_folder_map {
                 if dir_name.eq_ignore_ascii_case(f_name) {
-                    if !installed_set.contains(pkg) {
+                    let any_installed = pkgs.iter().any(|pkg| installed_set.contains(*pkg));
+                    if !any_installed {
                         is_orphan = true;
-                        matched_app = f_name;
+                        matched_app = app_title;
                     }
                     break;
                 }
@@ -558,19 +829,22 @@ pub async fn scan_storage_junk(
 
             if is_orphan {
                 let full_path = format!("/sdcard/{dir_name}");
-                let sz = get_path_size_bytes(&device_id, &full_path).await;
-                if sz > 1024 * 1024 {
-                    items.push(TrashItem {
-                        id: format!("orphan_{}", items.len()),
-                        category: "orphan".into(),
-                        path: full_path,
-                        name: dir_name.to_string(),
-                        size_bytes: sz,
-                        size_formatted: format_bytes(sz),
-                        safety_level: "safe".into(),
-                        description_id: format!("Folder zombie sisa {matched_app} yang sudah di-uninstall"),
-                        description_en: format!("Residual orphan folder from uninstalled {matched_app}"),
-                    });
+                if !seen_paths.contains(&full_path) {
+                    let sz = get_path_size_bytes(&device_id, &full_path).await;
+                    if sz > 1024 * 1024 {
+                        seen_paths.insert(full_path.clone());
+                        items.push(TrashItem {
+                            id: format!("orphan_{}", items.len()),
+                            category: "orphan".into(),
+                            path: full_path,
+                            name: dir_name.to_string(),
+                            size_bytes: sz,
+                            size_formatted: format_bytes(sz),
+                            safety_level: "safe".into(),
+                            description_id: format!("Folder zombie sisa {matched_app} yang sudah di-uninstall"),
+                            description_en: format!("Residual orphan folder from uninstalled {matched_app}"),
+                        });
+                    }
                 }
             }
         }
@@ -614,21 +888,57 @@ mod tests {
         assert!(is_safe_to_delete("/sdcard").is_err());
         assert!(is_safe_to_delete("/sdcard/").is_err());
         assert!(is_safe_to_delete("/storage/emulated/0").is_err());
+        assert!(is_safe_to_delete("/storage/emulated/0/").is_err());
+        assert!(is_safe_to_delete("/sdcard/Android").is_err());
+        assert!(is_safe_to_delete("/sdcard/Android/data").is_err());
+        assert!(is_safe_to_delete("/sdcard/Android/media").is_err());
+        assert!(is_safe_to_delete("/sdcard/Android/obb").is_err());
         assert!(is_safe_to_delete("/sdcard/DCIM").is_err());
         assert!(is_safe_to_delete("/sdcard/Pictures").is_err());
         assert!(is_safe_to_delete("/sdcard/Documents").is_err());
+        assert!(is_safe_to_delete("/sdcard/Audiobooks").is_err());
+        assert!(is_safe_to_delete("/sdcard/Recordings").is_err());
         assert!(is_safe_to_delete("/sdcard/WhatsApp").is_err());
         assert!(is_safe_to_delete("/sdcard/WhatsApp Business").is_err());
         assert!(is_safe_to_delete("/sdcard/Android/media/com.whatsapp").is_err());
         assert!(is_safe_to_delete("/sdcard/Telegram").is_err());
-        assert!(is_safe_to_delete("/sdcard/Telegram/Telegram Video").is_ok());
+        assert!(is_safe_to_delete("/sdcard/Android/data/org.telegram.messenger").is_err());
+        assert!(is_safe_to_delete("/sdcard/Android/data/org.telegram.messenger/files").is_err());
+        assert!(is_safe_to_delete("/sdcard/Android/data/org.telegram.messenger/files/Telegram").is_err());
         assert!(is_safe_to_delete("/data/app").is_err());
         assert!(is_safe_to_delete("/sdcard/foo/../DCIM").is_err());
 
         // Allowed paths
+        assert!(is_safe_to_delete("/sdcard/Telegram/Telegram Video").is_ok());
+        assert!(is_safe_to_delete("/sdcard/Android/data/org.telegram.messenger/files/Telegram/Telegram Images").is_ok());
+        assert!(is_safe_to_delete("/sdcard/Android/data/org.telegram.messenger/cache").is_ok());
+        assert!(is_safe_to_delete("/sdcard/.trashBin").is_ok());
+        assert!(is_safe_to_delete("/sdcard/.trashBin_File").is_ok());
         assert!(is_safe_to_delete("/sdcard/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video/Sent").is_ok());
+        assert!(is_safe_to_delete("/sdcard/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Documents/Sent").is_ok());
+        assert!(is_safe_to_delete("/sdcard/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Voice Notes").is_ok());
+        assert!(is_safe_to_delete("/sdcard/Android/media/com.whatsapp/WhatsApp/Media/.Links").is_ok());
         assert!(is_safe_to_delete("/sdcard/DCIM/.thumbnails").is_ok());
+        assert!(is_safe_to_delete("/sdcard/LazyList").is_ok());
         assert!(is_safe_to_delete("/sdcard/Download/test.apk").is_ok());
         assert!(is_safe_to_delete("/sdcard/SHAREit").is_ok());
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_live_scan() {
+        use crate::adb::scan_devices;
+        let devices = scan_devices().await.unwrap_or_default();
+        if let Some(dev) = devices.first() {
+            let items = scan_storage_junk(dev.id.clone(), vec![]).await.unwrap();
+            println!("DEVICE: {}", dev.id);
+            println!("TOTAL ITEMS: {}", items.len());
+            let mut total_bytes = 0u64;
+            for it in &items {
+                total_bytes += it.size_bytes;
+                println!("  [{}] {} ({}) -> {}", it.category, it.name, it.size_formatted, it.path);
+            }
+            println!("TOTAL JUNK DETECTED: {}", format_bytes(total_bytes));
+        }
     }
 }
