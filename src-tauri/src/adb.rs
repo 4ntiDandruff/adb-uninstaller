@@ -582,6 +582,9 @@ pub async fn uninstall_package(device_id: String, package: String) -> CommandRes
     {
         Ok((out, err, code)) => {
             let success = code == 0 && out.to_lowercase().contains("success");
+            if success && (package.contains("cellbroadcastreceiver") || package.contains("simappdialog")) {
+                let _ = run_adb_device(&device_id, &["shell", "settings", "put", "global", "cdma_cell_broadcast_sms", "0"]).await;
+            }
             timed_result(
                 start,
                 success,
@@ -628,6 +631,9 @@ pub async fn disable_package(device_id: String, package: String) -> CommandResul
         Ok((out, err, code)) => {
             let success =
                 code == 0 && (out.contains("disabled") || out.contains("new state: disabled"));
+            if success && (package.contains("cellbroadcastreceiver") || package.contains("simappdialog")) {
+                let _ = run_adb_device(&device_id, &["shell", "settings", "put", "global", "cdma_cell_broadcast_sms", "0"]).await;
+            }
             timed_result(
                 start,
                 success,
@@ -755,6 +761,9 @@ pub async fn clear_app_data(device_id: String, package: String) -> CommandResult
     match run_adb_device(&device_id, &["shell", "pm", "clear", &package]).await {
         Ok((out, err, code)) => {
             let success = code == 0 && out.to_lowercase().contains("success");
+            if success && (package.contains("cellbroadcastreceiver") || package.contains("simappdialog")) {
+                let _ = run_adb_device(&device_id, &["shell", "settings", "put", "global", "cdma_cell_broadcast_sms", "0"]).await;
+            }
             timed_result(
                 start,
                 success,

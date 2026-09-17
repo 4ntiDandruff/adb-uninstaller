@@ -4,6 +4,18 @@ export type { DebloatPreset };
 
 export const DEBLOAT_PRESETS: DebloatPreset[] = [
   {
+    brand: "Universal: Anti-Iklan & Pop-Up Operator",
+    packages: [
+      { name: "com.android.simappdialog", description: "SIM App Dialog (Popup Iklan Modal)", safe_to_remove: true },
+      { name: "com.mediatek.simprocessor", description: "MTK SIM Processor (Push Event SIM)", safe_to_remove: true },
+      { name: "com.android.cellbroadcastreceiver", description: "Cell Broadcast (Spam Siaran Operator)", safe_to_remove: true },
+      { name: "com.google.android.cellbroadcastreceiver", description: "Google Cell Broadcast (Pesan Siaran)", safe_to_remove: true },
+      { name: "com.android.stk", description: "SIM Toolkit 1 (Menu Kartu SIM Utama)", safe_to_remove: true },
+      { name: "com.android.stk2", description: "SIM Toolkit 2 (Menu Kartu SIM Kedua)", safe_to_remove: true },
+      { name: "com.geniex.vsimhelper", description: "GenieX vSIM Helper (Push Promo Roaming)", safe_to_remove: true },
+    ],
+  },
+  {
     brand: "Xiaomi / POCO / Redmi",
     packages: [
       { name: "com.miui.analytics", description: "MIUI Analytics", safe_to_remove: true },

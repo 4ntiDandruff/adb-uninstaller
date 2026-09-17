@@ -1123,7 +1123,7 @@ export default function App() {
           <div className="modal" style={{ maxWidth: 640 }} onClick={(e) => e.stopPropagation()}>
             <DebloatPresets
               installedApps={apps}
-              onExecute={(pkgs) => { setPresetsOpen(false); runBatch(pkgs); }}
+              onExecute={(pkgs, op) => { setPresetsOpen(false); runBatchOp(op, pkgs); }}
               onClose={() => setPresetsOpen(false)}
               busy={busy}
               t={t}
