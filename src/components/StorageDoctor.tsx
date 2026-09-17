@@ -702,7 +702,7 @@ Format output persis (maksimal 15 kata per poin, tanpa markdown tebal):
         </div>
 
         {/* Junk Items Table */}
-        <div className="table-scroll rounded-xl border border-[var(--border)] bg-[var(--bg-panel)] overflow-hidden">
+        <div className="table-scroll-doctor rounded-xl border border-[var(--border)] bg-[var(--bg-panel)]">
           <table className="app-table">
             <thead>
               <tr>

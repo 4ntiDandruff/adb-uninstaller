@@ -560,6 +560,47 @@ body,
   min-height: 0;
   overflow: auto;
 }
+
+.table-scroll-doctor {
+  max-height: min(600px, calc(100vh - 360px));
+  min-height: 240px;
+  overflow-y: auto;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+  padding-bottom: 24px;
+}
+
+.table-scroll-doctor::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.table-scroll-doctor::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+}
+
+.table-scroll-doctor::-webkit-scrollbar-thumb {
+  background: rgba(34, 211, 238, 0.4);
+  border-radius: 4px;
+}
+
+.table-scroll-doctor::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+[data-theme="light"] .table-scroll-doctor::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .table-scroll-doctor::-webkit-scrollbar-thumb {
+  background: rgba(0, 113, 227, 0.35);
+}
+
+[data-theme="light"] .table-scroll-doctor::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
 table.app-table {
   width: 100%;
   border-collapse: collapse;
