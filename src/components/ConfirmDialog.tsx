@@ -1,5 +1,5 @@
 import { AlertTriangle, X } from "lucide-react";
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 interface Props {
   open: boolean;
@@ -19,17 +19,19 @@ export function ConfirmDialog({
   const cancelRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (open) cancelRef.current?.focus();
-  }, [open]);
-
-  const onKey = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === "Escape") onCancel();
-  }, [onCancel]);
+    if (!open) return;
+    cancelRef.current?.focus();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, onCancel]);
 
   if (!open) return null;
 
   return (
-    <div className="modal-overlay" onClick={onCancel} onKeyDown={onKey}>
+    <div className="modal-overlay" onClick={onCancel}>
       <div className="modal" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <div className="flex items-center gap-2">

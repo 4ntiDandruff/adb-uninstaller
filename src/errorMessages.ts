@@ -38,6 +38,16 @@ export function humanizeError(error: string): string {
   if (error.includes("ADB-5005")) return "Gagal simpan settings.";
   if (error.includes("ADB-5006")) return "Gagal tulis file settings.";
   
+  // OTA & Settings Errors
+  if (error.includes("ADB-7001")) return "Gagal mengubah setting OTA auto-update sistem.";
+
+  // APK Extraction Errors
+  if (error.includes("ADB-8001")) return "File APK tidak ditemukan di perangkat.";
+  if (error.includes("ADB-8002")) return "Gagal menjalankan adb pull. Cek koneksi USB.";
+  if (error.includes("ADB-8003")) return "Gagal menarik file APK. Storage HP mungkin diproteksi.";
+  if (error.includes("ADB-8004")) return "File APK hasil ekstraksi kosong (0 bytes).";
+  if (error.includes("ADB-8005")) return "Ekstraksi APK timeout (melebihi 120 detik).";
+
   // DB Errors
   if (error.includes("DB-001")) return "Folder config tidak ditemukan.";
   if (error.includes("DB-002")) return "Gagal buat folder cache.";

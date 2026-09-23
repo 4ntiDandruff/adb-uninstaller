@@ -29,8 +29,9 @@ export function LogDrawer({ logs, onClear }: Props) {
     const text = filtered
       .map((l) => `[${l.ts}] [${l.level.toUpperCase()}] [${l.source}] ${l.message}${l.detail ? `\n${l.detail}` : ""}`)
       .join("\n");
-    await navigator.clipboard.writeText(text);
-    toast.success("Log disalin");
+    navigator.clipboard.writeText(text)
+      .then(() => toast.success("Log disalin"))
+      .catch(() => toast.error("Gagal menyalin log"));
   }
 
   function exportLog() {
@@ -43,7 +44,7 @@ export function LogDrawer({ logs, onClear }: Props) {
     a.href = url;
     a.download = `adb-log-${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.txt`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   return (

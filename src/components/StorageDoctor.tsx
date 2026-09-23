@@ -283,9 +283,9 @@ export function StorageDoctor({ deviceId, deviceInfo, installedApps, t, lang }: 
 
     reportLines.push(``, `_Megapass Intra Solusindo • Servis Transparan & Presisi_`);
 
-    navigator.clipboard.writeText(reportLines.join("\n")).then(() => {
-      toast.success(t("storage.report_copied"));
-    });
+    navigator.clipboard.writeText(reportLines.join("\n"))
+      .then(() => toast.success(t("storage.report_copied")))
+      .catch(() => toast.error("Gagal menyalin laporan"));
   }, [deviceInfo, stats, selectedSize, aiAdvice, t]);
 
   // Eksekusi Hapus dari Dry-Run Modal
@@ -624,8 +624,9 @@ Format output persis (maksimal 15 kata per poin, tanpa markdown tebal):
               <button
                 className="btn btn-ghost btn-sm text-xs"
                 onClick={() => {
-                  navigator.clipboard.writeText(aiAdvice);
-                  toast.success(t("storage.ai_copy_success"));
+                  navigator.clipboard.writeText(aiAdvice)
+                    .then(() => toast.success(t("storage.ai_copy_success")))
+                    .catch(() => toast.error("Gagal menyalin saran AI"));
                 }}
                 title="Salin saran ke clipboard"
               >

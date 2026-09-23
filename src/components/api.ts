@@ -71,6 +71,8 @@ export const api = {
     invoke<TrashItem[]>("scan_storage_junk", { deviceId, installedPackages }),
   deleteJunkItems: (deviceId: string, paths: string[]) =>
     invoke<number>("delete_junk_items", { deviceId, paths }),
+  setOtaUpdateSystem: (deviceId: string, enabled: boolean) =>
+    invoke<CommandResult>("set_ota_update_system", { deviceId, enabled }),
   extractApk: (deviceId: string, pkg: string, appName?: string) =>
     invoke<CommandResult>("extract_apk", { deviceId, package: pkg, appName }),
   openFolder: (path: string) =>

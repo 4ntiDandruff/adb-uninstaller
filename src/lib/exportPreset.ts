@@ -56,5 +56,5 @@ export async function exportPreset(apps: AppInfo[], selected: Set<string>, devic
   a.href = url;
   a.download = fileName;
   a.click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

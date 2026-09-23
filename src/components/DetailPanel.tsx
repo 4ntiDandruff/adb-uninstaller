@@ -38,8 +38,7 @@ export function DetailPanel({
 }: Props) {
   function copyPkg() {
     if (!app) return;
-    navigator.clipboard.writeText(app.package_name);
-    toast.success("Package name disalin");
+    navigator.clipboard.writeText(app.package_name).then(() => toast.success("Package name disalin")).catch(() => toast.error("Gagal menyalin package name"));
   }
 
   return (
@@ -72,14 +71,14 @@ export function DetailPanel({
 
           <div className="detail-body">
             <dl>
-              <Row k="Status" v={app.is_disabled ? t("table.disabled") : app.is_running ? t("table.running") : "Stopped"} />
-              <Row k="Ukuran" v={app.size || "?"} />
-              <Row k="Versi" v={app.version || "?"} />
-              <Row k="Alasan safety" v={app.safety_reason || "—"} />
+              <Row k={t("table.status")} v={app.is_disabled ? t("table.disabled") : app.is_running ? t("table.running") : t("table.stopped")} />
+              <Row k={t("detail.size")} v={app.size || "?"} />
+              <Row k={t("detail.version")} v={app.version || "?"} />
+              <Row k={t("detail.reason")} v={app.safety_reason || "—"} />
             </dl>
             {app.safety_level === "critical" && (
               <div className="mt-3 rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-300">
-                Package CRITICAL: operasi uninstall/disable diblokir demi keamanan sistem.
+                {t("detail.critical_warn")}
               </div>
             )}
           </div>

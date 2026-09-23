@@ -26,6 +26,13 @@ export function SearchBar({ value, onChange, onClear, placeholder }: Props) {
         placeholder={placeholder ?? "Cari nama aplikasi atau package..."}
         value={local}
         onChange={(e) => setLocal(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Escape" && local) {
+            e.stopPropagation();
+            setLocal("");
+            onClear();
+          }
+        }}
       />
       {local && (
         <button className="search-clear" onClick={() => { setLocal(""); onClear(); }} aria-label="clear" title="Clear">

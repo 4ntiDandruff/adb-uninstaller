@@ -73,7 +73,7 @@ export function AppTable({
     if (query.trim()) {
       const q = query.toLowerCase();
       out = out.filter((a) =>
-        a.package_name.toLowerCase().includes(q) || a.label.toLowerCase().includes(q)
+        (a.package_name ?? '').toLowerCase().includes(q) || (a.label ?? '').toLowerCase().includes(q)
       );
     }
     const dir = sortDir === "asc" ? 1 : -1;

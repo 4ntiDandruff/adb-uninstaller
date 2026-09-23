@@ -132,6 +132,11 @@ async fn set_screen_timeout(device_id: String, ms: i64) -> CommandResult {
 }
 
 #[tauri::command]
+async fn set_ota_update_system(device_id: String, enabled: bool) -> CommandResult {
+    adb::set_ota_update_system(device_id, enabled).await
+}
+
+#[tauri::command]
 async fn check_adb_available() -> Result<bool, String> {
     adb::check_adb_available().await
 }
@@ -276,6 +281,7 @@ pub fn run() {
             save_settings,
             load_settings,
             check_adb_available,
+            set_ota_update_system,
             get_screen_timeout,
             set_screen_timeout,
             get_cached_apps,

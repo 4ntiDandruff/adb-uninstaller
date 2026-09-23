@@ -468,16 +468,21 @@ pub async fn chat_with_ai(messages: Vec<ChatMessage>, context: String) -> Result
         .build()
         .map_err(|e| format!("[ADB-4001] HTTP client error: {e}"))?;
 
-    let system = if settings.ai_system_prompt.is_empty() {
-        "Kamu asisten ADB untuk teknisi servis HP Indonesia. Spesialisasi: debloat Android, analisa package, troubleshooting HP. Jawab dalam Bahasa Indonesia kecuali diminta bahasa lain. Singkat dan praktis.".to_string()
+    let system_base = if settings.ai_system_prompt.is_empty() {
+        "Kamu asisten ADB untuk teknisi servis HP Indonesia. Spesialisasi: debloat Android, analisa package, troubleshooting HP. Jawab dalam Bahasa Indonesia kecuali diminta bahasa lain. Singkat dan praktis."
     } else {
-        settings.ai_system_prompt.clone()
+        &settings.ai_system_prompt
+    };
+    let system = if !context.is_empty() {
+        format!("{system_base}
+
+[Device & Storage Context]
+{context}")
+    } else {
+        system_base.to_string()
     };
 
     let mut api_messages = vec![serde_json::json!({"role": "system", "content": system})];
-    if !context.is_empty() {
-        api_messages.push(serde_json::json!({"role": "user", "content": format!("Context:\n{context}")}));
-    }
     for m in &messages {
         api_messages.push(serde_json::json!({"role": m.role, "content": m.content}));
     }

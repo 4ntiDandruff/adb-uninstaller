@@ -8,6 +8,18 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "v2.3.3",
+    date: "2026-09-23",
+    items: [
+      "[feat] Universal OTA Lock Disabler & Enabler: kunci auto-update OS via auto_update_system & updater OEM",
+      "[feat] Dual-stage recovery: fail-safe auto-fallback dari pm enable ke cmd package install-existing",
+      "[feat] Katalog bloatware Infinix GT & Transsion: pembersihan presisi bloatware, tracking iklan, & promo",
+      "[fix] Atomic confirmation hook: sinkronisasi saklar global Android & eksekusi paket hanya saat konfirmasi OK",
+      "[fix] Post-mutation cache bypass: eliminasi total flickering stale data pada tabel pasca copot/bekukan/undo",
+      "[fix] Null-safe search filter & Wayland clipboard promise guard di seluruh komponen",
+    ],
+  },
+  {
     version: "v2.3.0",
     date: "2026-09-16",
     items: [

@@ -19,6 +19,7 @@ import {
   Eraser,
   Download,
   FileDown,
+  RefreshCw,
 } from "lucide-react";
 import type { AppInfo, AppSettings, Device, DeviceInfo, LogEntry, SafetyLevel } from "./types";
 import { api, makeLog, toast } from "./components/api";
@@ -226,19 +227,20 @@ export default function App() {
   }, [log]);
 
   const loadApps = useCallback(
-    async (id: string) => {
+    async (id: string, bypassCache = false) => {
       const requestId = ++loadRequestRef.current;
       setLoadingApps(true);
       setScanProgress(5);
-      setScanMessage("Cek cache lokal...");
+      setScanMessage(bypassCache ? "Hard refresh (bypass cache)..." : "Cek cache lokal...");
       const t0 = performance.now();
       try {
-        // Cek dulu ada cache tidak
-        setScanProgress(15);
-        setScanMessage("Query database lokal...");
-        const cached = await api.getCachedApps(id);
-        if (loadRequestRef.current !== requestId) return;
-        if (cached.length > 0) {
+        if (!bypassCache) {
+          // Cek dulu ada cache tidak
+          setScanProgress(15);
+          setScanMessage("Query database lokal...");
+          const cached = await api.getCachedApps(id);
+          if (loadRequestRef.current !== requestId) return;
+          if (cached.length > 0) {
           setScanProgress(50);
           setScanMessage(`Load ${cached.length} app dari cache...`);
           // Convert CachedApp ke AppInfo, enrich untuk safety tags
@@ -261,6 +263,10 @@ export default function App() {
             message: `Load dari cache: ${cached.length} package (terakhir scan: ${cached[0]?.scanned_at ?? "?"})`,
             duration_ms: Math.round(performance.now() - t0),
           });
+        }
+        } else {
+          // Bersihkan cache DB device jika bypassCache aktif
+          await api.clearDeviceCache(id).catch(() => {});
         }
         
         // Scan fresh untuk update running status dan data terbaru
@@ -310,6 +316,71 @@ export default function App() {
     // lang intentionally omitted — useEffect[lang] re-enriches static tags without full ADB rescan
     [log, autoAnalyzeUnknown],
   );
+
+  const hardRefresh = useCallback(async (forcedId?: string) => {
+    setLoadingDevices(true);
+    setScanProgress(10);
+    setScanMessage("Hard refresh: mendeteksi perangkat...");
+    try {
+      const devs = await api.scanDevices();
+      setDevices(devs);
+      if (devs.length === 0) {
+        setDeviceId(null);
+        setApps([]);
+        setDeviceInfo(null);
+        toast.info("Tidak ada perangkat terhubung");
+        return;
+      }
+      const active = forcedId || deviceId;
+      const targetId = (active && devs.some((d) => d.id === active))
+        ? active
+        : (devs.find((d) => d.status === "online") ?? devs[0]).id;
+
+      setDeviceId(targetId);
+      await loadApps(targetId, true);
+      toast.success("Hard Refresh selesai: daftar APK diperbarui");
+    } catch (e) {
+      log({ level: "error", source: "adb", message: `Hard refresh gagal: ${humanizeError(String(e))}` });
+      toast.error("Hard refresh gagal");
+    } finally {
+      setLoadingDevices(false);
+    }
+  }, [deviceId, loadApps, log]);
+
+  // Auto-detect cabut / colok kabel USB secara background (heartbeat 2 detik)
+  useEffect(() => {
+    if (!adbOk) return;
+    const timer = setInterval(async () => {
+      if (busy || loadingDevices || loadingApps) return;
+      try {
+        const devs = await api.scanDevices();
+        setDevices((prevDevs) => {
+          const prevStr = prevDevs.map((d) => d.id + ":" + d.status).sort().join(",");
+          const nextStr = devs.map((d) => d.id + ":" + d.status).sort().join(",");
+          if (prevStr !== nextStr) {
+            if (devs.length === 0) {
+              setDeviceId(null);
+              setApps([]);
+              setDeviceInfo(null);
+              log({ level: "warn", source: "adb", message: "Perangkat terputus (USB dicabut)" });
+            } else {
+              setDeviceId((curId) => {
+                if (curId && devs.some((d) => d.id === curId)) return curId;
+                const nextOnline = devs.find((d) => d.status === "online") ?? devs[0];
+                return nextOnline.id;
+              });
+              log({ level: "info", source: "adb", message: "Perangkat terdeteksi: " + devs.length + " device" });
+            }
+            return devs;
+          }
+          return prevDevs;
+        });
+      } catch {
+        // silent polling catch
+      }
+    }, 2000);
+    return () => clearInterval(timer);
+  }, [adbOk, busy, loadingDevices, loadingApps, log]);
 
   useEffect(() => {
     if (deviceId) loadApps(deviceId);
@@ -401,7 +472,7 @@ export default function App() {
               toast.success(`${label} OK`);
               log({ level: "success", source: "adb", message: `${label} sukses: ${pkg}`, detail: res.output, duration_ms: res.duration_ms });
               if (kind === "uninstall" || kind === "disable") setUndoStack((u) => [...u, { pkg, kind }]);
-              if (deviceId) await loadApps(deviceId);
+              if (deviceId) await loadApps(deviceId, true);
             } else {
               toast.error(`${label} gagal`);
               log({ level: "error", source: "adb", message: `${label} gagal: ${pkg}`, detail: res.error ?? res.output, duration_ms: res.duration_ms });
@@ -454,7 +525,7 @@ export default function App() {
           }
           toast.success(`Batch: ${success} OK, ${fail} gagal`);
           setSelected(new Set());
-          if (deviceId) await loadApps(deviceId);
+          if (deviceId) await loadApps(deviceId, true);
           setBusy(false);
         },
       });
@@ -463,7 +534,7 @@ export default function App() {
   );
 
   const runBatchOp = useCallback(
-    async (kind: OpKind, packages: string[]) => {
+    async (kind: OpKind, packages: string[], onConfirmedBefore?: () => Promise<void>) => {
       if (!deviceId || packages.length === 0) return;
       const label = kind.replace("_", " ");
       setConfirm({
@@ -473,6 +544,13 @@ export default function App() {
         onOk: async () => {
           setConfirm(null);
           setBusy(true);
+          if (onConfirmedBefore) {
+            try {
+              await onConfirmedBefore();
+            } catch (e) {
+              console.error("onConfirmedBefore error:", e);
+            }
+          }
           let success = 0;
           let fail = 0;
           for (const pkg of packages) {
@@ -483,9 +561,16 @@ export default function App() {
               continue;
             }
             try {
-              const res = await api[
+              let res = await api[
                 kind === "force_stop" ? "forceStop" : kind === "clear_data" ? "clearData" : kind
               ](deviceId, pkg);
+              // Fail-safe: jika enable gagal (misal paket pernah di-uninstall dari user 0), coba restore
+              if (!res.success && kind === "enable") {
+                const restoreRes = await api.restore(deviceId, pkg);
+                if (restoreRes.success) {
+                  res = restoreRes;
+                }
+              }
               if (res.success) {
                 success++;
                 log({ level: "success", source: "adb", message: `${label} OK: ${pkg}`, duration_ms: res.duration_ms });
@@ -500,7 +585,7 @@ export default function App() {
           }
           toast.success(`Batch ${label}: ${success} OK, ${fail} gagal`);
           setSelected(new Set());
-          if (deviceId) await loadApps(deviceId);
+          if (deviceId) await loadApps(deviceId, true);
           setBusy(false);
         },
       });
@@ -521,9 +606,9 @@ export default function App() {
       setUndoStack((u) => u.slice(0, -1));
       toast.success(`Undo: ${pkg} dikembalikan`);
       log({ level: "success", source: "adb", message: `undo ${kind}: ${pkg}` });
-      await loadApps(deviceId);
+      await loadApps(deviceId, true);
     } catch (e) {
-      toast.error(`Undo gagal`);
+      toast.error(humanizeError(e instanceof Error ? e.message : String(e)));
       log({ level: "error", source: "adb", message: `undo gagal: ${pkg}`, detail: String(e) });
     } finally {
       setBusy(false);
@@ -807,7 +892,7 @@ export default function App() {
         devices={devices}
         deviceId={deviceId}
         onSelectDevice={setDeviceId}
-        onRefresh={scanDevices}
+        onRefresh={() => hardRefresh()}
         loadingDevices={loadingDevices}
         deviceInfo={deviceInfo}
         onOpenSettings={() => setSettingsOpen(true)}
@@ -942,6 +1027,15 @@ export default function App() {
                   <RotateCcw size={13} /> Reset
                 </button>
               )}
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => hardRefresh()}
+                disabled={loadingDevices || loadingApps || busy}
+                title="Hard Refresh: scan ulang perangkat & deteksi APK terbaru dari HP"
+              >
+                <RefreshCw size={13} className={(loadingDevices || loadingApps) ? "animate-spin" : ""} />
+                {t("toolbar.refresh")}
+              </button>
               {selected.size > 0 && (
                 <div className="ml-auto flex items-center gap-1.5 pl-3" style={{borderLeft: "1px solid var(--border)"}}>
                   <button className="btn btn-danger btn-sm" disabled={busy} onClick={() => runBatch([...selected])}>
@@ -1007,7 +1101,7 @@ export default function App() {
               onToggleAll={toggleAll}
               onOpenDetail={openDetail}
               activeApp={detail?.package_name ?? null}
-              onScan={scanDevices}
+              onScan={() => hardRefresh()}
               t={t}
             />
 
@@ -1123,7 +1217,26 @@ export default function App() {
           <div className="modal" style={{ maxWidth: 640 }} onClick={(e) => e.stopPropagation()}>
             <DebloatPresets
               installedApps={apps}
-              onExecute={(pkgs, op) => { setPresetsOpen(false); runBatchOp(op, pkgs); }}
+              onExecute={(pkgs, op, isOta) => {
+                setPresetsOpen(false);
+                runBatchOp(
+                  op,
+                  pkgs,
+                  isOta && deviceId
+                    ? async () => {
+                        const otaEnabled = op === "enable";
+                        await api.setOtaUpdateSystem(deviceId, otaEnabled);
+                        log({
+                          level: "info",
+                          source: "adb",
+                          message: otaEnabled
+                            ? "Saklar global OTA: Diaktifkan"
+                            : "Saklar global OTA: Dimatikan (auto_update_system 0)",
+                        });
+                      }
+                    : undefined
+                );
+              }}
               onClose={() => setPresetsOpen(false)}
               busy={busy}
               t={t}
@@ -1184,7 +1297,7 @@ export default function App() {
       )}
       <ChangelogDialog open={changelogOpen} onClose={() => setChangelogOpen(false)} lang={lang} />
       <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} onOpenChangelog={() => setChangelogOpen(true)} lang={lang} />
-      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} onSaved={setSettings} />
+      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} onSaved={(s) => { setSettings(s); setLang((s.language as Lang) || "id"); }} />
       <ConfirmDialog
         open={confirm !== null}
         title={confirm?.title ?? ""}

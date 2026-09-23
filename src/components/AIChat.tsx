@@ -47,6 +47,7 @@ export function AIChat({ context, msgs, setMsgs, pos, setPos, minimized, onClose
   const dragRef = useRef<HTMLDivElement>(null);
   const offsetRef = useRef({ x: 0, y: 0 });
   const isDragging = useRef(false);
+  const dragMoved = useRef(false);
   const msgsEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -55,12 +56,14 @@ export function AIChat({ context, msgs, setMsgs, pos, setPos, minimized, onClose
 
   function startDrag(clientX: number, clientY: number) {
     isDragging.current = true;
+    dragMoved.current = false;
     const rect = dragRef.current?.getBoundingClientRect();
     if (rect) offsetRef.current = { x: clientX - rect.left, y: clientY - rect.top };
   }
 
   function moveDrag(clientX: number, clientY: number) {
     if (!isDragging.current) return;
+    dragMoved.current = true;
     const maxX = window.innerWidth - 320;
     const maxY = window.innerHeight - 48;
     setPos({
@@ -122,7 +125,7 @@ export function AIChat({ context, msgs, setMsgs, pos, setPos, minimized, onClose
   if (minimized) {
     return (
       <div ref={dragRef} className="ai-float minimized" style={{ left: pos.x, top: pos.y }}>
-        <div className="ai-float-head" {...headProps} onClick={onToggleMinimize} title="Klik untuk buka">
+        <div className="ai-float-head" {...headProps} onClick={() => { if (!dragMoved.current) onToggleMinimize(); }} title="Klik untuk buka">
           <Sparkles size={14} className="text-amber-400" />
           <span>AI Assistant</span>
         </div>

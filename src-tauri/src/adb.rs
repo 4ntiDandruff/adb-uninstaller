@@ -695,7 +695,15 @@ pub async fn restore_package(device_id: String, package: String) -> CommandResul
     .await
     {
         Ok((out, err, code)) => {
-            let success = code == 0 && (out.contains("Success") || out.contains("installed"));
+            let lower_out = out.to_lowercase();
+            let success = code == 0 && (lower_out.contains("success") || lower_out.contains("installed"));
+            let err_msg = if !err.trim().is_empty() {
+                err
+            } else if !out.trim().is_empty() {
+                out.clone()
+            } else {
+                "Unknown error".to_string()
+            };
             timed_result(
                 start,
                 success,
@@ -703,7 +711,7 @@ pub async fn restore_package(device_id: String, package: String) -> CommandResul
                 if success {
                     None
                 } else {
-                    Some(format!("[ADB-3006] Restore gagal: {err}"))
+                    Some(format!("[ADB-3006] Restore gagal: {err_msg}"))
                 },
             )
         }
@@ -841,6 +849,31 @@ pub async fn set_screen_timeout(device_id: String, ms: i64) -> CommandResult {
     }
 }
 
+pub async fn set_ota_update_system(device_id: String, enabled: bool) -> CommandResult {
+    let start = Instant::now();
+    let val = if enabled { "1" } else { "0" };
+    match run_adb_device(
+        &device_id,
+        &["shell", "settings", "put", "global", "auto_update_system", val],
+    )
+    .await
+    {
+        Ok((_, err, code)) => {
+            if code != 0 {
+                return timed_result(
+                    start,
+                    false,
+                    String::new(),
+                    Some(format!("[ADB-7001] Gagal ubah auto_update_system: {err}")),
+                );
+            }
+            let msg = if enabled { "Pembaruan sistem OTA diaktifkan" } else { "Pembaruan sistem OTA dimatikan" };
+            timed_result(start, true, msg.to_string(), None)
+        }
+        Err(e) => timed_result(start, false, String::new(), Some(e)),
+    }
+}
+
 pub async fn check_adb_available() -> Result<bool, String> {
     match Command::new("adb").arg("version").output().await {
         Ok(o) => Ok(o.status.success()),
@@ -877,7 +910,7 @@ pub async fn extract_apk(
             false,
             String::new(),
             Some(format!(
-                "[ADB-4001] Package path tidak ditemukan: {}",
+                "[ADB-8001] Package path tidak ditemukan: {}",
                 if pm_err.is_empty() { "Aplikasi mungkin tidak terpasang" } else { &pm_err }
             )),
         );
@@ -904,7 +937,7 @@ pub async fn extract_apk(
                 start,
                 false,
                 String::new(),
-                Some(format!("[ADB-4001] Gagal menemukan file .apk pada output: {pm_out}")),
+                Some(format!("[ADB-8001] Gagal menemukan file .apk pada output: {pm_out}")),
             );
         }
     };
@@ -964,7 +997,7 @@ pub async fn extract_apk(
                         start,
                         false,
                         String::new(),
-                        Some("[ADB-4004] File APK hasil ekstraksi kosong (0 bytes)".to_string()),
+                        Some("[ADB-8004] File APK hasil ekstraksi kosong (0 bytes)".to_string()),
                     )
                 }
             } else {
@@ -973,7 +1006,7 @@ pub async fn extract_apk(
                     false,
                     String::new(),
                     Some(format!(
-                        "[ADB-4003] Gagal pull APK: {}",
+                        "[ADB-8003] Gagal pull APK: {}",
                         if !stderr_str.is_empty() { stderr_str } else { stdout_str }
                     )),
                 )
@@ -983,13 +1016,13 @@ pub async fn extract_apk(
             start,
             false,
             String::new(),
-            Some(format!("[ADB-4002] Gagal eksekusi perintah adb pull: {e}")),
+            Some(format!("[ADB-8002] Gagal eksekusi perintah adb pull: {e}")),
         ),
         Err(_) => timed_result(
             start,
             false,
             String::new(),
-            Some("[ADB-4005] Ekstraksi APK timeout (120 detik)".to_string()),
+            Some("[ADB-8005] Ekstraksi APK timeout (120 detik)".to_string()),
         ),
     }
 }
@@ -1014,22 +1047,17 @@ pub async fn open_folder(path: String) -> Result<(), String> {
 
     #[cfg(target_os = "linux")]
     {
-        let status = tokio::process::Command::new("xdg-open")
+        tokio::process::Command::new("xdg-open")
             .arg(&dir_str)
-            .status()
-            .await
+            .spawn()
             .map_err(|e| format!("Gagal menjalankan xdg-open: {e}"))?;
-        if !status.success() {
-            return Err("xdg-open mengembalikan status error".to_string());
-        }
     }
 
     #[cfg(target_os = "windows")]
     {
         tokio::process::Command::new("explorer")
             .arg(&dir_str)
-            .status()
-            .await
+            .spawn()
             .map_err(|e| format!("Gagal menjalankan explorer: {e}"))?;
     }
 
@@ -1037,8 +1065,7 @@ pub async fn open_folder(path: String) -> Result<(), String> {
     {
         tokio::process::Command::new("open")
             .arg(&dir_str)
-            .status()
-            .await
+            .spawn()
             .map_err(|e| format!("Gagal menjalankan open: {e}"))?;
     }
 
