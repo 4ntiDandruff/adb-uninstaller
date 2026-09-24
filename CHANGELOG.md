@@ -147,7 +147,7 @@ Audit Sistem Menyeluruh, Optimasi Performa Basis Data, dan Penyesuaian CSP Tauri
 Perombakan Arsitektur Total: Migrasi dari Prototipe Python/Tkinter ke Desktop Native Tauri v2 (Rust) + React 19.
 
 ### Changed
-- **Pangkas Konsumsi Memori (RAM Drop 86%)**: Menurunkan penggunaan memori kerja komputer bengkel dari 280MB (Python/Tkinter) menjadi ~38MB (Tauri Rust), mengizinkan teknisi membuka skema boardview berat secara bersamaan.
+- **Pangkas Konsumsi Memori (RAM Drop 86%)**: Menurunkan penggunaan memori kerja komputer meja kerja dari 280MB (Python/Tkinter) menjadi ~38MB (Tauri Rust), mengizinkan teknisi membuka skema boardview berat secara bersamaan.
 - **Akselerasi Waktu Cold Start**: Memangkas waktu booting aplikasi dari 1.8 detik menjadi 240 milidetik.
 - **Integrasi Mesin SQLite WAL**: Menggantikan penyimpanan flat-file JSON lama dengan basis data SQLite bertransaksi atomik anti-korupsi saat listrik padam.
 

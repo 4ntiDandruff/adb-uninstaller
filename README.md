@@ -10,7 +10,7 @@
 [![Database](https://img.shields.io/badge/cache-SQLite%20WAL-10B981?style=flat-square&logo=sqlite&logoColor=white)](https://www.sqlite.org)
 [![Memory](https://img.shields.io/badge/RAM-~38MB%20Idle-EAB308?style=flat-square)](https://github.com/4ntiDandruff/adb-uninstaller)
 [![Cold Start](https://img.shields.io/badge/cold--start-%3C250ms-22C55E?style=flat-square)](https://github.com/4ntiDandruff/adb-uninstaller)
-[![License](https://img.shields.io/badge/license-Bengkel%20Internal-8B5CF6?style=flat-square)](https://github.com/4ntiDandruff/adb-uninstaller)
+[![License](https://img.shields.io/badge/license-MIT-8B5CF6?style=flat-square)](https://github.com/4ntiDandruff/adb-uninstaller)
 
 **Dikembangkan oleh Cak Hizam (Hizam Nahari) • Certified Electronics Technician (BNSP/BMY)**  
 *Praktisi Meja Servis & Creator zero-bloat-skills di Megapass Intra Solusindo, Sidoarjo.*
@@ -22,7 +22,7 @@
 ## Masalah Riil di Meja Servis (Formula PAS)
 
 * **Problem (Masalah Nyata)**: Konsumen datang ke meja servis membawa HP Android yang lemot luar biasa, memori internal mendadak penuh bertuliskan *"Ruang Penyimpanan Hampir Habis"*, baterai cepat panas meski ponsel cuma ditaruh di saku, serta layar sering dibombardir pop-up iklan operator mirip SMS darurat (*Class 0 / Flash SMS*) yang menjebak pulsa jika tidak sengaja tertekan. Biang kerok utamanya adalah puluhan aplikasi bawaan pabrik (*bloatware* sampah) yang berjalan diam-diam menyedot RAM, agen push iklan seluler terselubung, tumpukan cache media Telegram dan WhatsApp puluhan gigabyte, serta berkas *crash dumps* vendor yang tersembunyi rapi di sudut filesystem.
-* **Agitate (Risiko Fatal & Meja Kerja Berantakan)**: Menghapus aplikasi lewat terminal hitam mentah via perintah `adb shell pm uninstall -k --user 0` satu per satu itu bikin mata perih dan sangat rawan salah ketik. Sekali Anda keliru mencabut paket vital sistem seperti *SystemUI*, *Android System WebView*, atau *SettingsProvider*, ponsel konsumen bisa seketika **mati total atau bootloop (mentok logo)**. Selain itu, proses ADB konvensional sering menggantung di latar belakang menjadi proses zombie yang menguras 100% CPU komputer bengkel hingga laptop servis macet saat pelanggan sedang menunggu, sementara panggilan AI massal sering memicu *504 Gateway Timeout* yang membatalkan seluruh diagnosa.
+* **Agitate (Risiko Fatal & Meja Kerja Berantakan)**: Menghapus aplikasi lewat terminal hitam mentah via perintah `adb shell pm uninstall -k --user 0` satu per satu itu bikin mata perih dan sangat rawan salah ketik. Sekali Anda keliru mencabut paket vital sistem seperti *SystemUI*, *Android System WebView*, atau *SettingsProvider*, ponsel konsumen bisa seketika **mati total atau bootloop (mentok logo)**. Selain itu, proses ADB konvensional sering menggantung di latar belakang menjadi proses zombie yang menguras 100% CPU komputer meja kerja hingga laptop servis macet saat pelanggan sedang menunggu, sementara panggilan AI massal sering memicu *504 Gateway Timeout* yang membatalkan seluruh diagnosa.
 * **Solution (Solusi Meja Servis Megapass)**: **ADB Uninstaller v2.3.3** dirancang khusus sebagai stasiun kerja mandiri yang memangkas seluruh alur manual tersebut. Cukup tancapkan kabel data USB ke ponsel, klik tombol **Scan Device**, dan dalam sekejap seluruh aplikasi terpetakan dengan rambu keselamatan sirkuit 3 warna: **Hijau (Aman Dicopot)**, **Kuning (Hati-Hati)**, dan **Merah (Kritis Terkunci)**. Dilengkapi **Kamus Universal Meja Servis (787+ paket instan 0.01 detik)**, **Perisai Anti-Iklan & Pop-Up Operator (Dual-Action)**, **Progressive AI Batch Analyzer (20 paket/chunk anti-504 timeout)**, **Floating Bottom Action Dock** untuk eksekusi jempol kilat, **Offline APK Extractor** untuk mencadangkan installer mentah pelanggan sebelum ponsel di-reset, serta modul **Storage Doctor** dengan speedometer bus **UFS 2.x/3.x/4.x & eMMC 5.1** adaptif bergaransi sekring kernel anti-zombie.
 
 ---
@@ -70,8 +70,8 @@
 Setiap komponen yang dipilih untuk membangun instrumen ini memiliki alasan fisik yang nyata di meja servis:
 
 * **Tauri v2 + Rust Native Engine**: Menggantikan Electron yang terkenal rakus memori, *yang artinya* aplikasi ini hanya memakan RAM ~38MB (bukan 650MB+) dan langsung menyala dalam waktu 240 milidetik di laptop servis spesifikasi rendah (seperti Core i3 generasi 3 atau AMD A9).
-* **Tokio Async Spawner + `.kill_on_drop(true)`**: Menanamkan saklar pemutus otomatis (*circuit breaker*) pada setiap sub-proses ADB di kernel Linux, *yang artinya* tidak akan pernah ada proses ADB gentayangan (*zombie process*) yang membekukan laptop bengkel ketika kabel USB ponsel mendadak terlepas di tengah jalan.
-* **SQLite WAL Fortress & Kamus Universal (`package_catalog`)**: Basis data lokal satu file berkecepatan tinggi dengan indeks ganda B-Tree tanpa perlu server database terpisah, *yang artinya* ponsel baru yang dicolok langsung mewarisi klasifikasi keamanan dan nama ramah manusia dari riwayat servis 787+ aplikasi dalam waktu <10 milidetik (0.01 detik), aman dari korupsi data (*zero corruption*) meski listrik bengkel mendadak padam.
+* **Tokio Async Spawner + `.kill_on_drop(true)`**: Menanamkan saklar pemutus otomatis (*circuit breaker*) pada setiap sub-proses ADB di kernel Linux, *yang artinya* tidak akan pernah ada proses ADB gentayangan (*zombie process*) yang membekukan laptop meja kerja ketika kabel USB ponsel mendadak terlepas di tengah jalan.
+* **SQLite WAL Fortress & Kamus Universal (`package_catalog`)**: Basis data lokal satu file berkecepatan tinggi dengan indeks ganda B-Tree tanpa perlu server database terpisah, *yang artinya* ponsel baru yang dicolok langsung mewarisi klasifikasi keamanan dan nama ramah manusia dari riwayat servis 787+ aplikasi dalam waktu <10 milidetik (0.01 detik), aman dari korupsi data (*zero corruption*) meski aliran listrik mendadak padam.
 * **Perisai Anti-Iklan & Pop-Up Operator (`cdma_cell_broadcast_sms=0`)**: Modul peredam siaran komersial seluler dan SMS darurat palsu, *yang artinya* sistem secara otomatis membekukan agen perender dialog (`simappdialog`, `cellbroadcastreceiver`, `stk`) dan menyuntikkan saklar parameter kernel via ADB untuk memutus tuntas jebakan pulsa operator yang meresahkan konsumen meja servis.
 * **Progressive Batch AI Analyzer (20 Paket/Chunk)**: Mesin pemecah antrean analisis AI menjadi potongan kecil terukur dengan penanganan retry dinamis (HTTP 429, 503, 504), *yang artinya* proses diagnosa ratusan aplikasi asing tidak akan pernah terputus oleh batas waktu upstream proxy (*504 Gateway Timeout*), dan progres hasil analisa langsung tersaji bertahap di layar.
 * **Toybox `conv=fsync` I/O Benchmark Driver**: Mengirimkan instruksi pemaksaan buffer RAM langsung ke lapisan fisik flash controller melalui utilitas Toybox bawaan Android, *yang artinya* teknisi mendapatkan data kecepatan tulis sekuensial riil yang akurat tanpa terkelabui oleh cache memori virtual.
@@ -87,7 +87,7 @@ Pengujian dilakukan langsung pada unit kerja riil meja servis Megapass: laptop t
 
 | Parameter Pengujian | ADB Uninstaller v2.3.3 (Tauri + Rust) | Aplikasi Debloater Tradisional (Electron / Java) | Dampak Nyata di Meja Servis |
 |---|---|---|---|
-| **Konsumsi RAM Saat Diam (Idle)** | **38 MB** | 580 MB – 720 MB | **Hemat RAM 94.7%** • Laptop bengkel tidak sesak meski buka skema & boardview |
+| **Konsumsi RAM Saat Diam (Idle)** | **38 MB** | 580 MB – 720 MB | **Hemat RAM 94.7%** • Laptop meja servis tidak sesak meski buka skema & boardview |
 | **Beban CPU Standby** | **0.0% – 0.2%** | 3.5% – 8.0% | **0% Beban CPU** • Kipas laptop tetap senyap, baterai laptop tidak cepat drop |
 | **Waktu Buka Pertama (Cold Start)** | **240 ms** | 3.200 ms – 5.500 ms | **15x Lebih Cepat** • Langsung siap kerja dalam sekejap mata |
 | **Pencocokan Kamus Universal (Cross-Device)** | **<10 ms (0.01 detik)** | 45 – 90 detik (Analisis AI Berulang) | **4500x Lebih Cepat** • Instan mengenali 787+ paket tanpa panggil AI |
@@ -117,7 +117,7 @@ Berapa biaya riil yang harus dikeluarkan jika seluruh instrumen, sirkuit pengama
 | **Generator Nota Laporan WhatsApp 1-Klik** | Peringkas hasil pembersihan memori otomatis berformat pesan WhatsApp rapi, siap dikirim ke konsumen meja servis. | Rp 5.000.000 | **Rp 0** (Aset Meja Kerja) |
 | **TOTAL VALUASI REKAYASA SISTEM** | **Instrumen Meja Servis Siap Pakai Produksi** | **Rp 98.500.000** | **Rp 0 (PENGHEMATAN 100%)** |
 
-> *Dampak Finansial Nyata*: Menghemat anggaran investasi perangkat lunak bengkel sebesar **Rp 98.500.000**, sekaligus melipatgandakan kecepatan diagnosa dan pembersihan ponsel konsumen hingga 4x lebih cepat dibanding metode manual.
+> *Dampak Finansial Nyata*: Menghemat anggaran investasi perangkat lunak meja servis sebesar **Rp 98.500.000**, sekaligus melipatgandakan kecepatan diagnosa dan pembersihan ponsel konsumen hingga 4x lebih cepat dibanding metode manual.
 
 ---
 
@@ -219,7 +219,7 @@ $ npm run tauri build
 ## 7. Potensi Pengembangan Masa Depan (Roadmap)
 
 * `[ ]` **Radar Hotplug USB Otomatis (0% CPU)**: Memasang pendengar event kernel `udev` via pustaka Rust `udev` untuk mendeteksi tancapan kabel data ponsel secara langsung tanpa perlu klik tombol refresh.
-* `[ ]` **ADB Wireless QR Code Pairer**: Menambahkan pemindai barcode QR untuk menghubungkan ponsel Android 11+ via jaringan Wi-Fi lokal bengkel tanpa butuh colok kabel data.
+* `[ ]` **ADB Wireless QR Code Pairer**: Menambahkan pemindai barcode QR untuk menghubungkan ponsel Android 11+ via jaringan Wi-Fi lokal meja servis tanpa butuh colok kabel data.
 * `[ ]` **Split APK (APKS/XAPK) Universal Merger**: Kemampuan menggabungkan paket terpecah (*base.apk + split_config.arm64_v8a.apk*) menjadi satu file APK universal utuh yang bisa langsung dipasang ke ponsel lain secara luring.
 * `[ ]` **Battery Health & Charge Cycle Counter**: Membaca register kernel `/sys/class/power_supply/battery/cycle_count` untuk mencatat sisa kesehatan baterai pelanggan.
 
