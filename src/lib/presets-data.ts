@@ -78,6 +78,7 @@ export const DEBLOAT_PRESETS: DebloatPreset[] = [
     brand: "Generic AOSP / Google / Facebook",
     packages: [
       { name: "com.android.adservices.api", description: "Android AdServices Ad Engine API", safe_to_remove: true },
+      { name: "com.google.android.verifier", description: "Google Play Cloud Package Verifier (Fix Play Store stuck di Android 16+)", safe_to_remove: true },
       { name: "com.android.devicediagnostics", description: "Device Diagnostics & Telemetry", safe_to_remove: true },
       { name: "com.google.android.marvin.talkback", description: "Android Accessibility TalkBack", safe_to_remove: true },
       { name: "com.android.printspooler", description: "Android Print Spooler", safe_to_remove: true },

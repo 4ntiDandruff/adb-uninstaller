@@ -34,6 +34,7 @@ const tags: Record<string, SafetyTag> = {
   "com.android.stk2":                         { level: "safe",     reason: "SIM Toolkit 2",                reasonEn: "SIM Toolkit 2" },
   "com.geniex.vsimhelper":                    { level: "safe",     reason: "vSIM Helper Promo Roaming",    reasonEn: "GenieX vSIM Roaming Promo" },
   "com.android.adservices.api":               { level: "safe",     reason: "API Iklan & Tracking Android", reasonEn: "Android AdServices API" },
+  "com.google.android.verifier":            { level: "safe",     reason: "Google Cloud Verifier (Fix Play Store Stuck A16)", reasonEn: "Google Package Verifier (Fix Stuck A16)" },
   "com.transsion.camera":                     { level: "critical", reason: "Kamera bawaan Infinix",         reasonEn: "Infinix stock camera" },
   "com.transsion.gamespace.app":              { level: "risky",    reason: "Game Space & Bypass Charge",   reasonEn: "Game Space & bypass charging" },
   "com.transsion.magazineservice.xos":        { level: "safe",     reason: "Iklan lockscreen magazine",     reasonEn: "Lockscreen carousel ads" },
